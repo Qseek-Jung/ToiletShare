@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">대똥단결</string>
+    <string name="title_activity_main">대똥단결</string>
+    <string name="package_name">com.toiletshare.app</string>
+    <string name="custom_url_scheme">com.toiletshare.app</string>
+    
+    <!-- Kakao Login -->
+    <string name="kakao_app_key">954f8caae336cb83506cad28e1de2e19</string>
+    
+    <!-- Naver Login -->
+    <!-- Naver Login -->
+    <string name="naver_client_id">44PTd3BMDQvsMLU_oLVy</string>
+    <string name="naver_client_secret">4mMuTwBFw1</string>
+    <string name="naver_client_name">대똥단결</string>
+
+    <!-- Google Login (Fix for Error 10 due to missing google-services.json) -->
+    <string name="server_client_id">889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com</string>
+    <string name="default_web_client_id">889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com</string>
+</resources>

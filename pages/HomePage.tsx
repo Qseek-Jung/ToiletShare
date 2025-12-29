@@ -1,0 +1,573 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, X, List, Check, ScrollText, Waves, Star, Crosshair, MapPin } from 'lucide-react';
+import { Toilet, User, UserRole } from '../types';
+import { MAPS_API_KEY } from '../config';
+import { getToiletColor, getMarkerSvg, formatDistance, getMarkerImage, calculateDistance } from '../utils';
+import { AdBanner } from '../components/AdBanner';
+import { dbSupabase } from '../services/db_supabase';
+
+// import { GoogleAd } from '../components/GoogleAd';
+// import AdErrorBoundary from '../components/AdErrorBoundary';
+
+const DARK_MAP_STYLE = [
+    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+    { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+    { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+    { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+];
+interface HomePageProps {
+    user: User;
+    myLocation: { lat: number, lng: number };
+    filteredToilets: Toilet[];
+    onToiletClick: (t: Toilet) => void;
+    onFetchNewArea?: (lat: number, lng: number, radiusKm: number) => Promise<void>;
+    initialMapState?: { center: { lat: number, lng: number }, zoom: number } | null;
+    onMapChange?: (state: { center: { lat: number, lng: number }, zoom: number }) => void;
+    darkMode?: boolean;
+
+    onLoginRequired: () => void;
+    showList: boolean;
+    onToggleList: (show: boolean) => void;
+    targetToiletId?: string | null;  // New Prop
+}
+
+const HomePage: React.FC<HomePageProps> = (props) => {
+    const { user, myLocation, filteredToilets, onToiletClick, onFetchNewArea, initialMapState, onMapChange, darkMode, onLoginRequired, showList, onToggleList, targetToiletId } = props;
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstance = useRef<any>(null);
+    const markersRef = useRef<any[]>([]);
+    const myLocationOverlayRef = useRef<any>(null);
+    const lastFetchRef = useRef<{ lat: number, lng: number, zoom: number }>({ lat: 0, lng: 0, zoom: 15 });
+    const isFirstLoad = useRef(true);
+    const hasPannedToInitialLocation = useRef(!!initialMapState);
+    const hasHandledTargetToilet = useRef(false); // Ref to prevent re-centering on every render
+
+    // UI State
+    // const [showList, setShowList] = useState(false); // Moved to App.tsx for persistence
+
+    const [showSearchButton, setShowSearchButton] = useState(false);
+
+    const [searchQuery, setSearchQuery] = useState("");
+
+
+    // Filter and Sort State
+    const [filters, setFilters] = useState({
+        hasPaper: false,
+        hasBidet: false,
+        minRating: false
+    });
+    const [sortBy, setSortBy] = useState<'distance' | 'rating'>('distance');
+
+    // Filter Logic
+    const displayToilets = filteredToilets
+        // ... filters removed for brevity ...
+        .filter(t => {
+            // 1. Gender Filtering (Strict)
+            // Guest sees all (pins visible, access restricted later)
+            if (user.role === UserRole.GUEST) return true;
+
+            // Admin/VIP sees all
+            if (user.role === UserRole.ADMIN || user.role === UserRole.VIP) return true;
+
+            // Creator sees their own (regardless of gender)
+            if (t.createdBy === user.id) return true;
+
+            // General User: Filter by Gender
+            if (user.gender === 'MALE') return t.genderType === 'MALE' || t.genderType === 'UNISEX';
+            if (user.gender === 'FEMALE') return t.genderType === 'FEMALE' || t.genderType === 'UNISEX';
+
+            return true;
+        })
+        .filter(t =>
+            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.address.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .filter(t => {
+            if (filters.hasPaper && !t.hasPaper) return false;
+            if (filters.hasBidet && !t.hasBidet) return false;
+            if (filters.minRating && (t.ratingAvg || 0) < 3) return false;
+            return true;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'distance') {
+                return (a.distance || 0) - (b.distance || 0);
+            } else {
+                return (b.ratingAvg || 0) - (a.ratingAvg || 0);
+            }
+        });
+
+    // Handle Deep Link / Target Toilet ID
+    useEffect(() => {
+        if (!targetToiletId || !mapInstance.current || filteredToilets.length === 0) return;
+
+        // Find the target toilet
+        const target = filteredToilets.find(t => t.id === targetToiletId);
+
+        if (target) {
+            console.log("🎯 Deep Link: Centering on toilet:", target.name, target.lat, target.lng);
+
+            // Pan to target
+            mapInstance.current.setCenter({ lat: target.lat, lng: target.lng });
+            mapInstance.current.setZoom(18); // Close zoom for detail
+        }
+    }, [targetToiletId, filteredToilets]);
+
+    useEffect(() => {
+        const initMap = () => {
+            if (!mapContainerRef.current) {
+                setTimeout(initMap, 100);
+                return;
+            }
+
+            // Check if Google Maps is loaded
+            if (!window.google?.maps || !window.google.maps.Map) {
+                // Wait for provider to finish loading
+                setTimeout(initMap, 200);
+                return;
+            }
+
+            if (mapInstance.current) return;
+
+            try {
+                const map = new window.google.maps.Map(mapContainerRef.current, {
+                    center: initialMapState?.center || myLocation,
+                    zoom: initialMapState?.zoom || 16,
+                    disableDefaultUI: true,
+                    styles: darkMode
+                        ? [...DARK_MAP_STYLE, { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+                        : [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+                });
+
+                mapInstance.current = map;
+
+                // Initialize lastFetchRef on first load
+                if (isFirstLoad.current) {
+                    if (initialMapState) {
+                        // Restore state: Don't fetch new content, rely on existing filteredToilets
+                        lastFetchRef.current = {
+                            lat: initialMapState.center.lat,
+                            lng: initialMapState.center.lng,
+                            zoom: initialMapState.zoom
+                        };
+                        console.log("♻️ Map State Restored, skipping initial fetch.");
+                    } else {
+                        // Fresh start: Fetch around User Location
+                        lastFetchRef.current = { lat: myLocation.lat, lng: myLocation.lng, zoom: 16 };
+                        onFetchNewArea?.(myLocation.lat, myLocation.lng, 2);
+                    }
+                    isFirstLoad.current = false;
+                }
+
+                // Map Move Listener for "Search Here" button
+                map.addListener('idle', () => {
+
+                    const center = map.getCenter();
+                    const zoom = map.getZoom();
+                    if (!center || !zoom) return;
+
+                    let radius = 2;
+                    if (zoom <= 14) radius = 5;
+                    if (zoom <= 12) radius = 10;
+                    if (zoom <= 11) radius = 15;
+                    if (zoom <= 10) radius = 20;
+                    if (zoom <= 9) radius = 30;
+                    if (zoom <= 8) radius = 50;
+                    console.log(`Current Zoom Level: ${zoom}, Radius: ${radius}km`);
+
+                    const dist = calculateDistance(
+                        center.lat(),
+                        center.lng(),
+                        lastFetchRef.current.lat,
+                        lastFetchRef.current.lng
+                    );
+
+                    // Show button if moved > 500m OR Zoomed out significantly (zoom level decrease)
+                    const isMoved = dist > 0.5;
+                    const isZoomedOut = zoom < lastFetchRef.current.zoom;
+
+                    if (isMoved || isZoomedOut) {
+                        setShowSearchButton(true);
+                    }
+
+                    if (onMapChange) {
+                        onMapChange({ center: { lat: center.lat(), lng: center.lng() }, zoom });
+                    }
+                });
+
+                // Custom Overlay for Pulsing Location Marker
+                class LocationOverlay extends window.google.maps.OverlayView {
+                    position: { lat: number, lng: number };
+                    div: HTMLDivElement | null;
+
+                    constructor(position: { lat: number, lng: number }) {
+                        super();
+                        this.position = position;
+                        this.div = null;
+                    }
+
+                    onAdd() {
+                        const div = document.createElement('div');
+                        div.style.position = 'absolute';
+                        div.style.cursor = 'pointer';
+                        div.innerHTML = `
+                            <div class="relative flex items-center justify-center w-8 h-8">
+                                <span class="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping"></span>
+                                <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500 border-2 border-white shadow-sm"></span>
+                            </div>
+                        `;
+                        this.div = div;
+                        const panes = this.getPanes();
+                        panes?.overlayMouseTarget.appendChild(div);
+                    }
+
+                    draw() {
+                        const overlayProjection = this.getProjection();
+                        if (!overlayProjection || !this.div) return;
+
+                        const point = overlayProjection.fromLatLngToDivPixel(new window.google.maps.LatLng(this.position));
+                        if (point) {
+                            this.div.style.left = (point.x - 16) + 'px';
+                            this.div.style.top = (point.y - 16) + 'px';
+                        }
+                    }
+
+                    onRemove() {
+                        if (this.div) {
+                            (this.div.parentNode as HTMLElement).removeChild(this.div);
+                            this.div = null;
+                        }
+                    }
+
+                    setPosition(position: { lat: number, lng: number }) {
+                        this.position = position;
+                        this.draw();
+                    }
+                }
+
+                const overlay = new LocationOverlay(myLocation);
+                overlay.setMap(map);
+                myLocationOverlayRef.current = overlay;
+
+                // Force a resize trigger after a short delay
+                setTimeout(() => {
+                    window.google.maps.event.trigger(map, 'resize');
+
+                    updateMarkers();
+                }, 200);
+
+            } catch (e) {
+                console.error("Map initialization error:", e);
+                setTimeout(initMap, 500);
+            }
+        };
+
+        const timer = setTimeout(initMap, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Dark Mode Effect
+    useEffect(() => {
+        if (mapInstance.current) {
+            mapInstance.current.setOptions({
+                styles: darkMode
+                    ? [...DARK_MAP_STYLE, { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+                    : [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+            });
+        }
+    }, [darkMode]);
+
+    // Pan to User Location Effect (Only on first load if no state restored)
+    useEffect(() => {
+        if (!hasPannedToInitialLocation.current && mapInstance.current) {
+            mapInstance.current.panTo(myLocation);
+            setTimeout(() => {
+                mapInstance.current.panBy(0, 180);
+            }, 300);
+            hasPannedToInitialLocation.current = true;
+        }
+
+        if (myLocationOverlayRef.current) {
+            myLocationOverlayRef.current.setPosition(myLocation);
+        }
+    }, [myLocation]);
+
+
+    // Unified Click Handler with Access Control
+    const handleToiletSelect = (t: Toilet) => {
+        if (user.role === UserRole.GUEST) {
+            const isAdminCreated = t.createdBy === 'admin' || t.source === 'admin' || !t.createdBy;
+            const isOpen = !t.hasPassword;
+
+            if (isAdminCreated && isOpen) {
+                onToiletClick(t);
+            } else {
+                onLoginRequired();
+            }
+        } else {
+            onToiletClick(t);
+        }
+    };
+
+    // Update Markers Effect
+    useEffect(() => { updateMarkers(); }, [displayToilets, user.role]);
+
+    function updateMarkers() {
+        if (!mapInstance.current) return;
+        markersRef.current.forEach(m => m.setMap(null));
+        markersRef.current = [];
+
+        displayToilets.forEach((t, index) => {
+            const isNearest = index === 0;
+            const imageUrl = getMarkerImage(t, user.role, isNearest);
+
+            const marker = new window.google.maps.Marker({
+                position: { lat: t.lat, lng: t.lng },
+                map: mapInstance.current,
+                title: t.name,
+                icon: {
+                    url: imageUrl,
+                    scaledSize: new window.google.maps.Size(40, 52),
+                    anchor: new window.google.maps.Point(20, 52)
+                },
+                zIndex: isNearest ? 100 : 1
+            });
+
+            marker.addListener('click', () => {
+                handleToiletSelect(t);
+            });
+            markersRef.current.push(marker);
+        });
+    }
+
+    return (
+        <div className="w-full h-full relative bg-gray-100 dark:bg-gray-900 overflow-hidden">
+            <div ref={mapContainerRef} className="w-full h-full" />
+
+            {/* Center Map Marker (Fixed Reference) */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[100%] z-10 pointer-events-none drop-shadow-md">
+                <MapPin className="w-10 h-10 text-gray-700 fill-white" strokeWidth={2.5} />
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-1 bg-black/30 rounded-full blur-[2px]"></div>
+            </div>
+
+            {/* Top Search Bar */}
+            <div className="absolute top-4 left-0 right-0 z-20 flex flex-col items-center px-4 pointer-events-none gap-[5px]">
+                <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 pointer-events-auto ${showList ? 'ring-2 ring-primary' : ''}`}>
+                    <Search className="w-5 h-5 text-gray-400 shrink-0" />
+                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => onToggleList(true)} placeholder="화장실 검색" className="flex-1 bg-transparent outline-none text-sm min-w-0 dark:text-white dark:placeholder-gray-400" />
+                    <button onClick={() => onToggleList(!showList)} className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">{showList ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}</button>
+                </div>
+
+                {/* Nearest Toilet Card (only when list is closed) */}
+                {!showList && filteredToilets.length > 0 && (
+                    <div
+                        onClick={() => handleToiletSelect(filteredToilets[0])}
+                        className="w-full max-w-md bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border-2 border-red-500 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all animate-in slide-in-from-top-2 pointer-events-auto"
+                    >
+                        <div className="w-14 h-14 shrink-0">
+                            <img
+                                src={
+                                    filteredToilets[0].genderType === 'MALE' ? '/images/icons/Man_boxicon.png' :
+                                        filteredToilets[0].genderType === 'FEMALE' ? '/images/icons/Woman_boxicon.png' :
+                                            '/images/icons/uni_boxicon.png'
+                                }
+                                alt="toilet icon"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-xs text-red-500 font-bold mb-0.5">
+                                {calculateDistance(myLocation.lat, myLocation.lng, lastFetchRef.current.lat, lastFetchRef.current.lng) > 1.0
+                                    ? '지도 중앙에서 가장 가까운 화장실'
+                                    : '가장 가까운 화장실'}
+                            </div>
+                            <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{filteredToilets[0].name}</h3>
+                            <div className="text-xs text-gray-500 truncate">{filteredToilets[0].address}</div>
+                        </div>
+                        <div className="text-base font-black text-red-500 shrink-0">
+                            {formatDistance(filteredToilets[0].distance || 0)}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Search Here Button (Overlay) */}
+            {showSearchButton && !showList && (
+                <div className="absolute bottom-48 left-1/2 transform -translate-x-1/2 z-20 pointer-events-auto">
+                    <button
+                        onClick={() => {
+                            if (!mapInstance.current || !onFetchNewArea) return;
+                            const center = mapInstance.current.getCenter();
+                            const zoom = mapInstance.current.getZoom();
+
+                            // Dynamic Radius based on Zoom
+                            let radius = 2;
+                            if (zoom <= 14) radius = 5;
+                            if (zoom <= 12) radius = 10;
+                            if (zoom <= 11) radius = 15;
+                            if (zoom <= 10) radius = 20;
+                            if (zoom <= 9) radius = 30;
+                            if (zoom <= 8) radius = 50;
+
+                            const lat = center.lat();
+                            const lng = center.lng();
+
+                            setShowSearchButton(false);
+                            lastFetchRef.current = { lat, lng, zoom };
+
+                            onFetchNewArea(lat, lng, radius);
+                        }}
+                        className="bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 animate-bounce-small hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                        <Search className="w-4 h-4" />
+                        이 지역 검색
+                    </button>
+                </div>
+            )}
+
+            {/* List View Modal (Overlay) */}
+            {showList && (
+                <div className="absolute top-[72px] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
+                    <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-3xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+
+                        {/* Fixed Native Ad Area (Top of List) */}
+                        <div className="w-full bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden">
+                            <div className="w-full h-[80px] flex items-center justify-center relative">
+                                <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full" />
+                                <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-bold -z-10">광고 영역</span>
+                            </div>
+                        </div>
+
+                        {/* Scrollable Content */}
+                        <div className="flex-1 overflow-y-auto pb-24 relative">
+                            {/* Filter and Sort Section */}
+                            <div className="sticky top-0 bg-white dark:bg-gray-800 p-3 border-b dark:border-gray-700 z-10 shadow-sm">
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                    {/* Sort Dropdown (Simulated with button for compactness) */}
+                                    <button
+                                        onClick={() => setSortBy(sortBy === 'distance' ? 'rating' : 'distance')}
+                                        className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white flex items-center gap-1 whitespace-nowrap"
+                                    >
+                                        {sortBy === 'distance' ? '📍 거리순' : '⭐ 별점순'}
+                                    </button>
+                                    <div className="w-[1px] h-8 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
+
+                                    {/* Filters (Horizontal Scroll Chips) */}
+                                    <button
+                                        onClick={() => setFilters(prev => ({ ...prev, hasPaper: !prev.hasPaper }))}
+                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasPaper
+                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                            }`}
+                                    >
+                                        <img src="/images/icons/tissue.png" width={16} height={16} alt="tissue" className={filters.hasPaper ? "" : "grayscale opacity-50"} />
+                                        화장지
+                                    </button>
+                                    <button
+                                        onClick={() => setFilters(prev => ({ ...prev, hasBidet: !prev.hasBidet }))}
+                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasBidet
+                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                            }`}
+                                    >
+                                        <img src="/images/icons/bidet.png" width={16} height={16} alt="bidet" className={filters.hasBidet ? "" : "grayscale opacity-50"} />
+                                        비데
+                                    </button>
+                                    <button
+                                        onClick={() => setFilters(prev => ({ ...prev, minRating: !prev.minRating }))}
+                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.minRating
+                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                            }`}
+                                    >
+                                        <Star className={`w-3.5 h-3.5 ${filters.minRating ? "fill-primary-700 text-primary-700" : "text-gray-400"}`} />
+                                        3점+
+                                    </button>
+                                </div>
+                            </div>
+
+
+
+
+
+                            {/* List */}
+                            <div className="p-4 space-y-3">
+                                {displayToilets.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-400">
+                                        조건에 맞는 화장실이 없습니다.
+                                    </div>
+                                ) : (
+                                    displayToilets.map((t, i) => (
+                                        <React.Fragment key={t.id}>
+                                            {/* ... Toilet Item ... */}
+                                            <div
+                                                onClick={() => handleToiletSelect(t)}
+                                                className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                            >
+                                                {/* ... Content ... */}
+                                                <div className="shrink-0 self-center">
+                                                    <img
+                                                        src={getMarkerImage(t, user.role, i === 0 && sortBy === 'distance')}
+                                                        alt="pin"
+                                                        className="w-[65px] h-[65px] object-contain drop-shadow-sm"
+                                                    />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${t.type === 'public' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                            {t.type === 'public' ? '공공' : t.type === 'commercial' ? '상가' : '기타'}
+                                                        </span>
+                                                        <h3 className="font-bold text-gray-900 dark:text-white">{t.name}</h3>
+                                                    </div>
+                                                    <div className="text-sm text-gray-500 mb-2">{t.address} {t.floor}층</div>
+                                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                        <span className="flex items-center gap-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {t.ratingAvg ? t.ratingAvg.toFixed(1) : '0.0'} ({t.reviewCount})</span>
+                                                        <span>|</span>
+                                                        <span>{formatDistance(t.distance || 0)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </React.Fragment>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Current Location Button */}
+            <div className="absolute bottom-48 right-4 z-20 pointer-events-auto">
+                <button
+                    onClick={() => {
+                        if (mapInstance.current && myLocation.lat !== 0) {
+                            mapInstance.current.panTo(myLocation);
+                            mapInstance.current.setZoom(17);
+                        }
+                    }}
+                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all active:scale-95"
+                >
+                    <Crosshair className="w-6 h-6" />
+                </button>
+            </div>
+
+
+
+        </div >
+    );
+};
+
+export default HomePage;

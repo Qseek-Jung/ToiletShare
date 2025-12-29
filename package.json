@@ -1,0 +1,42 @@
+{
+  "name": "대똥단결",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^7.2.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/geolocation": "^8.0.0",
+    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
+    "@emailjs/browser": "^4.4.1",
+    "@google/genai": "^1.30.0",
+    "@supabase/supabase-js": "^2.86.2",
+    "@team-lepisode/capacitor-naver-login": "^7.0.0",
+    "@types/google.maps": "^3.58.1",
+    "capacitor-kakao-login-plugin": "^3.0.0",
+    "exif-js": "^2.3.0",
+    "lucide-react": "^0.555.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-is": "^19.2.3",
+    "recharts": "^3.5.1",
+    "tesseract.js": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

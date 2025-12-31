@@ -69,13 +69,13 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         setIsLoading(false);
                     } else {
                         console.warn("YouTube ID extraction failed for URL:", url);
-                        handleAdMobFallback();
+                        handleAdMobFallback(config.testMode);
                     }
                 } else {
-                    handleAdMobFallback();
+                    handleAdMobFallback(config.testMode);
                 }
             } else {
-                handleAdMobFallback();
+                handleAdMobFallback(config.testMode);
             }
         } catch (e) {
             console.error("Ad Decision Failed", e);
@@ -83,13 +83,13 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         }
     };
 
-    const handleAdMobFallback = async () => {
+    const handleAdMobFallback = async (testMode: boolean) => {
         try {
             if (adType === 'reward') {
-                const result = await adMobService.showRewardVideo();
+                const result = await adMobService.showRewardVideo(testMode);
                 if (result && onReward) onReward();
             } else {
-                await adMobService.showInterstitial();
+                await adMobService.showInterstitial(testMode);
             }
         } catch (error) {
             console.error("AdMob Playback Failed:", error);

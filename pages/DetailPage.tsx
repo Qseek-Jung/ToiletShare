@@ -3,6 +3,7 @@ import { Lock, ArrowRight, Edit, Share2, Star, MapIcon, ScrollText, Waves, DoorC
 import { AlertModal } from '../components/AlertModal';
 import { Toilet, Review, User, UserRole } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
+import { shareService } from '../services/shareService';
 import { getDisplayName, formatDistance, getMarkerImage } from '../utils';
 import { getToiletColor, getMarkerSvg, calculateDistance } from '../utils';
 import { ToiletTypeIcon } from '../components/Icons';
@@ -407,30 +408,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     };
 
     const handleShare = async () => {
-        // Construct Share URL with Referral Code
-        // Format: origin + /?ref=CODE + hash
-        const refCode = user.id ? btoa(user.id) : '';
-        const shareUrl = `${window.location.origin}/?ref=${refCode}${window.location.hash}`;
-
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `화장실 공유: ${toilet.name}`,
-                    text: `${toilet.name} 화장실 정보를 확인해보세요!`,
-                    url: shareUrl,
-                });
-                return;
-            } catch (err) {
-                console.log('Error sharing:', err);
-            }
-        }
-
-        try {
-            await navigator.clipboard.writeText(shareUrl);
-            showAlert("링크를 복사했어요! (추천인 코드 포함) 함께 쓰면 더더욱 좋아져요 ");
-        } catch (err) {
-            prompt("이 주소를 복사하여 공유하세요:", shareUrl);
-        }
+        await shareService.shareToilet(toilet, user.id);
     };
 
     const [showRewardModal, setShowRewardModal] = useState<{ show: boolean, message: string, points: number }>({ show: false, message: '', points: 0 });

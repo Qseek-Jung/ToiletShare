@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock, Globe, X } from 'lucide-react';
 import { Toilet, User, UserRole, Gender } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
-import { MAPS_API_KEY } from '../config';
+import { MAPS_API_KEY, KAKAO_JAVASCRIPT_KEY } from '../config';
 import { getMarkerSvg } from '../utils';
 import { PageLayout } from '../components/PageLayout';
 import { AdBanner } from '../components/AdBanner';
 import DoorlockModal from '../components/DoorlockModal';
+import { AlertModal } from '../components/AlertModal';
 
 interface SubmitPageProps {
     user: User;
@@ -46,6 +47,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     const [originalIsPrivate, setOriginalIsPrivate] = useState<boolean>(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDoorlock, setShowDoorlock] = useState(false);
+    const [alertState, setAlertState] = useState<{ open: boolean, message: string, type: 'success' | 'error' | 'confirm' }>({ open: false, message: '', type: 'success' });
 
     const pickerMapRef = useRef<HTMLDivElement>(null);
     const pickerGoogleMap = useRef<any>(null);
@@ -107,6 +109,21 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             setTimeout(() => {
                 if (window.google?.maps) initPickerMap();
                 else { const script = document.createElement("script"); script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places&language=ko`; script.async = true; script.onload = initPickerMap; document.head.appendChild(script); }
+
+                // Also load Kakao SDK if not present for Geocoding (Free)
+                // @ts-ignore
+                if (!window.kakao?.maps?.services) {
+                    const kScript = document.createElement("script");
+                    kScript.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JAVASCRIPT_KEY}&libraries=services&autoload=false`;
+                    kScript.async = true;
+                    kScript.onload = () => {
+                        // @ts-ignore
+                        window.kakao.maps.load(() => {
+                            console.log("Kakao SDK loaded");
+                        });
+                    };
+                    document.head.appendChild(kScript);
+                }
             }, 100);
         }
     }, [step, initPickerMap]);
@@ -137,7 +154,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 }
                 setIsPickerLocating(false);
             },
-            () => { setIsPickerLocating(false); alert("위치 정보를 가져올 수 없습니다."); },
+            () => { setIsPickerLocating(false); setAlertState({ open: true, message: "위치 정보를 가져올 수 없습니다.", type: 'error' }); },
             { enableHighAccuracy: true }
         );
     };
@@ -148,20 +165,30 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         const lat = center.lat();
         const lng = center.lng();
 
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng }, language: 'ko' }, (results: any, status: any) => {
-            let addr = "지도에서 선택된 위치";
-            if (status === "OK" && results && results.length > 0) {
-                // Try to find a road address (street_address) first
-                const roadAddress = results.find((r: any) => r.types.includes('street_address'));
-                if (roadAddress) {
-                    addr = roadAddress.formatted_address;
-                } else {
-                    addr = results[0].formatted_address;
-                }
-                addr = addr.replace(/^대한민국\s*/, '');
+        // 🚨 한국 내 좌표 범위 확인 (공해상/해외 방지 1차: Bounding Box)
+        const isWithinKorea = lat >= 33 && lat <= 43 && lng >= 124 && lng <= 132;
+        if (!isWithinKorea) {
+            setAlertState({ open: true, message: "대한민국 내의 위치만 선택할 수 있습니다.", type: 'error' });
+            return;
+        }
+
+        // 🚨 육지 여부 정밀 확인 (2차: PostGIS)
+        // 비동기 처리가 필요하므로 함수 내부에서 step 변경을 막고 확인 후 진행
+        db.checkIsOnLand(lat, lng).then(async isOnLand => {
+            if (!isOnLand) {
+                setAlertState({ open: true, message: "바다 위나 대한민국 영토 밖에는\n등록할 수 없습니다.\n(해안가/섬 지역은 오차가 있을 수 있음)", type: 'error' });
+                return;
             }
-            setFormData(prev => ({ ...prev, lat, lng, address: addr }));
+
+            // Use Kakao Geocoder (Free) via Service
+            const { reverseGeocodeKakao } = await import('../services/kakaoGeocoding');
+            const addr = await reverseGeocodeKakao(lat, lng);
+
+            if (addr) {
+                setFormData(prev => ({ ...prev, lat, lng, address: addr }));
+            } else {
+                setFormData(prev => ({ ...prev, lat, lng, address: "주소 정보 없음" }));
+            }
             setStep('details');
         });
     };
@@ -325,6 +352,13 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                         <button onClick={handleSetLocation} className="w-full py-4 bg-primary text-white font-bold rounded-xl text-lg shadow-lg">이 위치로 설정</button>
                     </div>
                 </div>
+
+                <AlertModal
+                    isOpen={alertState.open}
+                    message={alertState.message}
+                    type={alertState.type}
+                    onClose={() => setAlertState(prev => ({ ...prev, open: false }))}
+                />
             </div>
         )
     }
@@ -339,18 +373,55 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">주소</label>
-                        <div className={`w-full p-3 rounded-lg text-sm border ${formData.address ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white' : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-400'}`}>
+                        <div className={`w-full p-3 rounded-lg text-sm font-medium border transition-colors ${formData.address ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white' : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-400'}`}>
                             {formData.address || "위치를 선택하면 자동 입력됩니다"}
                         </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">건물명 또는 위치설명</label>
-                        <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="예: 편의점 우측끼고 돌아서 계단실 안쪽" className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg outline-none" />
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="예: 편의점 우측끼고 돌아서 계단실 안쪽"
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-lg border border-transparent focus:bg-white dark:focus:bg-gray-600 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none transition-all placeholder:text-gray-400"
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">층수</label>
-                            <input type="number" value={formData.floor} onChange={e => setFormData({ ...formData, floor: e.target.value })} placeholder="1" className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg outline-none" />
+                            <div className="flex items-center gap-1 w-full h-[46px] bg-gray-50 dark:bg-gray-700 rounded-lg p-1 border border-transparent transition-all">
+                                <button
+                                    onClick={() => setFormData(prev => {
+                                        const current = parseFloat(prev.floor || "1");
+                                        // 1층에서 내리면 0.5와 0을 건너뛰고 바로 -0.5(반지하 등)로 이동
+                                        const next = current === 1 ? -0.5 : current - 0.5;
+                                        return { ...prev, floor: String(next) };
+                                    })}
+                                    className="w-10 h-full bg-white dark:bg-gray-600 rounded-md shadow-sm border border-gray-200 dark:border-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-50 active:scale-95 transition-all"
+                                >
+                                    <Minus className="w-4 h-4" />
+                                </button>
+                                <input
+                                    type="number"
+                                    value={formData.floor}
+                                    onChange={e => setFormData({ ...formData, floor: e.target.value })}
+                                    placeholder="1"
+                                    step="0.5"
+                                    className="flex-1 h-full bg-transparent text-center font-bold text-lg text-gray-900 dark:text-white outline-none min-w-0"
+                                />
+                                <button
+                                    onClick={() => setFormData(prev => {
+                                        const current = parseFloat(prev.floor || "1");
+                                        // -0.5층에서 올리면 0과 0.5를 건너뛰고 바로 1층으로 이동
+                                        const next = current === -0.5 ? 1 : current + 0.5;
+                                        return { ...prev, floor: String(next) };
+                                    })}
+                                    className="w-10 h-full bg-white dark:bg-gray-600 rounded-md shadow-sm border border-gray-200 dark:border-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-50 active:scale-95 transition-all"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">비번</label>
@@ -364,12 +435,22 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                    <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-transparent transition-all">
                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400">변기 개수</label>
                         <div className="flex items-center gap-3">
-                            <button onClick={() => setFormData(prev => ({ ...prev, stallCount: Math.max(1, prev.stallCount - 1) }))} className="w-8 h-8 rounded-full bg-white dark:bg-gray-600 shadow flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-500"><Minus className="w-4 h-4" /></button>
-                            <span className="font-bold text-lg w-6 text-center text-gray-900 dark:text-white">{formData.stallCount}</span>
-                            <button onClick={() => setFormData(prev => ({ ...prev, stallCount: prev.stallCount + 1 }))} className="w-8 h-8 rounded-full bg-white dark:bg-gray-600 shadow flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-500"><Plus className="w-4 h-4" /></button>
+                            <button
+                                onClick={() => setFormData(prev => ({ ...prev, stallCount: Math.max(1, prev.stallCount - 1) }))}
+                                className="w-10 h-10 bg-white dark:bg-gray-600 rounded-md shadow-sm border border-gray-200 dark:border-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-50 active:scale-95 transition-all"
+                            >
+                                <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="font-bold text-lg w-8 text-center text-gray-900 dark:text-white">{formData.stallCount}</span>
+                            <button
+                                onClick={() => setFormData(prev => ({ ...prev, stallCount: prev.stallCount + 1 }))}
+                                className="w-10 h-10 bg-white dark:bg-gray-600 rounded-md shadow-sm border border-gray-200 dark:border-gray-500 flex items-center justify-center text-gray-600 dark:text-gray-200 hover:bg-gray-50 active:scale-95 transition-all"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
 
@@ -395,7 +476,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                             value={formData.note}
                             onChange={e => setFormData({ ...formData, note: e.target.value })}
                             placeholder="예: 휴지가 자주 없음, 도어락 뻑뻑함 등"
-                            className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg outline-none min-h-[80px] text-sm resize-none"
+                            className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-lg border border-transparent focus:bg-white dark:focus:bg-gray-600 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none min-h-[80px] resize-none transition-all placeholder:text-gray-400"
                         />
                     </div>
 
@@ -442,13 +523,19 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 ) : (
                     // CREATE MODE (Default)
                     <div className="flex gap-2 w-full max-w-sm mx-auto mt-4 px-1">
-                        <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(true)} className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex justify-center items-center gap-2 text-sm">
-                            {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                            나만보기 (0cr)
+                        <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(true)} className="flex-1 py-3 px-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex flex-col justify-center items-center gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                                {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                                <span className="text-sm sm:text-base">나만보기</span>
+                            </div>
+                            <span className="text-xs opacity-70 font-medium">(0cr)</span>
                         </button>
-                        <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="flex-[2] py-4 bg-gray-900 dark:bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 dark:shadow-none transition-colors flex justify-center items-center gap-2 text-base">
-                            {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Globe className="w-4 h-4" />}
-                            공유하기 (+5cr)
+                        <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="flex-[2] py-3 px-2 bg-gray-900 dark:bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 dark:shadow-none transition-colors flex flex-col justify-center items-center gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                                {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                                <span className="text-base sm:text-lg">공유하기</span>
+                            </div>
+                            <span className="text-xs sm:text-sm opacity-80 font-medium text-blue-200">(+5cr)</span>
                         </button>
                     </div>
                 )}
@@ -553,6 +640,13 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                     }}
                 />
             )}
+
+            <AlertModal
+                isOpen={alertState.open}
+                message={alertState.message}
+                type={alertState.type}
+                onClose={() => setAlertState(prev => ({ ...prev, open: false }))}
+            />
         </PageLayout>
     );
 };

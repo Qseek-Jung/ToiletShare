@@ -17,7 +17,7 @@ interface GoogleGeocodingResponse {
 /**
  * Google Geocoding API를 사용하여 주소를 좌표로 변환
  */
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; location_type: string } | null> {
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; location_type: string } | null> {
     try {
         const response = await fetch(
             `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=kr&key=${MAPS_API_KEY}`

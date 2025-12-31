@@ -5,7 +5,7 @@ import { dbSupabase as db } from '../../services/db_supabase';
 import { UploadHistory } from '../../types';
 
 interface BulkUploadPageProps {
-    onRefresh: () => void;
+    onRefresh?: () => void;
 }
 
 export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onRefresh }) => {
@@ -31,25 +31,10 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onRefresh }) => 
     }, []);
 
     const handleUploadSuccess = async (result: { fileName: string; totalCount: number; successCount: number; addedCount: number; updatedCount: number; failCount: number; uploadedIds: string[]; logs: string[] }) => {
-        // Save upload history
-        const history: UploadHistory = {
-            id: `upload_${Date.now()}`,
-            fileName: result.fileName,
-            uploadedAt: new Date().toISOString(),
-            totalCount: result.totalCount,
-            successCount: result.successCount,
-            addedCount: result.addedCount,
-            updatedCount: result.updatedCount,
-            failCount: result.failCount,
-            uploadedToiletIds: result.uploadedIds,
-            uploadedBy: 'admin',
-            logs: result.logs
-        };
-
-        await db.saveUploadHistory(history);
+        // History is already saved in AdminToiletUpload component
         loadHistories();
         setShowUploadModal(false);
-        onRefresh();
+        if (onRefresh) onRefresh();
     };
 
     const viewLog = (history: UploadHistory) => {
@@ -114,7 +99,7 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onRefresh }) => 
         await loadHistories();
         setIsDeleting(false);
         setDeleteId(null);
-        onRefresh();
+        if (onRefresh) onRefresh();
     };
 
     const formatDate = (isoString: string) => {
@@ -219,9 +204,11 @@ export const BulkUploadPage: React.FC<BulkUploadPageProps> = ({ onRefresh }) => 
 
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => viewLog(history)}
+                                            onClick={() => {
+                                                window.location.hash = `/admin?section=toilets&sub=bulk-review&uploadId=${history.id}`;
+                                            }}
                                             className="p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors flex-shrink-0"
-                                            title="로그 보기 (새창)"
+                                            title="상세 검토 및 로그 확인"
                                         >
                                             <Eye className="w-5 h-5" />
                                         </button>

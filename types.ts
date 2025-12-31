@@ -242,6 +242,7 @@ export interface CustomBanner {
 export interface AdConfig {
   interstitialSource: 'admob' | 'youtube'; // Full screen ads (Nav, etc)
   bannerSource: 'admob' | 'custom';        // Native/Banner ads (List, etc)
+  testMode: boolean;                       // Use Google's Test Ad IDs
   youtubeUrls: string[];
   customBanners: CustomBanner[];
 }

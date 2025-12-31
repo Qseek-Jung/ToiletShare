@@ -15,6 +15,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
         const [config, setConfig] = useState<AdConfig>({
             interstitialSource: 'admob',
             bannerSource: 'admob',
+            testMode: true,
             youtubeUrls: ['', '', '', '', ''],
             customBanners: []
         });
@@ -41,6 +42,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                     if (!cfg.youtubeUrls || cfg.youtubeUrls.length !== 5) {
                         cfg.youtubeUrls = ['', '', '', '', ''];
                     }
+                    if (cfg.testMode === undefined) cfg.testMode = true; // Migration
                     setConfig(cfg);
                 } catch (e) {
                     console.error("Failed to load ad config", e);
@@ -161,6 +163,33 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
 
         return (
             <div className="space-y-8 pb-20">
+                {/* SECTION 0: Global Ad Settings */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 border-b pb-2 border-gray-200">
+                        <h2 className="text-xl font-black text-gray-900">0. 공통 광고 설정</h2>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h3 className="font-bold text-gray-800">AdMob 테스트 모드</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                OFF 시 실제 광고가 노출됩니다. (AndroidManifest.xml의 App ID가 올바른지 확인 필수)
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => saveConfig({ ...config, testMode: !config.testMode })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${config.testMode ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.testMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                    </div>
+
+                    {config.testMode && (
+                        <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-700 font-medium">
+                            ⚠️ 현재 **테스트 모드**가 켜져 있어 구글의 테스트 광고가 나옵니다. 실제 광고 단위 ID 설정을 완료하셨더라도 테스트 광고만 노출됩니다.
+                        </div>
+                    )}
+                </section>
+
                 {/* SECTION 1: Interstitial */}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2 border-b pb-2 border-gray-200">

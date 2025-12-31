@@ -1564,6 +1564,7 @@ export class SupabaseDatabaseService {
         const defaultConfig: AdConfig = {
             interstitialSource: 'admob',
             bannerSource: 'admob',
+            testMode: true,
             youtubeUrls: ['', '', '', '', ''],
             customBanners: []
         };
@@ -2365,6 +2366,25 @@ export class SupabaseDatabaseService {
         return data || [];
     }
 
+    // --- Geolocation Checks ---
+
+    /**
+     * Check if a coordinate is on South Korean land using PostGIS
+     */
+    async checkIsOnLand(lat: number, lng: number): Promise<boolean> {
+        try {
+            const { data, error } = await supabase.rpc('check_is_on_land', { lat, lng });
+            if (error) {
+                console.error('Error checking land boundary:', error);
+                return (lat >= 33 && lat <= 43 && lng >= 124 && lng <= 132);
+            }
+            return !!data;
+        } catch (err) {
+            console.error('Exception checking land boundary:', err);
+            return true;
+        }
+    }
+
     // --- Detailed Stats Methods for Dashboard & Analysis ---
 
     async getDetailedUserStats(days: number = 30): Promise<any> {
@@ -2577,15 +2597,10 @@ export class SupabaseDatabaseService {
                 .select('created_at, source, created_by, gender_type, has_password, view_count, users!toilets_created_by_fkey(role)')
                 .range(page * pageSize, (page + 1) * pageSize - 1);
 
-            if (error) {
-                console.error("Stats fetch error:", error);
-                break;
-            }
-
-            if (data && data.length > 0) {
-                allItems = [...allItems, ...data];
+            if (data) {
+                allItems = allItems.concat(data);
                 if (data.length < pageSize) hasMore = false;
-                else page++;
+                page++;
             } else {
                 hasMore = false;
             }
@@ -2596,7 +2611,94 @@ export class SupabaseDatabaseService {
 
         return allItems;
     }
-}
+    // --- Bulk Upload Staging Methods ---
 
+    async bulkSaveStaging(items: any[]): Promise<{ success: number, error: number }> {
+        if (!items || items.length === 0) return { success: 0, error: 0 };
+
+        const { error } = await supabase
+            .from('toilets_bulk')
+            .insert(items);
+
+        if (error) {
+            console.error("Failed to save to staging:", error);
+            return { success: 0, error: items.length };
+        }
+
+        return { success: items.length, error: 0 };
+    }
+
+    async getBulkItems(uploadId?: string): Promise<any[]> {
+        let query = supabase
+            .from('toilets_bulk')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (uploadId) {
+            query = query.eq('upload_id', uploadId);
+        } else {
+            // Default: show pending review items
+            query = query
+                .in('status', ['review_needed', 'rejected'])
+                .limit(500);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.error("Failed to fetch bulk items:", error);
+            return [];
+        }
+        return data || [];
+    }
+
+    async updateBulkItemStatus(id: string, status: 'done' | 'rejected', lat?: number, lng?: number): Promise<boolean> {
+        const updateData: any = { status };
+        if (lat && lng) {
+            updateData.lat = lat;
+            updateData.lng = lng;
+        }
+
+        const { error } = await supabase
+            .from('toilets_bulk')
+            .update(updateData)
+            .eq('id', id);
+
+        return !error;
+    }
+
+    async updateBulkItemContent(id: string, data: { name?: string, address?: string, lat?: number, lng?: number, floor?: number }): Promise<boolean> {
+        const { error } = await supabase
+            .from('toilets_bulk')
+            .update(data)
+            .eq('id', id);
+
+        return !error;
+    }
+
+    async deleteBulkItem(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from('toilets_bulk')
+            .delete()
+            .eq('id', id);
+        return !error;
+    }
+
+    async cleanUpBulkStaging(uploadId?: string): Promise<boolean> {
+        let query = supabase.from('toilets_bulk').delete();
+
+        if (uploadId) {
+            query = query.eq('upload_id', uploadId); // Clean specific upload
+        } else {
+            query = query.eq('status', 'done'); // Clean all done items
+        }
+
+        const { error } = await query;
+        if (error) {
+            console.error("Failed to cleanup staging:", error);
+            return false;
+        }
+        return true;
+    }
+}
 
 export const dbSupabase = new SupabaseDatabaseService();

@@ -13,6 +13,8 @@ import { DataManagement } from './DataManagement';
 import { CreditPolicyManagement } from './CreditPolicyManagement';
 import { CreditStatistics } from './CreditStatistics';
 import PushNotificationManagement from './PushNotificationManagement';
+import { BulkReviewPage } from './BulkReviewPage';
+import { BulkUploadPage } from './BulkUploadPage';
 
 interface AdminPageProps {
     user: User;
@@ -138,19 +140,30 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                     />
                 )}
 
+
+
+
                 {activeSection === 'toilets' && (
-                    <ToiletManagement
-                        subSection={subSection}
-                        setRefreshTrigger={setRefreshTrigger}
-                        initialEditToiletId={editingToiletId}
-                        onBackToReports={returnToSection ? () => {
-                            setEditingToiletId(null);
-                            const prevSection = returnToSection as any;
-                            setReturnToSection(null);
-                            setActiveSection(prevSection);
-                            setSubSection('');
-                        } : undefined}
-                    />
+                    <>
+                        {subSection === 'bulk-review' ? (
+                            <BulkReviewPage />
+                        ) : subSection === 'toilet-bulk' ? (
+                            <BulkUploadPage />
+                        ) : (
+                            <ToiletManagement
+                                subSection={subSection}
+                                setRefreshTrigger={setRefreshTrigger}
+                                initialEditToiletId={editingToiletId}
+                                onBackToReports={returnToSection ? () => {
+                                    setEditingToiletId(null);
+                                    const prevSection = returnToSection as any;
+                                    setReturnToSection(null);
+                                    setActiveSection(prevSection);
+                                    setSubSection('');
+                                } : undefined}
+                            />
+                        )}
+                    </>
                 )}
 
                 {activeSection === 'ads' && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import { CapacitorHttp, registerPlugin } from '@capacitor/core';
+import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { User, Toilet, UserRole, Gender } from './types';
 import { INITIAL_USER } from './constants';
@@ -896,92 +896,102 @@ export default function App() {
     const performNaverLogin = async () => {
         try {
             setLoginLoading(true);
-            console.log("=== STEP 1: 네이버 로그인 시작 ===");
 
-            const result: any = await Naver.login();
-            console.log("=== STEP 2: 로그인 완료 ===");
-            console.log('Naver login result:', JSON.stringify(result));
+            if (Capacitor.isNativePlatform()) {
+                console.log("=== STEP 1: 네이버 로그인 (Native) 시작 ===");
 
-            // Inspect result for token in various possible locations
-            const accessToken =
-                result?.accessToken?.accessToken ??
-                result?.accessToken ??
-                result?.access_token;
+                const result: any = await Naver.login();
+                console.log("=== STEP 2: 로그인 완료 ===");
+                console.log('Naver login result:', JSON.stringify(result));
 
-            console.log("=== STEP 3: 토큰 추출 ===");
-            console.log("Access Token:", accessToken ? `${accessToken.substring(0, 20)}...` : "NULL");
+                // Inspect result for token in various possible locations
+                const accessToken =
+                    result?.accessToken?.accessToken ??
+                    result?.accessToken ??
+                    result?.access_token;
 
-            if (accessToken) {
-                console.log("=== STEP 4: 프로필 API 호출 시작 ===");
+                console.log("=== STEP 3: 토큰 추출 ===");
+                console.log("Access Token:", accessToken ? `${accessToken.substring(0, 20)}...` : "NULL");
 
-                // Use CapacitorHttp instead of fetch to bypass CORS
-                const profileResponse = await CapacitorHttp.request({
-                    url: 'https://openapi.naver.com/v1/nid/me',
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
+                if (accessToken) {
+                    console.log("=== STEP 4: 프로필 API 호출 시작 ===");
 
-                console.log("=== STEP 5: 프로필 API 응답 수신 ===");
-                console.log("Response Status:", profileResponse.status);
+                    // Use CapacitorHttp instead of fetch to bypass CORS
+                    const profileResponse = await CapacitorHttp.request({
+                        url: 'https://openapi.naver.com/v1/nid/me',
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    });
 
-                const profileData = profileResponse.data;
-                console.log("=== STEP 6: 프로필 데이터 파싱 ===");
-                console.log("Profile Data:", JSON.stringify(profileData));
+                    console.log("=== STEP 5: 프로필 API 응답 수신 ===");
+                    console.log("Response Status:", profileResponse.status);
 
-                if (profileData.resultcode === '00') {
-                    const { email, name, id, gender } = profileData.response;
+                    const profileData = profileResponse.data;
+                    console.log("=== STEP 6: 프로필 데이터 파싱 ===");
+                    console.log("Profile Data:", JSON.stringify(profileData));
 
-                    if (!email) {
-                        alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
-                        return;
-                    }
+                    if (profileData.resultcode === '00') {
+                        const { email, name, id, gender } = profileData.response;
 
-                    // Check/Create User
-                    let targetUser = await db.getUserByEmail(email);
-
-                    if (!targetUser) {
-                        // Register
-                        const newUser: User = {
-                            id: 'naver_' + id, // Use Naver ID
-                            email: email,
-                            nickname: name || 'Naver User',
-                            gender: gender === 'M' ? Gender.MALE : (gender === 'F' ? Gender.FEMALE : Gender.UNISEX),
-                            role: UserRole.USER,
-                            credits: 50,
-                            signupProvider: 'naver',
-                        };
-                        setPendingUser(newUser);
-                        setShowLoginModal(false);
-                        setShowGenderSelectModal(true);
-                    } else {
-                        // Login
-                        if (targetUser.status === 'banned') {
-                            setShowBannedModal(true);
-                            setLoginLoading(false);
+                        if (!email) {
+                            alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
                             return;
                         }
-                        if (targetUser.status === 'deleted') {
-                            targetUser.status = 'active';
-                            targetUser.deletedAt = undefined;
-                            await db.saveUser(targetUser);
-                            alert("계정이 복구되었습니다.");
+
+                        // Check/Create User
+                        let targetUser = await db.getUserByEmail(email);
+
+                        if (!targetUser) {
+                            // Register
+                            const newUser: User = {
+                                id: 'naver_' + id, // Use Naver ID
+                                email: email,
+                                nickname: name || 'Naver User',
+                                gender: gender === 'M' ? Gender.MALE : (gender === 'F' ? Gender.FEMALE : Gender.UNISEX),
+                                role: UserRole.USER,
+                                credits: 50,
+                                signupProvider: 'naver',
+                            };
+                            setPendingUser(newUser);
+                            setShowLoginModal(false);
+                            setShowGenderSelectModal(true);
+                        } else {
+                            // Login
+                            if (targetUser.status === 'banned') {
+                                setShowBannedModal(true);
+                                setLoginLoading(false);
+                                return;
+                            }
+                            if (targetUser.status === 'deleted') {
+                                targetUser.status = 'active';
+                                targetUser.deletedAt = undefined;
+                                await db.saveUser(targetUser);
+                                alert("계정이 복구되었습니다.");
+                            }
+
+                            setUser(targetUser);
+                            localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                            setShowLoginModal(false);
+                            window.location.hash = '#/';
                         }
 
-                        setUser(targetUser);
-                        localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                        setShowLoginModal(false);
-                        window.location.hash = '#/';
+                    } else {
+                        alert("네이버 프로필 정보를 가져오는데 실패했습니다.\n" + JSON.stringify(profileData));
                     }
 
                 } else {
-                    alert("네이버 프로필 정보를 가져오는데 실패했습니다.\n" + JSON.stringify(profileData));
+                    alert("네이버 로그인 결과 이상 (토큰 없음):\n" + JSON.stringify(result));
                 }
-
             } else {
-                alert("네이버 로그인 결과 이상 (토큰 없음):\n" + JSON.stringify(result));
+                // --- WEB LOGIN ---
+                alert("네이버 웹 로그인(웹사이트)은 현재 준비중입니다. 구글 또는 카카오 로그인을 이용해주세요.");
+                setLoginLoading(false);
+                // Implementation Note: Naver Web Login requires callback handling which is complex to add in this quick fix.
+                // Prioritizing Kakao as requested.
             }
+
         } catch (error: any) {
             // === ENHANCED DIAGNOSTIC LOGGING ===
             console.error("=== NAVER LOGIN FULL ERROR ===");
@@ -1007,128 +1017,110 @@ export default function App() {
             errorMessage += `\n상세정보:\n${allProps}`;
 
             alert(errorMessage);
-        } finally {
             setLoginLoading(false);
+        } finally {
+            if (Capacitor.isNativePlatform()) {
+                setLoginLoading(false);
+            }
         }
     };
     const performKakaoLogin = async () => {
         try {
             setLoginLoading(true);
-            // Use Native Plugin instead of JavaScript SDK
-            const loginResult = await KakaoLoginPlugin.goLogin();
-            console.log('Kakao native login result:', loginResult);
 
-            // Get user info from native plugin
-            const userInfo = await KakaoLoginPlugin.getUserInfo();
-            console.log('Kakao user info:', userInfo);
+            if (Capacitor.isNativePlatform()) {
+                // --- NATIVE APP LOGIN ---
+                // Use Native Plugin instead of JavaScript SDK
+                const loginResult = await KakaoLoginPlugin.goLogin();
+                console.log('Kakao native login result:', loginResult);
 
-            const email = userInfo?.value?.kakaoAccount?.email || userInfo?.value?.email;
-            const kakaoGender = userInfo?.value?.kakaoAccount?.gender || userInfo?.value?.gender;
+                // Get user info from native plugin
+                const userInfo = await KakaoLoginPlugin.getUserInfo();
+                console.log('Kakao user info:', userInfo);
 
-            // Kakao gender: 'FEMALE' or 'MALE' or undefined (native plugin format)
-            let hasGenderInfo = false;
-            let gender = Gender.MALE; // Default
+                const email = userInfo?.value?.kakaoAccount?.email || userInfo?.value?.email;
+                const kakaoGender = userInfo?.value?.kakaoAccount?.gender || userInfo?.value?.gender;
 
-            if (kakaoGender === 'FEMALE') {
-                gender = Gender.FEMALE;
-                hasGenderInfo = true;
-            } else if (kakaoGender === 'MALE') {
-                gender = Gender.MALE;
-                hasGenderInfo = true;
-            }
+                // Kakao gender: 'FEMALE' or 'MALE' or undefined (native plugin format)
+                let hasGenderInfo = false;
+                let gender = Gender.MALE; // Default
 
-            if (!email) {
-                alert("❌ 이메일 정보를 가져올 수 없습니다.");
-                setLoginLoading(false);
-                return;
-            }
-
-            // Check if user already exists
-            const existingUsers = await db.getUsers();
-            let targetUser = existingUsers.find(u => u.email === email);
-
-            if (!targetUser) {
-                // New user
-                const defaultNickname = email.split('@')[0];
-                const tempUser: User = {
-                    id: 'kakao_' + Date.now(),
-                    email,
-                    nickname: defaultNickname,
-                    gender, // Will be updated if needed
-                    role: UserRole.USER,
-                    credits: 50,
-                    signupProvider: 'kakao'
-                };
-
-                if (email === SUPERVISOR_EMAIL) {
-                    tempUser.role = UserRole.ADMIN;
-                    tempUser.credits = 999;
+                if (kakaoGender === 'FEMALE') {
+                    gender = Gender.FEMALE;
+                    hasGenderInfo = true;
+                } else if (kakaoGender === 'MALE') {
+                    gender = Gender.MALE;
+                    hasGenderInfo = true;
                 }
 
-                // If no gender info from Kakao, show selection modal
-                if (!hasGenderInfo) {
-                    setPendingUser(tempUser);
-                    setShowGenderSelectModal(true);
-                    setShowLoginModal(false);
-                } else {
-                    // Has gender info, save directly
-                    try {
-                        await db.saveUser(tempUser);
-                        await db.recordNewUser(); // Record new user stat
-                        // CHECK REFERRAL
-                        const refCode = sessionStorage.getItem('referral_code');
-                        if (refCode) {
-                            try {
-                                const referrerId = atob(refCode);
-                                await db.processReferral(referrerId, tempUser.id);
-                                sessionStorage.removeItem('referral_code');
-                                console.log('🎁 Referral processed for:', referrerId);
-                            } catch (e) {
-                                console.error('Referral processing failed', e);
-                            }
-                        }
-
-                        console.log('✨ New Kakao user registered:', email);
-                        setUser(tempUser);
-                        localStorage.setItem('currentUser', JSON.stringify(tempUser));
-                        setShowLoginModal(false);
-                        setShowWelcomeModal(true); // Trigger Welcome Modal
-                        window.location.hash = '#/';
-                    } catch (error) {
-                        setShowBannedModal(true);
-                    }
-                }
-            } else {
-                // 1. Check Banned
-                if (targetUser.status === 'banned') {
-                    setShowBannedModal(true);
+                if (!email) {
+                    alert("❌ 이메일 정보를 가져올 수 없습니다.");
                     setLoginLoading(false);
                     return;
                 }
 
-                // 2. Check Deleted (Reactivation)
-                if (targetUser.status === 'deleted') {
-                    console.log('♻️ Reactivating withdrawn user (Kakao):', email);
-                    targetUser.status = 'active';
-                    targetUser.deletedAt = undefined;
-                    await db.saveUser(targetUser);
-                    alert("계정이 복구되었습니다. 환영합니다!");
+                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
+
+            } else {
+                // --- WEB LOGIN ---
+                console.log("Starting Kakao Web Login");
+                const Kakao = (window as any).Kakao;
+
+                if (!Kakao) {
+                    alert("카카오 SDK가 로드되지 않았습니다.");
+                    setLoginLoading(false);
+                    return;
                 }
 
-                // Existing user - ensure nickname exists
-                if (!targetUser.nickname) {
-                    targetUser.nickname = targetUser.email.split('@')[0];
-                    await db.saveUser(targetUser);
+                if (!Kakao.isInitialized()) {
+                    Kakao.init(KAKAO_JAVASCRIPT_KEY);
                 }
-                console.log('👋 Welcome back (Kakao):', email);
 
-                setUser(targetUser);
-                localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                setShowLoginModal(false);
-                window.location.hash = '#/';
+                Kakao.Auth.login({
+                    success: function (authObj: any) {
+                        Kakao.API.request({
+                            url: '/v2/user/me',
+                            success: async function (res: any) {
+                                console.log('Kakao Web User:', res);
+                                const email = res.kakao_account?.email;
+                                const genderRaw = res.kakao_account?.gender; // 'female' | 'male'
+
+                                let hasGenderInfo = false;
+                                let gender = Gender.MALE;
+
+                                if (genderRaw === 'female') {
+                                    gender = Gender.FEMALE;
+                                    hasGenderInfo = true;
+                                } else if (genderRaw === 'male') {
+                                    gender = Gender.MALE;
+                                    hasGenderInfo = true;
+                                }
+
+                                if (!email) {
+                                    alert("이메일 정보가 없습니다. (Kakao Web)");
+                                    setLoginLoading(false);
+                                    return;
+                                }
+
+                                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
+                            },
+                            fail: function (error: any) {
+                                console.error('Kakao API Error', error);
+                                alert('카카오 사용자 정보 요청 실패: ' + JSON.stringify(error));
+                                setLoginLoading(false);
+                            }
+                        });
+                    },
+                    fail: function (err: any) {
+                        console.error('Kakao Auth Error', err);
+                        alert('카카오 로그인 실패: ' + JSON.stringify(err));
+                        setLoginLoading(false);
+                    },
+                });
             }
+
         } catch (error: any) {
-            console.error('Kakao Native Login Error:', error);
+            console.error('Kakao Login Error:', error);
 
             // Enhanced error logging
             let errorMsg = "❌ 카카오 로그인 실패\n\n";
@@ -1137,9 +1129,97 @@ export default function App() {
             errorMsg += `\n상세: ${JSON.stringify(error)}`;
 
             alert(errorMsg);
-        } finally {
             setLoginLoading(false);
         }
+    };
+
+    // Shared success handler to reduce code duplication
+    const handleSocialLoginSuccess = async (email: string, gender: Gender, hasGenderInfo: boolean, provider: 'kakao') => {
+        // Check if user already exists
+        const existingUsers = await db.getUsers();
+        let targetUser = existingUsers.find(u => u.email === email);
+
+        if (!targetUser) {
+            // New user
+            const defaultNickname = email.split('@')[0];
+            const tempUser: User = {
+                id: `${provider}_` + Date.now(),
+                email,
+                nickname: defaultNickname,
+                gender, // Will be updated if needed
+                role: UserRole.USER,
+                credits: 50,
+                signupProvider: provider
+            };
+
+            if (email === SUPERVISOR_EMAIL) {
+                tempUser.role = UserRole.ADMIN;
+                tempUser.credits = 999;
+            }
+
+            // If no gender info, show selection modal
+            if (!hasGenderInfo) {
+                setPendingUser(tempUser);
+                setShowGenderSelectModal(true);
+                setShowLoginModal(false);
+            } else {
+                // Has gender info, save directly
+                try {
+                    await db.saveUser(tempUser);
+                    await db.recordNewUser(); // Record new user stat
+                    // CHECK REFERRAL
+                    const refCode = sessionStorage.getItem('referral_code');
+                    if (refCode) {
+                        try {
+                            const referrerId = atob(refCode);
+                            await db.processReferral(referrerId, tempUser.id);
+                            sessionStorage.removeItem('referral_code');
+                            console.log('🎁 Referral processed for:', referrerId);
+                        } catch (e) {
+                            console.error('Referral processing failed', e);
+                        }
+                    }
+
+                    console.log(`✨ New ${provider} user registered:`, email);
+                    setUser(tempUser);
+                    localStorage.setItem('currentUser', JSON.stringify(tempUser));
+                    setShowLoginModal(false);
+                    setShowWelcomeModal(true); // Trigger Welcome Modal
+                    window.location.hash = '#/';
+                } catch (error) {
+                    setShowBannedModal(true);
+                }
+            }
+        } else {
+            // 1. Check Banned
+            if (targetUser.status === 'banned') {
+                setShowBannedModal(true);
+                setLoginLoading(false);
+                return;
+            }
+
+            // 2. Check Deleted (Reactivation)
+            if (targetUser.status === 'deleted') {
+                console.log(`♻️ Reactivating withdrawn user (${provider}):`, email);
+                targetUser.status = 'active';
+                targetUser.deletedAt = undefined;
+                await db.saveUser(targetUser);
+                alert("계정이 복구되었습니다. 환영합니다!");
+            }
+
+            // Existing user - ensure nickname exists
+            if (!targetUser.nickname) {
+                targetUser.nickname = targetUser.email.split('@')[0];
+                await db.saveUser(targetUser);
+            }
+            console.log(`👋 Welcome back (${provider}):`, email);
+
+            setUser(targetUser);
+            localStorage.setItem('currentUser', JSON.stringify(targetUser));
+            setShowLoginModal(false);
+            window.location.hash = '#/';
+        }
+        setLoginLoading(false);
     };
 
 

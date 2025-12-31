@@ -14,7 +14,10 @@
     <string name="naver_client_secret">4mMuTwBFw1</string>
     <string name="naver_client_name">대똥단결</string>
 
-    <!-- Google Login (Fix for Error 10 due to missing google-services.json) -->
+    <!-- Google Login -->
     <string name="server_client_id">889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com</string>
     <string name="default_web_client_id">889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com</string>
+    
+    <!-- Google Maps API Key (Android Restricted) -->
+    <string name="google_maps_key">AIzaSyCs9uWZvvsLe88fn6cHTPH-dfyShPRST68</string>
 </resources>

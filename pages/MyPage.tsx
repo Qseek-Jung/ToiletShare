@@ -13,6 +13,7 @@ import { WithdrawalModal } from '../components/WithdrawalModal';
 // import { GoogleAd } from '../components/GoogleAd';
 // import AdErrorBoundary from '../components/AdErrorBoundary';
 import { HamburgerMenu } from '../components/HamburgerMenu';
+import { shareService } from '../services/shareService';
 
 interface MyPageProps {
     user: User;
@@ -264,24 +265,7 @@ const MyPage: React.FC<MyPageProps> = ({
                 user={user}
                 onLogout={onLogout}
                 onOpenContact={handleOpenContactModal}
-                onShareApp={() => {
-                    const baseUrl = Capacitor.isNativePlatform()
-                        ? 'https://toiletshare.pages.dev'
-                        : window.location.origin;
-
-                    const shareUrl = `${baseUrl}/?ref=${btoa(user.id)}`;
-
-                    if (navigator.share) {
-                        navigator.share({
-                            title: '대똥단결 - 급똥으로 대동단결',
-                            text: '내 주변 무료 개방 화장실 찾기!',
-                            url: shareUrl
-                        }).catch(console.error);
-                    } else {
-                        navigator.clipboard.writeText(shareUrl);
-                        alert('링크가 복사되었습니다!');
-                    }
-                }}
+                onShareApp={() => shareService.shareApp(user.id)}
                 onNavigate={(path) => {
                     window.location.hash = path;
                     setIsMenuOpen(false);
@@ -380,24 +364,7 @@ const MyPage: React.FC<MyPageProps> = ({
 
                         {/* Recommend & Charge Button (Moved Here) */}
                         <button
-                            onClick={() => {
-                                const baseUrl = Capacitor.isNativePlatform()
-                                    ? 'https://toiletshare.pages.dev'
-                                    : window.location.origin;
-
-                                const shareUrl = `${baseUrl}/?ref=${btoa(user.id)}`;
-
-                                if (navigator.share) {
-                                    navigator.share({
-                                        title: '대똥단결 - 급똥으로 대동단결',
-                                        text: '내 주변 무료 개방 화장실 찾기!',
-                                        url: shareUrl
-                                    }).catch(console.error);
-                                } else {
-                                    navigator.clipboard.writeText(shareUrl);
-                                    alert('공유 링크가 복사되었습니다!');
-                                }
-                            }}
+                            onClick={() => shareService.shareApp(user.id)}
                             className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all shadow-md"
                         >
                             <ThumbsUp className="w-4 h-4 fill-white text-white" />

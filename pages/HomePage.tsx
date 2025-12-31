@@ -294,9 +294,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     useEffect(() => {
         if (!hasPannedToInitialLocation.current && mapInstance.current) {
             mapInstance.current.panTo(myLocation);
-            setTimeout(() => {
-                mapInstance.current.panBy(0, 180);
-            }, 300);
+            // Removed intentional offset (panBy) to prevent unwanted jump
             hasPannedToInitialLocation.current = true;
         }
 
@@ -441,13 +439,13 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             {/* List View Modal (Overlay) */}
             {showList && (
                 <div className="absolute top-[72px] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
-                    <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-3xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+                    <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-2xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
 
                         {/* Fixed Native Ad Area (Top of List) */}
-                        <div className="w-full bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden">
-                            <div className="w-full h-[80px] flex items-center justify-center relative">
-                                <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full" />
-                                <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-bold -z-10">광고 영역</span>
+                        <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden pt-2">
+                            <div className="w-full h-[70px] flex items-center justify-center relative px-4">
+                                <AdBanner isInline maxHeight={70} minRatio={4.0} className="w-full h-full rounded-lg" />
+                                <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-300 font-bold -z-10 tracking-widest uppercase">Sponsored</span>
                             </div>
                         </div>
 

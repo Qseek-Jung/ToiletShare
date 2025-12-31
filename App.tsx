@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Geolocation } from '@capacitor/geolocation';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { CapacitorHttp, registerPlugin } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { User, Toilet, UserRole, Gender } from './types';
 import { INITIAL_USER } from './constants';
 import { dbSupabase as db } from './services/db_supabase';
 import { GOOGLE_CLIENT_ID, NAVER_CLIENT_ID, SUPERVISOR_EMAIL, KAKAO_JAVASCRIPT_KEY } from './config';
+import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
+import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 import { calculateDistance } from './utils';
 import { PoopIcon } from './components/Icons';
 import { AdManager } from './components/AdManager';
@@ -261,6 +266,9 @@ export default function App() {
     // Login Notice Modal State
     const [showNoticeModal, setShowNoticeModal] = useState(false);
 
+    // Exit Confirmation Modal State
+    const [showExitModal, setShowExitModal] = useState(false);
+
     // Manage Banner Visibility based on Route
     useEffect(() => {
         // Detailed Page: User requested to keep banner.
@@ -398,6 +406,9 @@ export default function App() {
                 }
             }
 
+            // Start IP Location in background (Parallel)
+            const ipPromise = getIPLocation();
+
             // PHASE 2: GPS (Always prioritized - Fresh location)
             try {
                 // Request permissions first (Best practice for native)
@@ -405,7 +416,7 @@ export default function App() {
 
                 const position = await Geolocation.getCurrentPosition({
                     enableHighAccuracy: true,
-                    timeout: GPS_TIMEOUT,
+                    timeout: 4000, // Reduced from 8000ms to 4000ms for faster fallback
                     maximumAge: 0
                 });
 
@@ -426,8 +437,10 @@ export default function App() {
 
                 // PHASE 3: IP FALLBACK
                 if (!cached && !hasReceivedGPS) {
-                    console.log('🌐 Phase 3: Attempting IP-based location...');
-                    const ipLoc = await getIPLocation();
+                    console.log('🌐 Phase 3: Attempting IP-based location (waiting for background fetch)...');
+                    // Await the promise we started earlier
+                    const ipLoc = await ipPromise;
+
                     if (isMounted && ipLoc) {
                         console.log('📍 Phase 3: IP Location acquired');
                         setMyLocation({ lat: ipLoc.lat, lng: ipLoc.lng });
@@ -506,16 +519,11 @@ export default function App() {
         }
     };
 
-    // Load Kakao SDK & Handle Naver Login Callback
-    useEffect(() => {
-        // 1. Load Kakao SDK
-        const script = document.createElement('script');
-        script.src = 'https://developers.kakao.com/sdk/js/kakao.js';
-        script.async = true;
-        document.body.appendChild(script);
 
-        // 2. Handle Naver Login Callback
-        // 2. Handle Naver Login Callback
+
+
+    // 2. Handle Naver Login Callback
+    useEffect(() => {
         const handleNaverCallback = async () => {
             const params = new URLSearchParams(window.location.search);
             const code = params.get('code');
@@ -541,7 +549,6 @@ export default function App() {
                             email: simulatedEmail,
                             gender: Gender.MALE, // Temporary
                             role: UserRole.USER,
-
                             credits: 50,
                             signupProvider: 'naver'
                         };
@@ -581,12 +588,6 @@ export default function App() {
             }
         };
         handleNaverCallback();
-
-        return () => {
-            if (document.body.contains(script)) {
-                document.body.removeChild(script);
-            }
-        };
     }, []);
 
     // Initialize DB Data & Reload User (Async)
@@ -820,13 +821,9 @@ export default function App() {
 
                 const userCreds = await GoogleAuth.signIn();
 
-                // Standardize response
-                // Native returns 'authentication.accessToken' or 'idToken'
-                // Web returns similar.
+                console.log("Google Login Success:", userCreds);
 
                 if (userCreds) {
-                    alert(`Google 로그인 성공: ${userCreds.email}`); // Debug Alert 1
-
                     // 1. Map fields
                     const email = userCreds.email;
                     const name = userCreds.name || userCreds.givenName || 'Google User';
@@ -836,10 +833,9 @@ export default function App() {
                     let targetUser = await db.getUserByEmail(email);
 
                     if (!targetUser) {
-                        alert("신규 회원입니다. 가입 절차를 진행합니다."); // Debug Alert 2
                         // Register New User
                         const newUser: User = {
-                            id: googleId,
+                            id: googleId || 'google_' + Date.now(),
                             email: email,
                             nickname: name,
                             gender: Gender.MALE, // Default, update later
@@ -851,7 +847,6 @@ export default function App() {
                         setShowLoginModal(false); // Close Login Modal
                         setShowGenderSelectModal(true); // Open Gender Modal
                     } else {
-                        alert("기존 회원입니다. 로그인합니다."); // Debug Alert 2
                         // Login Existing
                         if (targetUser.status === 'banned') {
                             setShowBannedModal(true);
@@ -868,15 +863,22 @@ export default function App() {
 
                         setUser(targetUser);
                         localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                        window.location.reload();
+                        setShowLoginModal(false);
+                        window.location.hash = '#/';
                     }
                 } else {
-                    alert("Google 인증 정보가 없습니다 (userCreds is null)");
+                    console.error("Google Auth credentials missing");
                 }
 
             } catch (error: any) {
                 console.error("Google Login Failed:", error);
-                alert("Google 로그인 오류 발생 (Catch): " + JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
+                let errorMsg = "❌ Google 로그인 실패\n\n";
+                if (error.message) errorMsg += `Message: ${error.message}\n`;
+                if (error.code) errorMsg += `Code: ${error.code}\n`;
+                errorMsg += `\n상세: ${JSON.stringify(error)}`;
+
+                alert(errorMsg);
             } finally {
                 setLoginLoading(false);
             }
@@ -890,154 +892,258 @@ export default function App() {
     };
 
 
-    const performNaverLogin = () => {
-        // Naver OAuth 2.0 Login
-        const state = Math.random().toString(36).substring(7);
-        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-        const naverAuthUrl = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${redirectUri}&state=${state}`;
+    const performNaverLogin = async () => {
+        try {
+            setLoginLoading(true);
+            console.log("=== STEP 1: 네이버 로그인 시작 ===");
 
-        // Store state for verification
-        sessionStorage.setItem('naver_state', state);
+            const result: any = await Naver.login();
+            console.log("=== STEP 2: 로그인 완료 ===");
+            console.log('Naver login result:', JSON.stringify(result));
 
-        // Redirect to Naver login
-        window.location.href = naverAuthUrl;
-    };
+            // Inspect result for token in various possible locations
+            const accessToken =
+                result?.accessToken?.accessToken ??
+                result?.accessToken ??
+                result?.access_token;
 
-    const performKakaoLogin = () => {
-        if (!window.Kakao.isInitialized()) {
-            window.Kakao.init(KAKAO_JAVASCRIPT_KEY);
-        }
+            console.log("=== STEP 3: 토큰 추출 ===");
+            console.log("Access Token:", accessToken ? `${accessToken.substring(0, 20)}...` : "NULL");
 
-        window.Kakao.Auth.login({
-            success: async (authObj: any) => {
-                try {
-                    // Get user info
-                    window.Kakao.API.request({
-                        url: '/v2/user/me',
-                        success: async (response: any) => {
-                            const email = response.kakao_account?.email;
-                            const kakaoGender = response.kakao_account?.gender;
+            if (accessToken) {
+                console.log("=== STEP 4: 프로필 API 호출 시작 ===");
 
-                            // Kakao gender: 'female' or 'male' or undefined
-                            let hasGenderInfo = false;
-                            let gender = Gender.MALE; // Default
+                // Use CapacitorHttp instead of fetch to bypass CORS
+                const profileResponse = await CapacitorHttp.request({
+                    url: 'https://openapi.naver.com/v1/nid/me',
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
 
-                            if (kakaoGender === 'female') {
-                                gender = Gender.FEMALE;
-                                hasGenderInfo = true;
-                            } else if (kakaoGender === 'male') {
-                                gender = Gender.MALE;
-                                hasGenderInfo = true;
-                            }
+                console.log("=== STEP 5: 프로필 API 응답 수신 ===");
+                console.log("Response Status:", profileResponse.status);
 
-                            if (!email) {
-                                alert("이메일 정보를 가져올 수 없습니다.");
-                                return;
-                            }
+                const profileData = profileResponse.data;
+                console.log("=== STEP 6: 프로필 데이터 파싱 ===");
+                console.log("Profile Data:", JSON.stringify(profileData));
 
-                            // Check if user already exists
-                            const existingUsers = await db.getUsers();
-                            let targetUser = existingUsers.find(u => u.email === email);
+                if (profileData.resultcode === '00') {
+                    const { email, name, id, gender } = profileData.response;
 
-                            if (!targetUser) {
-                                // New user
-                                const defaultNickname = email.split('@')[0];
-                                const tempUser: User = {
-                                    id: 'kakao_' + Date.now(),
-                                    email,
-                                    nickname: defaultNickname,
-                                    gender, // Will be updated if needed
-                                    role: UserRole.USER,
-                                    credits: 50,
-                                    signupProvider: 'kakao'
-                                };
+                    if (!email) {
+                        alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
+                        return;
+                    }
 
-                                if (email === SUPERVISOR_EMAIL) {
-                                    tempUser.role = UserRole.ADMIN;
-                                    tempUser.credits = 999;
-                                }
+                    // Check/Create User
+                    let targetUser = await db.getUserByEmail(email);
 
-                                // If no gender info from Kakao, show selection modal
-                                if (!hasGenderInfo) {
-                                    setPendingUser(tempUser);
-                                    setShowGenderSelectModal(true);
-                                    setShowLoginModal(false);
-                                } else {
-                                    // Has gender info, save directly
-                                    try {
-                                        await db.saveUser(tempUser);
-                                        await db.recordNewUser(); // Record new user stat
-                                        // CHECK REFERRAL
-                                        const refCode = sessionStorage.getItem('referral_code');
-                                        if (refCode) {
-                                            try {
-                                                const referrerId = atob(refCode);
-                                                await db.processReferral(referrerId, tempUser.id);
-                                                sessionStorage.removeItem('referral_code');
-                                                console.log('🎁 Referral processed for:', referrerId);
-                                            } catch (e) {
-                                                console.error('Referral processing failed', e);
-                                            }
-                                        }
-
-                                        console.log('✨ New Kakao user registered:', email);
-                                        setUser(tempUser);
-                                        localStorage.setItem('currentUser', JSON.stringify(tempUser));
-                                        setShowLoginModal(false);
-                                        setShowWelcomeModal(true); // Trigger Welcome Modal
-                                        window.location.hash = '#/';
-                                    } catch (error) {
-                                        setShowBannedModal(true);
-                                    }
-                                }
-                            } else {
-                                // 1. Check Banned
-                                if (targetUser.status === 'banned') {
-                                    setShowBannedModal(true);
-                                    return; // Kakao login modal might stay open, or we force close
-                                }
-
-                                // 2. Check Deleted (Reactivation)
-                                if (targetUser.status === 'deleted') {
-                                    console.log('♻️ Reactivating withdrawn user (Kakao):', email);
-                                    targetUser.status = 'active';
-                                    targetUser.deletedAt = undefined;
-                                    await db.saveUser(targetUser);
-                                    alert("계정이 복구되었습니다. 환영합니다!");
-                                }
-
-                                // Existing user - ensure nickname exists
-                                if (!targetUser.nickname) {
-                                    targetUser.nickname = targetUser.email.split('@')[0];
-                                    await db.saveUser(targetUser);
-                                }
-                                console.log('👋 Welcome back (Kakao):', email);
-
-                                setUser(targetUser);
-                                localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                                setShowLoginModal(false);
-                                window.location.hash = '#/';
-                            }
-                        },
-                        fail: (err: any) => {
-                            console.error('Kakao User Info Error:', err);
-                            alert("카카오 사용자 정보 요청 실패");
+                    if (!targetUser) {
+                        // Register
+                        const newUser: User = {
+                            id: 'naver_' + id, // Use Naver ID
+                            email: email,
+                            nickname: name || 'Naver User',
+                            gender: gender === 'M' ? Gender.MALE : (gender === 'F' ? Gender.FEMALE : Gender.UNISEX),
+                            role: UserRole.USER,
+                            credits: 50,
+                            signupProvider: 'naver',
+                        };
+                        setPendingUser(newUser);
+                        setShowLoginModal(false);
+                        setShowGenderSelectModal(true);
+                    } else {
+                        // Login
+                        if (targetUser.status === 'banned') {
+                            setShowBannedModal(true);
+                            setLoginLoading(false);
+                            return;
                         }
-                    });
-                } catch (e) {
-                    console.error('Kakao Login Success Error:', e);
+                        if (targetUser.status === 'deleted') {
+                            targetUser.status = 'active';
+                            targetUser.deletedAt = undefined;
+                            await db.saveUser(targetUser);
+                            alert("계정이 복구되었습니다.");
+                        }
+
+                        setUser(targetUser);
+                        localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                        setShowLoginModal(false);
+                        window.location.hash = '#/';
+                    }
+
+                } else {
+                    alert("네이버 프로필 정보를 가져오는데 실패했습니다.\n" + JSON.stringify(profileData));
                 }
-            },
-            fail: (err: any) => {
-                console.error('Kakao Login Error:', err);
-                alert("카카오 로그인 실패");
-            },
-        });
+
+            } else {
+                alert("네이버 로그인 결과 이상 (토큰 없음):\n" + JSON.stringify(result));
+            }
+        } catch (error: any) {
+            // === ENHANCED DIAGNOSTIC LOGGING ===
+            console.error("=== NAVER LOGIN FULL ERROR ===");
+            console.error("Type:", typeof error);
+            console.error("Constructor:", error?.constructor?.name);
+            console.error("Keys:", Object.keys(error));
+            console.error("Message:", error?.message);
+            console.error("Code:", error?.code);
+            console.error("Stack:", error?.stack);
+            console.error("Raw:", error);
+
+            let errorMessage = "네이버 로그인 실패\n\n";
+
+            // Try to extract any available info
+            if (error?.message) errorMessage += `Message: ${error.message}\n`;
+            if (error?.code) errorMessage += `Code: ${error.code}\n`;
+            if (error?.constructor?.name && error.constructor.name !== 'Object') {
+                errorMessage += `Type: ${error.constructor.name}\n`;
+            }
+
+            // Capture ALL properties including non-enumerable
+            const allProps = JSON.stringify(error, Object.getOwnPropertyNames(error), 2);
+            errorMessage += `\n상세정보:\n${allProps}`;
+
+            alert(errorMessage);
+        } finally {
+            setLoginLoading(false);
+        }
     };
+    const performKakaoLogin = async () => {
+        try {
+            setLoginLoading(true);
+            // Use Native Plugin instead of JavaScript SDK
+            const loginResult = await KakaoLoginPlugin.goLogin();
+            console.log('Kakao native login result:', loginResult);
+
+            // Get user info from native plugin
+            const userInfo = await KakaoLoginPlugin.getUserInfo();
+            console.log('Kakao user info:', userInfo);
+
+            const email = userInfo?.value?.kakaoAccount?.email || userInfo?.value?.email;
+            const kakaoGender = userInfo?.value?.kakaoAccount?.gender || userInfo?.value?.gender;
+
+            // Kakao gender: 'FEMALE' or 'MALE' or undefined (native plugin format)
+            let hasGenderInfo = false;
+            let gender = Gender.MALE; // Default
+
+            if (kakaoGender === 'FEMALE') {
+                gender = Gender.FEMALE;
+                hasGenderInfo = true;
+            } else if (kakaoGender === 'MALE') {
+                gender = Gender.MALE;
+                hasGenderInfo = true;
+            }
+
+            if (!email) {
+                alert("❌ 이메일 정보를 가져올 수 없습니다.");
+                setLoginLoading(false);
+                return;
+            }
+
+            // Check if user already exists
+            const existingUsers = await db.getUsers();
+            let targetUser = existingUsers.find(u => u.email === email);
+
+            if (!targetUser) {
+                // New user
+                const defaultNickname = email.split('@')[0];
+                const tempUser: User = {
+                    id: 'kakao_' + Date.now(),
+                    email,
+                    nickname: defaultNickname,
+                    gender, // Will be updated if needed
+                    role: UserRole.USER,
+                    credits: 50,
+                    signupProvider: 'kakao'
+                };
+
+                if (email === SUPERVISOR_EMAIL) {
+                    tempUser.role = UserRole.ADMIN;
+                    tempUser.credits = 999;
+                }
+
+                // If no gender info from Kakao, show selection modal
+                if (!hasGenderInfo) {
+                    setPendingUser(tempUser);
+                    setShowGenderSelectModal(true);
+                    setShowLoginModal(false);
+                } else {
+                    // Has gender info, save directly
+                    try {
+                        await db.saveUser(tempUser);
+                        await db.recordNewUser(); // Record new user stat
+                        // CHECK REFERRAL
+                        const refCode = sessionStorage.getItem('referral_code');
+                        if (refCode) {
+                            try {
+                                const referrerId = atob(refCode);
+                                await db.processReferral(referrerId, tempUser.id);
+                                sessionStorage.removeItem('referral_code');
+                                console.log('🎁 Referral processed for:', referrerId);
+                            } catch (e) {
+                                console.error('Referral processing failed', e);
+                            }
+                        }
+
+                        console.log('✨ New Kakao user registered:', email);
+                        setUser(tempUser);
+                        localStorage.setItem('currentUser', JSON.stringify(tempUser));
+                        setShowLoginModal(false);
+                        setShowWelcomeModal(true); // Trigger Welcome Modal
+                        window.location.hash = '#/';
+                    } catch (error) {
+                        setShowBannedModal(true);
+                    }
+                }
+            } else {
+                // 1. Check Banned
+                if (targetUser.status === 'banned') {
+                    setShowBannedModal(true);
+                    setLoginLoading(false);
+                    return;
+                }
+
+                // 2. Check Deleted (Reactivation)
+                if (targetUser.status === 'deleted') {
+                    console.log('♻️ Reactivating withdrawn user (Kakao):', email);
+                    targetUser.status = 'active';
+                    targetUser.deletedAt = undefined;
+                    await db.saveUser(targetUser);
+                    alert("계정이 복구되었습니다. 환영합니다!");
+                }
+
+                // Existing user - ensure nickname exists
+                if (!targetUser.nickname) {
+                    targetUser.nickname = targetUser.email.split('@')[0];
+                    await db.saveUser(targetUser);
+                }
+                console.log('👋 Welcome back (Kakao):', email);
+
+                setUser(targetUser);
+                localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                setShowLoginModal(false);
+                window.location.hash = '#/';
+            }
+        } catch (error: any) {
+            console.error('Kakao Native Login Error:', error);
+
+            // Enhanced error logging
+            let errorMsg = "❌ 카카오 로그인 실패\n\n";
+            if (error.message) errorMsg += `Message: ${error.message}\n`;
+            if (error.code) errorMsg += `Code: ${error.code}\n`;
+            errorMsg += `\n상세: ${JSON.stringify(error)}`;
+
+            alert(errorMsg);
+        } finally {
+            setLoginLoading(false);
+        }
+    };
+
 
     const handleManualEmailLogin = async () => {
         if (!manualLoginEmail || !manualLoginEmail.includes('@')) {
-            alert("유효한 이메일을 입력해주세요.");
             return;
         }
         setLoginLoading(true);
@@ -1482,9 +1588,79 @@ export default function App() {
         );
     })();
 
+    // Final Global Component Return
+    useEffect(() => {
+        const handleBackButton = async () => {
+            // 1. Close Modals (Highest Priority)
+            if (showAd) { setShowAd(false); return; }
+            if (showLoginModal) { setShowLoginModal(false); return; }
+            if (showGenderSelectModal) { setShowGenderSelectModal(false); return; }
+            if (showWelcomeModal) { setShowWelcomeModal(false); return; }
+            if (showNoticeModal) { setShowNoticeModal(false); return; }
+            if (showBannedModal) { setShowBannedModal(false); return; }
+            if (showTestAccountModal) { setShowTestAccountModal(false); return; }
+
+            // 2. Close Page-specific Modals / Overlays
+            if (isDetailModalOpen) { setIsDetailModalOpen(false); return; }
+            if (isContactModalOpen) { setIsContactModalOpen(false); return; }
+            if (isSubmitMapOpen) { setIsSubmitMapOpen(false); return; }
+            if (isHomeListOpen) { setIsHomeListOpen(false); return; }
+
+            // 3. Navigate back to Home if on sub-page
+            if (currentHash !== '' && currentHash !== '#/') {
+                window.location.hash = '#/';
+                return;
+            }
+
+            // 4. Default: Show Exit Confirmation instead of direct exit
+            setShowExitModal(true);
+        };
+
+        const backListener = CapApp.addListener('backButton', handleBackButton);
+        return () => {
+            backListener.then(l => l.remove());
+        };
+    }, [
+        showAd, showLoginModal, showGenderSelectModal, showWelcomeModal,
+        showNoticeModal, showBannedModal, showTestAccountModal,
+        isDetailModalOpen, isContactModalOpen, isSubmitMapOpen, isHomeListOpen,
+        currentHash, showAd, showLoginModal, showGenderSelectModal, showWelcomeModal,
+        showNoticeModal, showBannedModal, showTestAccountModal, showExitModal
+    ]);
+
     return (
         <GoogleMapsProvider>
             <div className={`w-full h-[100dvh] overflow-hidden flex flex-col font-sans relative ${darkMode && !currentHash.startsWith('#/admin') ? 'dark bg-gray-900' : 'bg-white'}`}>
+                {/* EXIT CONFIRMATION MODAL */}
+                {showExitModal && (
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowExitModal(false)} />
+                        <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-4">
+                                    <PoopIcon className="w-10 h-10 text-primary-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">앱을 종료하시겠습니까?</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">확인을 누르시면 대똥단결 앱이 종료됩니다.</p>
+                                <div className="flex gap-3 w-full">
+                                    <button
+                                        onClick={() => setShowExitModal(false)}
+                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        onClick={() => CapApp.exitApp()}
+                                        className="flex-1 py-3 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 shadow-lg shadow-primary-500/30 transition-all hover:scale-[1.02] active:scale-95"
+                                    >
+                                        종료
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* SPLASH SCREEN */}
                 {showSplash && (
                     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-primary-400 to-primary-600 flex flex-col items-center justify-center text-white">
@@ -1505,7 +1681,7 @@ export default function App() {
                         <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-widest drop-shadow-md mb-3">대똥단결</h1>
                         <p className="text-lg md:text-2xl font-bold opacity-90 tracking-tight">급똥으로 대동단결</p>
                         <div className="absolute bottom-10 text-xs font-medium opacity-60">
-                            © Q, Jung
+                            © RNDUS Co., Ltd.
                         </div>
                     </div>
                 )}
@@ -1715,8 +1891,17 @@ export default function App() {
                             </div>
 
                             <div className="space-y-3">
-                                <button onClick={performGoogleLogin} disabled={loginLoading} className="w-full py-4 bg-white border border-gray-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 text-gray-800 shadow-sm transition-transform active:scale-95">
-                                    {loginLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <><img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" /> Google로 시작하기</>}
+                                <button onClick={performGoogleLogin} disabled={loginLoading} className="w-full py-4 bg-white border border-gray-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 text-gray-800 shadow-sm transition-transform active:scale-95 overflow-hidden">
+                                    {loginLoading ? (
+                                        <div className="flex items-center justify-center w-5 h-5">
+                                            <Loader2 className="animate-spin w-5 h-5 text-gray-400" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
+                                            <span>Google로 시작하기</span>
+                                        </>
+                                    )}
                                 </button>
 
                                 <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, HelpCircle, FileText, Share2, Info, MessageSquare, AlertTriangle, LogOut, ChevronRight, Gift, BookOpen, PenTool, ExternalLink } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { SUPERVISOR_EMAIL } from '../config';
+import { shareService } from '../services/shareService';
 
 interface HamburgerMenuProps {
     isOpen: boolean;

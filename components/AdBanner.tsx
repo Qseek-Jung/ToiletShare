@@ -1,114 +1,121 @@
-import React, { useEffect, useState } from 'react';
-import { dbSupabase } from '../services/db_supabase';
+import React, { useEffect, useState, useRef } from 'react';
 import { adMobService } from '../services/admob';
-import { BannerAdPosition } from '@capacitor-community/admob';
+import { Capacitor } from '@capacitor/core';
 
 interface AdBannerProps {
-    position?: 'top' | 'bottom';
     className?: string;
-    margin?: number;
-    maxHeight?: number; // New: Limit height (px)
-    isInline?: boolean; // New: If true, don't trigger floating AdMob
-    minRatio?: number;  // New: Filter banners by ratio
-    maxRatio?: number;  // New: Filter banners by ratio
-    useImageRatio?: boolean; // New: If true, use the banner's actual ratio for container
+    style?: React.CSSProperties;
 }
 
-export const AdBanner: React.FC<AdBannerProps> = ({ position, className, margin, maxHeight, isInline, minRatio, maxRatio, useImageRatio }) => {
-    const [isCustom, setIsCustom] = useState(false);
-    const [customBanner, setCustomBanner] = useState<{ imageUrl: string; targetUrl?: string; ratio?: number } | null>(null);
+// Global variable to track active banners to prevent overlap if component remounts quickly
+let activeBannerId: string | null = null;
+
+export const AdBanner: React.FC<AdBannerProps> = ({ className, style }) => {
+    const bannerRef = useRef<HTMLDivElement>(null);
+    const [isAdLoaded, setIsAdLoaded] = useState(false);
+    const [adError, setAdError] = useState<string | null>(null);
+
+    // New state for web simulation
+    const [isWebTestMode, setIsWebTestMode] = useState(false);
 
     useEffect(() => {
-        let isMounted = true;
+        // Check if we are in web test mode
+        // Logic: Not native platform AND test mode is enabled in config/adService
+        const checkTestMode = async () => {
+            const isNative = Capacitor.isNativePlatform();
+            if (!isNative && window.location.hostname === 'localhost') {
+                setIsWebTestMode(true);
+            }
+        };
+        checkTestMode();
 
-        const loadAd = async () => {
-            const config = await dbSupabase.getAdConfig();
-            const source = config.bannerSource || 'admob';
-
-            if (isMounted) {
-                if (source === 'custom') {
-                    // Hide AdMob floating banner
-                    await adMobService.hideBanner();
-
-                    // Filter Banners by Ratio
-                    let banners = config.customBanners || [];
-                    if (minRatio) {
-                        banners = banners.filter(b => (b.ratio || 0) >= minRatio);
-                    }
-                    if (maxRatio) {
-                        banners = banners.filter(b => (b.ratio || 999) <= maxRatio);
-                    }
-
-                    if (banners.length > 0) {
-                        const randomBanner = banners[Math.floor(Math.random() * banners.length)];
-                        setCustomBanner(randomBanner);
-                        setIsCustom(true);
-                    } else {
-                        // If no custom banners match the ratio, fallback
-                        if (!isInline && position) {
-                            await showAdMob(position, margin);
-                        }
-                        setIsCustom(false);
-                        setCustomBanner(null);
-                    }
-                } else {
-                    // AdMob - Only show if not inline
-                    if (!isInline && position) {
-                        await showAdMob(position, margin);
-                    }
-                    setIsCustom(false);
-                    setCustomBanner(null);
+        const loadBanner = async () => {
+            try {
+                // If not native and not in web test mode, don't try to load AdMob
+                if (!Capacitor.isNativePlatform()) {
+                    // console.log("Web platform detected, AdBanner skipping native load.");
+                    return;
                 }
+
+                // If a banner is already effective, we might want to ensure it is visible or reload?
+                // For now, let's treat every mount as a request to show the banner.
+                await adMobService.showBottomBanner();
+                setIsAdLoaded(true);
+                activeBannerId = 'bottom_banner';
+            } catch (error: any) {
+                console.error("AdBanner failed to load:", error);
+                setAdError(error?.message || "Unknown error");
+                setIsAdLoaded(false);
             }
         };
 
-        // Helper to trigger AdMob
-        const showAdMob = async (pos: 'top' | 'bottom', m?: number) => {
-            const adMobPos = pos === 'top' ? BannerAdPosition.TOP_CENTER : BannerAdPosition.BOTTOM_CENTER;
-            await adMobService.showBanner(adMobPos, { margin: m });
-        };
-
-        loadAd();
+        loadBanner();
 
         return () => {
-            isMounted = false;
-            // Only hide if we were the ones responsible for a floating banner
-            if (!isInline && position) {
-                adMobService.hideBanner();
-            }
+            // Cleanup on unmount
+            const cleanup = async () => {
+                try {
+                    if (Capacitor.isNativePlatform()) {
+                        await adMobService.hideBanner();
+                        activeBannerId = null;
+                    }
+                } catch (e) {
+                    console.error("Error hiding banner on unmount:", e);
+                }
+            };
+            cleanup();
         };
-    }, [position, margin, isInline, minRatio, maxRatio]);
+    }, []);
 
-    if (isCustom && customBanner) {
+    // Web Simulation Render
+    if (isWebTestMode) {
         return (
             <div
-                className={`w-full flex justify-center items-center overflow-hidden bg-gray-100 ${className}`}
+                className={`${className || ''}`}
                 style={{
-                    ...(maxHeight ? { maxHeight: `${maxHeight}px` } : {}),
-                    ...(useImageRatio && customBanner.ratio ? { aspectRatio: `${customBanner.ratio}` } : {})
+                    width: '100%',
+                    height: '60px', // Standard banner height
+                    backgroundColor: '#f0f0f0',
+                    borderTop: '1px solid #ddd',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    color: '#666',
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    boxShadow: '0 -2px 5px rgba(0,0,0,0.05)',
+                    ...style
                 }}
             >
-                <a
-                    href={customBanner.targetUrl || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full h-full"
-                    style={maxHeight ? { maxHeight: `${maxHeight}px` } : {}}
-                    onClick={(e) => {
-                        if (!customBanner.targetUrl) e.preventDefault();
-                    }}
-                >
-                    <img
-                        src={customBanner.imageUrl}
-                        alt="Ad"
-                        className="w-full h-full object-cover mx-auto"
-                        style={maxHeight ? { maxHeight: `${maxHeight}px` } : {}}
-                    />
-                </a>
+                <div style={{ fontWeight: 'bold', color: '#333' }}>TEST AD BANNER</div>
+                <div>(Visible in localhost only)</div>
             </div>
         );
     }
 
-    // placeholder/empty for AdMob or empty custom
-    return <div className={`min-h-[1px] ${className}`} style={maxHeight ? { height: '0px' } : {}}></div>;
+    // Native Render (Placeholder structure, the actual ad is an overlay)
+    // We render a transparent div to take up space in the DOM if needed, 
+    // but AdMob overlay usually floats.
+    // However, purely logical component doesn't need much UI.
+    // If you want to reserve space for the banner so it doesn't cover content:
+    return (
+        <div
+            ref={bannerRef}
+            className={`ad-banner-placeholder ${className || ''}`}
+            style={{
+                height: '60px', // Reserve space for the banner
+                width: '100%',
+                backgroundColor: 'transparent',
+                display: isAdLoaded ? 'block' : 'none', // Hide placeholder if ad not loaded? Or keep it to prevent layout shift?
+                // Usually keeping it is better even if empty to prevent jumping, but let's hide if error.
+                ...style
+            }}
+        >
+            {/* Native Ad overlay will appear here (visually) */}
+            {adError && process.env.NODE_ENV === 'development' && (
+                <div style={{ fontSize: '10px', color: 'red', padding: '4px' }}>Ad Error: {adError}</div>
+            )}
+        </div>
+    );
 };

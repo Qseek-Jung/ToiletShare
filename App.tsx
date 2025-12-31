@@ -33,6 +33,7 @@ import { NotificationPage } from './pages/NotificationPage';
 import { CreditGuide } from './pages/guide/CreditGuide';
 import { RegistrationGuide } from './pages/guide/RegistrationGuide';
 import { adMobService } from './services/admob';
+import { AppInfoPage } from './pages/AppInfoPage';
 
 
 // Declaration for Google Identity Services & Maps & Social Logins
@@ -1562,6 +1563,9 @@ export default function App() {
         }
         if (currentHash === '#/notifications') {
             return <NotificationPage />;
+        }
+        if (currentHash === '#/app-info') {
+            return <AppInfoPage user={user} onBack={() => window.history.back()} />;
         }
 
         // Default Route (Home) - Checks for #/toilet/:id pattern to deep link

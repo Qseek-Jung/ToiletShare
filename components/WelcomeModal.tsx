@@ -50,11 +50,13 @@ export function WelcomeModal({ open, onClose }: WelcomeModalProps) {
                     <div className="h-4"></div>
                 </div>
                 {/* Native App Branding */}
-                <div className="pb-6 text-center">
-                    <p className="text-[10px] text-gray-300 dark:text-gray-600 font-medium">
-                        Powered by Q
-                    </p>
-                </div>
+                {Capacitor.isNativePlatform() && (
+                    <div className="pb-6 text-center">
+                        <p className="text-[10px] text-gray-300 dark:text-gray-600 font-medium">
+                            Powered by Q
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

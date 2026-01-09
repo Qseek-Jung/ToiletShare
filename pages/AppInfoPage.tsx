@@ -4,6 +4,7 @@ import { ArrowRight, Info, Building2, MapPin, Mail, MessageSquare } from 'lucide
 import { User, UserRole } from '../types';
 import { APP_VERSION, LAST_UPDATE_DATE, UPDATE_NOTES, COMPANY_INFO } from '../constants/version';
 import { ContactModal } from '../components/ContactModal';
+import { dbSupabase as db } from '../services/db_supabase';
 
 interface AppInfoPageProps {
     user: User;
@@ -11,7 +12,34 @@ interface AppInfoPageProps {
 }
 
 export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
-    const [showContactModal, setShowContactModal] = useState(false);
+    const [latestVersion, setLatestVersion] = useState<string | null>(null);
+    const [storeUrl, setStoreUrl] = useState<string>('');
+    const [isChecking, setIsChecking] = useState(true);
+
+    // Initial Version Check
+    React.useEffect(() => {
+        const checkUpdate = async () => {
+            try {
+                // 1. Get Latest Version from DB (Version Policy -> app_config)
+                // This ensures we match what the Admin Panel sets (VersionManagement.tsx)
+                const policy = await db.getVersionPolicy();
+                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+                const config = isIOS ? policy.ios : policy.android;
+
+                setLatestVersion(config.latestVersion);
+                setStoreUrl(config.storeUrl);
+            } catch (e) {
+                console.error("Failed to check version", e);
+            } finally {
+                setIsChecking(false);
+            }
+        };
+        checkUpdate();
+    }, []);
+
+    const isUpdateAvailable = latestVersion && latestVersion !== APP_VERSION;
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return (
         <PageLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
@@ -33,11 +61,45 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                         <img src="/images/app/ddong-icon.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <h2 className="text-2xl font-black text-primary mb-1">대똥단결</h2>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Version {APP_VERSION}</span>
-                        <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-bold rounded-full">
-                            Latest
-                        </span>
+
+                    <div className="flex flex-col items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-500 dark:text-gray-400">현재 버전: {APP_VERSION}</span>
+                            {!isChecking && !isUpdateAvailable && (
+                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                                    최신버전
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Update Available UI */}
+                        {!isChecking && isUpdateAvailable && (
+                            <div className="flex flex-col items-center gap-2 mt-2 animate-in fade-in slide-in-from-bottom-2">
+                                <span className="text-xs font-bold text-primary">
+                                    새로운 버전({latestVersion})이 있습니다
+                                </span>
+                                <a
+                                    href={storeUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`px-4 py-2 rounded-full font-bold text-sm text-white shadow-lg active:scale-95 transition-all flex items-center gap-2 ${isIOS ? 'bg-black hover:bg-gray-800' : 'bg-[#00897B] hover:bg-[#00796B]'
+                                        }`}
+                                >
+                                    {isIOS ? (
+                                        <>
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/67/App_Store_%28iOS%29.svg" className="w-4 h-4 invert" alt="Apple" />
+                                            <span>App Store</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/Google_Play_Arrow_logo.svg" className="w-4 h-4" alt="Play Store" />
+                                            <span>Google Play</span>
+                                        </>
+                                    )}
+                                    <span>업데이트</span>
+                                </a>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -57,56 +119,10 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                     </ul>
                 </div>
 
-                {/* Company Info */}
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                        <Building2 className="w-5 h-5 text-gray-400" />
-                        개발사 정보
-                    </h3>
-                    <div className="space-y-4 text-sm">
-                        <div className="flex items-start gap-3">
-                            <Building2 className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                            <div>
-                                <div className="font-bold text-gray-900 dark:text-white mb-0.5">{COMPANY_INFO.name}</div>
-                                {/* <div className="text-gray-500">사업자 등록번호: 000-00-00000</div> */}
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                            <div className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                                {COMPANY_INFO.address}
-                            </div>
-                        </div>
-                        {/* <div className="flex items-start gap-3">
-                            <Mail className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                            <div className="text-gray-600 dark:text-gray-300">
-                                {COMPANY_INFO.contactEmail}
-                            </div>
-                        </div> */}
-                    </div>
-
-                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
-                        <button
-                            onClick={() => setShowContactModal(true)}
-                            className="w-full py-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-600"
-                        >
-                            <MessageSquare className="w-5 h-5 text-primary" />
-                            문의하기
-                        </button>
-                    </div>
-                </div>
-
                 <div className="text-center text-xs text-gray-400 py-4">
-                    © {new Date().getFullYear()} {COMPANY_INFO.name} All rights reserved.
+                    © {new Date().getFullYear()} {COMPANY_INFO.name}. All rights reserved.
                 </div>
             </div>
-
-            {/* Contact Modal */}
-            <ContactModal
-                isOpen={showContactModal}
-                onClose={() => setShowContactModal(false)}
-                user={user}
-            />
         </PageLayout>
     );
 };

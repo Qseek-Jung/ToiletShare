@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LevelIconProps {
     level: number;
@@ -8,6 +9,7 @@ interface LevelIconProps {
 }
 
 export const LevelIcon: React.FC<LevelIconProps> = ({ level, size = 'md', showLabel = false, className = '' }) => {
+    const { t } = useTranslation();
     let iconSrc;
     let label;
     let colorClass;
@@ -16,38 +18,38 @@ export const LevelIcon: React.FC<LevelIconProps> = ({ level, size = 'md', showLa
         case 6: // Bidet
             iconSrc = "/images/levels/level_6.png";
             colorClass = "text-sky-500";
-            label = "지푸라기";
+            label = t('level_bidet', "비데");
             break;
         case 5: // Wet Tissue
             iconSrc = "/images/levels/level_5.png";
             colorClass = "text-blue-400";
-            label = "물티슈";
+            label = t('level_wet_tissue', "물티슈");
             break;
         case 4: // Box Tissue
             iconSrc = "/images/levels/level_4.png";
             colorClass = "text-purple-400";
-            label = "각티슈";
+            label = t('level_box_tissue', "각티슈");
             break;
         case 3: // Roll Tissue
             iconSrc = "/images/levels/level_3.png";
             colorClass = "text-gray-900 dark:text-gray-100";
-            label = "두루마리";
+            label = t('level_roll_tissue', "두루마리");
             break;
         case 2: // Newspaper
             iconSrc = "/images/levels/level_2.png";
             colorClass = "text-gray-500";
-            label = "신문지";
+            label = t('level_newspaper', "신문지");
             break;
         case 1: // Straw
             iconSrc = "/images/levels/level_1.png";
             colorClass = "text-yellow-600";
-            label = "지푸라기";
+            label = t('level_straw', "지푸라기");
             break;
         case 0: // Hand
         default:
             iconSrc = "/images/levels/level_0.png";
             colorClass = "text-amber-700";
-            label = "맨손";
+            label = t('level_hand', "맨손");
             break;
     }
 

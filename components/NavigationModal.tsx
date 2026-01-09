@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Navigation, MapPin, ExternalLink } from 'lucide-react';
 import { Toilet } from '../types';
 import { formatDistance, getMarkerImage, calculateDistance } from '../utils';
@@ -12,6 +13,7 @@ interface NavigationModalProps {
 }
 
 const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, onClose, userRole }) => {
+    const { t } = useTranslation();
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<any>(null);
     const [distance, setDistance] = useState<number>(0);
@@ -56,7 +58,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                     strokeWeight: 2,
                 },
                 zIndex: 2,
-                title: "내 위치"
+                title: t('my_location', '내 위치')
             });
 
             // 2. Toilet Marker
@@ -115,7 +117,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
             <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10">
                 <h2 className="font-bold text-lg flex items-center gap-2">
                     <Navigation className="w-5 h-5 text-blue-500" />
-                    오는 길
+                    {t('nav_directions', '오는 길')}
                 </h2>
                 <button onClick={onClose} className="p-2 -mr-2 text-gray-400 hover:text-gray-600">
                     <X className="w-6 h-6" />
@@ -132,7 +134,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                         <div className="flex items-center gap-3">
                             <div className="text-xl font-black text-gray-900">{formatDistance(distance)}</div>
                             <div className="w-px h-4 bg-gray-300"></div>
-                            <div className="text-sm font-bold text-gray-600">도보 {walkingTime}분</div>
+                            <div className="text-sm font-bold text-gray-600">{t('walking_time', { time: walkingTime, defaultValue: '도보 {{time}}분' })}</div>
                         </div>
                     </div>
                 </div>
@@ -146,13 +148,13 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                         onClick={() => openExternalMap('kakao')}
                         className="flex-1 py-3 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
                     >
-                        <ExternalLink className="w-5 h-5" /> 카카오맵
+                        <ExternalLink className="w-5 h-5" /> {t('map_kakao', '카카오맵')}
                     </button>
                     <button
                         onClick={() => openExternalMap('naver')}
                         className="flex-1 py-3 bg-[#03C75A] hover:bg-[#02B351] text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
                     >
-                        <ExternalLink className="w-5 h-5" /> 네이버지도
+                        <ExternalLink className="w-5 h-5" /> {t('map_naver', '네이버지도')}
                     </button>
                 </div>
             </div>

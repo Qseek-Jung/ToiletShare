@@ -54,16 +54,42 @@ export const getDisplayName = (userOrEmail: any, isAdmin: boolean = false): stri
 
 import { Toilet, Gender, UserRole, User } from './types';
 
-export const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371e3;
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Radius of the earth in meters
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * c; // Distance in meters
 };
+
+const deg2rad = (deg: number): number => {
+    return deg * (Math.PI / 180);
+};
+
+/**
+ * Compare two semantic version strings (e.g., "1.0.1", "1.0.2")
+ * Returns:
+ *  1 if v1 > v2
+ * -1 if v1 < v2
+ *  0 if v1 === v2
+ */
+export const compareVersions = (v1: string, v2: string): number => {
+    const p1 = v1.split('.').map(Number);
+    const p2 = v2.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const n1 = p1[i] || 0;
+        const n2 = p2[i] || 0;
+        if (n1 > n2) return 1;
+        if (n1 < n2) return -1;
+    }
+    return 0;
+};
+
 
 export const formatDistance = (meters: number) => {
     if (meters >= 1000) return `${(meters / 1000).toFixed(1)}km`;
@@ -203,4 +229,27 @@ export const formatDate = (timestamp?: string | number): string => {
         month: 'long',
         day: 'numeric'
     });
+};
+
+/**
+ * Simple formatDistanceToNow implementation
+ * @param date - Date object
+ * @returns Human readable distance (e.g., "방금 전", "5분 전")
+ */
+export const formatDistanceToNow = (date: Date): string => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return '방금 전';
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}시간 전`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}일 전`;
+
+    return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 };

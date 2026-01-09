@@ -25,7 +25,11 @@ export enum NotificationType {
   REVIEW_ADDED = 'review_added',                 // 내 화장실에 리뷰 작성됨
   ADMIN_MESSAGE = 'admin_message',               // 관리자 수동 메시지
   LEVEL_CHANGE = 'level_change',                 // 레벨 변동 알림
-  SCORE_CHANGE = 'score_change'                  // 점수 변동 알림
+  SCORE_CHANGE = 'score_change',                 // 점수 변동 알림
+  REPORT_RESULT = 'report_result',               // 신고 처리 결과 알림
+  MILESTONE_REACHED = 'milestone_reached',       // 화장실 이용자 수 달성
+  POINT_GIFT = 'point_gift',                     // 포인트 선물 (관리자)
+  LEVEL_UP = 'level_up'                          // 레벨 업
 }
 
 export interface User {
@@ -47,7 +51,7 @@ export interface User {
   levelOverride?: number; // Admin override
 
   // Withdrawal
-  status?: 'active' | 'deleted' | 'banned';
+  status?: UserStatus;
   withdrawalReason?: string;
   deletedAt?: string;
 
@@ -222,12 +226,25 @@ export interface PushNotification {
     toiletId?: string;
     reviewId?: string;
     reportId?: string;
-    creditAmount?: number;
+    creditAmount?: number | string;
+    [key: string]: any; // Allow other fields for future use
   };
   read: boolean;
   sentAt: string;
   deliveryStatus: 'pending' | 'sent' | 'failed';
 }
+
+// AdMob Configuration
+export interface AdMobIds {
+  banner: string;
+  interstitial: string;
+  reward: string;
+  rewardInterstitial: string;
+  appOpen: string;
+  native: string;
+}
+
+export type CustomBannerType = 'BANNER' | 'NATIVE_LIST' | 'NATIVE_MODAL' | 'NATIVE_DETAIL';
 
 export interface CustomBanner {
   id: string;
@@ -237,14 +254,31 @@ export interface CustomBanner {
   ratio?: number; // Aspect ratio (width / height)
   width?: number;
   height?: number;
+  type?: CustomBannerType; // Added type
+}
+
+export type NoticeType = 'notice' | 'event' | 'emergency';
+
+export interface AppNotice {
+  id: string;
+  title: string;
+  content: string;
+  type: NoticeType;
+  isActive: boolean;
+  priority: number;
+  authorId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdConfig {
   interstitialSource: 'admob' | 'youtube'; // Full screen ads (Nav, etc)
   bannerSource: 'admob' | 'custom';        // Native/Banner ads (List, etc)
   testMode: boolean;                       // Use Google's Test Ad IDs
+  bannersEnabled?: boolean;                // Global toggle for banners (screenshots etc)
   youtubeUrls: string[];
   customBanners: CustomBanner[];
+  adMobIds: AdMobIds; // Added IDs
 }
 
 export interface UploadHistory {
@@ -298,4 +332,17 @@ export interface ReviewReaction {
   userId: string;
   type: 'like' | 'dislike';
   createdAt: string;
+}
+
+// Version Control Types
+export interface VersionInfo {
+  latestVersion: string;
+  minVersion: string;
+  storeUrl: string;
+  updateMessage?: string;
+}
+
+export interface VersionPolicy {
+  android: VersionInfo;
+  ios: VersionInfo;
 }

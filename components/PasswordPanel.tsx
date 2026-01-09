@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Toilet, User, UserRole } from '../types';
 import { Lock, Unlock, Zap, PlayCircle, Copy, Check, Loader2 } from 'lucide-react';
 import { LevelIcon } from './LevelIcon';
-import { GoogleAd } from './GoogleAd';
 
 import { dbSupabase as db } from '../services/db_supabase';
 
@@ -13,7 +12,10 @@ interface Props {
   isUnlocked: boolean;
 }
 
+import { useTranslation } from 'react-i18next';
+
 const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unlockCost, setUnlockCost] = useState(1);
@@ -76,7 +78,7 @@ const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) 
             <Lock className="w-4 h-4 text-gray-500" />
           )}
           <span className="font-bold text-sm text-gray-700 dark:text-gray-300">
-            {showPasswordImmediately ? '비밀번호 확인됨' : '비밀번호 잠김'}
+            {showPasswordImmediately ? t('password_unlocked', '비밀번호 확인됨') : t('password_locked', '비밀번호 잠김')}
           </span>
         </div>
 
@@ -110,12 +112,12 @@ const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) 
                   }
 
                   return raw.slice(0, raw.length - 2) + '**';
-                })() : '익명')}
+                })() : t('anonymous', '익명'))}
               </span>
               <span className="text-[10px] text-gray-400 opacity-80 decoration-none font-normal">(Lv.{toilet.creatorLevel || 0})</span>
             </div>
           ) : (
-            <span className="font-medium text-blue-500">공공데이터</span>
+            <span className="font-medium text-blue-500">{t('public_data', '공공데이터')}</span>
           )}
         </div>
       </div>
@@ -123,9 +125,9 @@ const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) 
       <div className="p-5 flex flex-col items-center justify-center min-h-[120px]">
         {showPasswordImmediately ? (
           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300 w-full">
-            <div className="text-sm text-gray-500 mb-1">화장실 비밀번호</div>
+            <div className="text-sm text-gray-500 mb-1">{t('toilet_password', '화장실 비밀번호')}</div>
             <div className="text-4xl font-black text-gray-900 dark:text-white tracking-wider mb-4">
-              {toilet.password || "없음"}
+              {toilet.password || t('none', "없음")}
             </div>
 
           </div>
@@ -146,11 +148,11 @@ const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) 
 
               <div className="flex flex-col items-start leading-none">
                 <span className="font-bold text-base">
-                  {user.credits >= unlockCost ? '비밀번호 확인' : '광고보고 비번확인'}
+                  {user.credits >= unlockCost ? t('check_password', '비밀번호 확인') : t('unlock_with_ad', '광고보고 비번확인')}
                 </span>
                 {user.credits >= unlockCost && (
                   <span className="text-[10px] opacity-80 mt-1 font-medium">
-                    {unlockCost} 크래딧 차감 (보유: {user.credits})
+                    {t('credit_deduction', '{{cost}} 크래딧 차감 (보유: {{balance}})', { cost: unlockCost, balance: user.credits })}
                   </span>
                 )}
               </div>

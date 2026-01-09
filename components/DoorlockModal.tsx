@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Delete, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DoorlockModalProps {
     initialValue: string;
@@ -8,6 +9,7 @@ interface DoorlockModalProps {
 }
 
 const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, onComplete }) => {
+    const { t } = useTranslation();
     const [input, setInput] = useState(initialValue);
     const [isOpening, setIsOpening] = useState(false);
     const [displayMessage, setDisplayMessage] = useState<string | null>(null);
@@ -117,7 +119,7 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
 
                 {/* Brand / Header */}
                 <div className="text-center mb-2">
-                    <h3 className="text-gray-400 text-[10px] font-bold tracking-[0.2em]">DIGITAL LOCK</h3>
+                    <h3 className="text-gray-400 text-[10px] font-bold tracking-[0.2em]">{t('doorlock_brand', 'DIGITAL LOCK')}</h3>
                 </div>
 
                 {/* 8-Segment Display Area */}
@@ -125,7 +127,7 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
                     <div className={`font-mono text-3xl tracking-[0.2em] ${displayMessage === "OPEN" ? "text-blue-400 animate-pulse" : "text-green-500"
                         } drop-shadow-[0_0_8px_rgba(34,197,94,0.8)] flex items-baseline justify-end w-full leading-none`} style={{ fontFamily: 'Courier New, monospace' }}>
                         {displayMessage ? (
-                            <span className="w-full text-center">{displayMessage}</span>
+                            <span className="w-full text-center">{t('doorlock_open', displayMessage)}</span>
                         ) : (
                             <>
                                 {/* Rest of the string */}
@@ -165,14 +167,14 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
                         className="bg-gray-700 active:bg-gray-600 h-10 rounded-lg flex items-center justify-center text-red-400 font-bold border-b-[3px] border-gray-950 active:scale-95 transition-all"
                     >
                         <Delete className="w-4 h-4 mr-1" />
-                        <span className="text-xs">지움</span>
+                        <span className="text-xs">{t('doorlock_delete', '지움')}</span>
                     </button>
                     <button
                         onClick={handleConfirm}
                         disabled={isOpening}
                         className={`h-10 rounded-lg flex items-center justify-center font-bold active:scale-95 transition-all text-white shadow-lg ${input.length > 0 ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/50' : 'bg-gray-700 text-gray-400'}`}
                     >
-                        {isOpening ? <CheckCircle className="w-4 h-4 animate-ping" /> : <span className="text-xs">입력완료</span>}
+                        {isOpening ? <CheckCircle className="w-4 h-4 animate-ping" /> : <span className="text-xs">{t('doorlock_enter', '입력완료')}</span>}
                     </button>
                 </div>
 

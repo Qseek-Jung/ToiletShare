@@ -23,6 +23,12 @@ project(':capacitor-filesystem').projectDir = new File('../node_modules/@capacit
 include ':capacitor-geolocation'
 project(':capacitor-geolocation').projectDir = new File('../node_modules/@capacitor/geolocation/android')
 
+include ':capacitor-local-notifications'
+project(':capacitor-local-notifications').projectDir = new File('../node_modules/@capacitor/local-notifications/android')
+
+include ':capacitor-push-notifications'
+project(':capacitor-push-notifications').projectDir = new File('../node_modules/@capacitor/push-notifications/android')
+
 include ':capacitor-share'
 project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
 
@@ -31,6 +37,9 @@ project(':codetrix-studio-capacitor-google-auth').projectDir = new File('../node
 
 include ':team-lepisode-capacitor-naver-login'
 project(':team-lepisode-capacitor-naver-login').projectDir = new File('../node_modules/@team-lepisode/capacitor-naver-login/android')
+
+include ':transistorsoft-capacitor-background-fetch'
+project(':transistorsoft-capacitor-background-fetch').projectDir = new File('../node_modules/@transistorsoft/capacitor-background-fetch/android')
 
 include ':capacitor-kakao-login-plugin'
 project(':capacitor-kakao-login-plugin').projectDir = new File('../node_modules/capacitor-kakao-login-plugin/android')

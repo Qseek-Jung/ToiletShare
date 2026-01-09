@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface CreditModalProps {
     isOpen: boolean;
@@ -10,6 +11,7 @@ interface CreditModalProps {
 }
 
 export const CreditModal: React.FC<CreditModalProps> = ({ isOpen, type, amount, message, subMessage, onClose }) => {
+    const { t } = useTranslation();
     const [show, setShow] = useState(false);
 
     useEffect(() => {
@@ -44,14 +46,14 @@ export const CreditModal: React.FC<CreditModalProps> = ({ isOpen, type, amount, 
                     {subMessage && <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{subMessage}</p>}
 
                     <div className={`text-3xl font-bold mb-6 flex items-center gap-1 ${type === 'earn' ? 'text-amber-500' : 'text-gray-500'}`}>
-                        {type === 'earn' ? '+' : ''}{amount} <span className="text-lg text-gray-400 font-medium">크래딧</span>
+                        {type === 'earn' ? t('credit_earn', '+') : ''}{amount} <span className="text-lg text-gray-400 font-medium">{t('credit_unit', '크래딧')}</span>
                     </div>
 
                     <button
                         onClick={onClose}
                         className="w-full py-3 bg-primary text-white rounded-xl font-bold hover:bg-amber-500 transition-colors"
                     >
-                        확인
+                        {t('credit_confirm', '확인')}
                     </button>
                 </div>
             </div>

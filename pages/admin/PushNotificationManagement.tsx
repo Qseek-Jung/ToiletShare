@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Bell, Send, Filter, Users, TrendingUp, CheckCircle, XCircle, User as UserIcon, Loader2 } from 'lucide-react';
 import { dbSupabase as db } from '../../services/db_supabase';
-import { UserRole, Gender, PushNotification, User } from '../../types';
+import { UserRole, Gender, PushNotification, User, NotificationType } from '../../types';
+import { AlertModal } from '../../components/AlertModal';
 
 interface PushNotificationManagementProps {
     onRefresh: () => void;
@@ -23,6 +24,20 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
     const [messageContent, setMessageContent] = useState('');
     const [showPreview, setShowPreview] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+
+    // Modal State
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        message: string;
+        type: 'success' | 'confirm' | 'error';
+        onConfirm?: () => void;
+    }>({
+        isOpen: false,
+        message: '',
+        type: 'success'
+    });
+
+    const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
     const loadData = async () => {
         setLoadingData(true);
@@ -88,70 +103,93 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
         }
     };
 
-    const handleSendNotifications = async () => {
-        if (!messageTitle.trim() || !messageContent.trim()) {
-            alert('제목과 내용을 입력해주세요.');
-            return;
-        }
-
-        if (selectedUsers.length === 0) {
-            alert('발송할 사용자를 선택해주세요.');
-            return;
-        }
-
-        const confirmed = window.confirm(
-            `${selectedUsers.length}명의 사용자에게 푸시 알림을 발송하시겠습니까?`
-        );
-
-        if (!confirmed) return;
-
+    const executeSend = async () => {
+        console.log("[PushMgmt] executeSend started");
         setSending(true);
         try {
-            let sentCount = 0;
-            // Send in parallel or batch?
-            // For now, simple loop is fine unless users are huge.
-            // db.createNotification is synchronous in old code, let's see. 
-            // In supabase logic, createNotification just returns object, sendPushNotification does DB work.
-            // But wait, db_supabase.createNotification is likely not implemented as a helper or it is?
-            // Actually, I should use `db.sendPushNotification` which I implemented in db_supabase.
-            // db_supabase's sendPushNotification takes a `PushNotification` object.
-            // But usually we create the object first.
-            // Let's assume createNotification helper is needed or we construct it.
-            // Checking db_supabase.ts: I did implement createNotification helper? Actually I should check.
-            // If not, I'll construct the object here. 
-
-            // Wait, looking at db_supabase.ts, I implemented `createNotification`? No I implemented `sendPushNotification`.
-            // Let's manually construct the object or use a helper if I made one.
-            // I'll manually construct for safety as `db.createNotification` was likely a helper in `db.ts`.
-
-            const notifications = selectedUsers.map(userId => ({
-                id: `notif_${Date.now()}_${userId}_${Math.random().toString(36).substr(2, 5)}`,
-                type: 'admin_message' as any,
-                userId,
-                title: messageTitle,
-                message: messageContent,
-                isRead: false,
-                sentAt: new Date().toISOString(),
-                deliveryStatus: 'pending' as any
+            console.log(`[PushMgmt] Sending to ${selectedUsers.length} users:`, selectedUsers);
+            const results = await Promise.all(selectedUsers.map(async (userId) => {
+                try {
+                    console.log(`[PushMgmt] Creating notification for ${userId}...`);
+                    const newNotif = await db.createNotification(
+                        NotificationType.ADMIN_MESSAGE,
+                        userId,
+                        messageTitle,
+                        messageContent
+                    );
+                    console.log(`[PushMgmt] Created DB record: ${newNotif.id}. Triggering push...`);
+                    const delivery = await db.sendPushNotification(newNotif);
+                    console.log(`[PushMgmt] Delivery result for ${userId}:`, delivery);
+                    return delivery; // returns { success, pushSent }
+                } catch (e) {
+                    console.error(`[PushMgmt] Failed to send to ${userId}`, e);
+                    return { success: false, pushSent: false };
+                }
             }));
 
-            // Use Promise.all for speed, but limit concurrency if needed. 
-            // Here just promise all is fine for < 100 users.
-            await Promise.all(notifications.map(n => db.sendPushNotification(n)));
-            sentCount = notifications.length;
+            const inAppSuccessCount = results.filter(r => r.success).length;
+            const pushSuccessCount = results.filter(r => r.pushSent).length;
+            console.log(`[PushMgmt] Finished sending. In-app: ${inAppSuccessCount}, Push: ${pushSuccessCount}`);
 
-            alert(`✅ ${sentCount}명에게 푸시 알림이 발송되었습니다.`);
-            setMessageTitle('');
-            setMessageContent('');
-            setSelectedUsers([]);
+            if (inAppSuccessCount > 0) {
+                setModalConfig({
+                    isOpen: true,
+                    message: `✅ 발송 결과:\n- 인앱 알림 성공: ${inAppSuccessCount}건\n- 푸시 알림 성공: ${pushSuccessCount}건`,
+                    type: 'success'
+                });
+                setMessageTitle('');
+                setMessageContent('');
+                setSelectedUsers([]);
+            } else {
+                setModalConfig({
+                    isOpen: true,
+                    message: '발송에 실패했습니다. (성공 0건)\n시스템 오류일 수 있습니다.',
+                    type: 'error'
+                });
+            }
+            // Always refresh history since at least the DB records were created
             onRefresh();
-            loadData(); // Reload history
-        } catch (error) {
-            alert('푸시 알림 발송 중 오류가 발생했습니다.');
+            loadData();
+        } catch (error: any) {
+            setModalConfig({
+                isOpen: true,
+                message: `푸시 알림 발송 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`,
+                type: 'error'
+            });
             console.error(error);
         } finally {
             setSending(false);
         }
+    };
+
+    const handleSendClick = () => {
+        if (!messageTitle.trim() || !messageContent.trim()) {
+            setModalConfig({
+                isOpen: true,
+                message: '제목과 내용을 입력해주세요.',
+                type: 'error'
+            });
+            return;
+        }
+
+        if (selectedUsers.length === 0) {
+            setModalConfig({
+                isOpen: true,
+                message: '발송할 사용자를 선택해주세요.',
+                type: 'error'
+            });
+            return;
+        }
+
+        setModalConfig({
+            isOpen: true,
+            message: `${selectedUsers.length}명의 사용자에게 푸시 알림을 발송하시겠습니까?`,
+            type: 'confirm',
+            onConfirm: () => {
+                console.log("[PushMgmt] Confirm modal - confirmed");
+                executeSend();
+            }
+        });
     };
 
     if (loadingData) {
@@ -349,7 +387,7 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
                             {showPreview ? '미리보기 닫기' : '미리보기'}
                         </button>
                         <button
-                            onClick={handleSendNotifications}
+                            onClick={handleSendClick}
                             disabled={selectedUsers.length === 0 || !messageTitle || !messageContent || sending}
                             className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
@@ -445,6 +483,14 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
                     </div>
                 )}
             </div>
+            {/* Modal */}
+            <AlertModal
+                isOpen={modalConfig.isOpen}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                onClose={closeModal}
+                onConfirm={modalConfig.onConfirm}
+            />
         </div>
     );
 };

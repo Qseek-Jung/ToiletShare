@@ -3,14 +3,14 @@ import {
     LayoutDashboard, Users, MapPin, AlertTriangle, Star,
     Settings, Database, CreditCard, Bell, X, BarChart2,
     LogOut, ChevronRight, Menu, UserMinus, BarChart3,
-    PlayCircle, Coins
+    PlayCircle, Coins, Smartphone
 } from 'lucide-react';
 
 interface AdminMenuProps {
     isMenuOpen: boolean;
     setIsMenuOpen: (open: boolean) => void;
-    activeSection: 'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'push-notifications';
-    setActiveSection: (section: 'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'push-notifications') => void;
+    activeSection: 'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'notifications' | 'version';
+    setActiveSection: (section: 'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'notifications' | 'version') => void;
     subSection: string;
     setSubSection: (section: string) => void;
 }
@@ -46,6 +46,7 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({
                 { id: 'toilet-map', label: '지역별 등록 현황' },
                 { id: 'toilet-chart', label: '화장실 통계' },
                 { id: 'toilet-bulk', label: '화장실 대량등록' },
+                { id: 'toilet-bulk-conversion', label: '대량등록 파일변환' },
                 { id: 'toilet-list', label: '화장실 리스트' },
             ]
         },
@@ -60,7 +61,17 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({
         },
         { id: 'reports', icon: AlertTriangle, label: '신고 관리', subItems: null },
         { id: 'reviews', icon: Star, label: '리뷰 관리', subItems: null },
-        { id: 'push-notifications', icon: Bell, label: '푸시 알림', subItems: null },
+        {
+            id: 'notifications',
+            icon: Bell,
+            label: '알림 관리',
+            subItems: [
+                { id: 'auto-notifications', label: '자동 알림 관리' },
+                { id: 'push-notifications', label: '푸시 알림 발송' },
+                { id: 'notices', label: '공지사항 관리' },
+            ]
+        },
+        { id: 'version', icon: Smartphone, label: '앱 버전 관리', subItems: null },
         {
             id: 'credit-management',
             icon: Coins,
@@ -155,7 +166,11 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({
                                         <button
                                             key={subItem.id}
                                             onClick={() => {
-                                                updateHash(item.id, subItem.id);
+                                                if (subItem.id === 'toilet-bulk-conversion') {
+                                                    updateHash(item.id, 'bulk-conversion');
+                                                } else {
+                                                    updateHash(item.id, subItem.id);
+                                                }
                                                 setIsMenuOpen(false);
                                             }}
                                             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${subSection === subItem.id

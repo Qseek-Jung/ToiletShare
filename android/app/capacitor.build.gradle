@@ -16,9 +16,12 @@ dependencies {
     implementation project(':capacitor-dialog')
     implementation project(':capacitor-filesystem')
     implementation project(':capacitor-geolocation')
+    implementation project(':capacitor-local-notifications')
+    implementation project(':capacitor-push-notifications')
     implementation project(':capacitor-share')
     implementation project(':codetrix-studio-capacitor-google-auth')
     implementation project(':team-lepisode-capacitor-naver-login')
+    implementation project(':transistorsoft-capacitor-background-fetch')
     implementation project(':capacitor-kakao-login-plugin')
 
 }

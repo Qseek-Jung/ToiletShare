@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock, Globe, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Toilet, User, UserRole, Gender } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
 import { MAPS_API_KEY, KAKAO_JAVASCRIPT_KEY } from '../config';
@@ -32,6 +33,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     darkMode,
     onMapModeChange
 }) => {
+    const { t } = useTranslation();
     // Capture isFromAdmin and reportId on mount to ensure reliable redirection
     const isFromAdminRef = useRef(window.location.hash.includes('from=admin'));
     const reportIdRef = useRef<string | null>(null);
@@ -135,8 +137,8 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             <PageLayout>
                 <div className="h-full flex flex-col items-center justify-center p-8 bg-white">
                     <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6"><Plus className="w-10 h-10 text-amber-500" /></div>
-                    <h2 className="text-xl font-bold mb-2">화장실을 등록하려면<br />로그인이 필요해요</h2>
-                    <button onClick={onShowLogin} className="mt-8 w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg">로그인하기</button>
+                    <h2 className="text-xl font-bold mb-2" dangerouslySetInnerHTML={{ __html: t('submit_login_required_title', '화장실을 등록하려면<br />로그인이 필요해요') }}></h2>
+                    <button onClick={onShowLogin} className="mt-8 w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg">{t('submit_login_btn', '로그인하기')}</button>
                 </div>
             </PageLayout>
         )
@@ -154,7 +156,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 }
                 setIsPickerLocating(false);
             },
-            () => { setIsPickerLocating(false); setAlertState({ open: true, message: "위치 정보를 가져올 수 없습니다.", type: 'error' }); },
+            () => { setIsPickerLocating(false); setAlertState({ open: true, message: t('submit_location_error', "위치 정보를 가져올 수 없습니다."), type: 'error' }); },
             { enableHighAccuracy: true }
         );
     };
@@ -168,7 +170,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         // 🚨 한국 내 좌표 범위 확인 (공해상/해외 방지 1차: Bounding Box)
         const isWithinKorea = lat >= 33 && lat <= 43 && lng >= 124 && lng <= 132;
         if (!isWithinKorea) {
-            setAlertState({ open: true, message: "대한민국 내의 위치만 선택할 수 있습니다.", type: 'error' });
+            setAlertState({ open: true, message: t('submit_location_korea_only', "대한민국 내의 위치만 선택할 수 있습니다."), type: 'error' });
             return;
         }
 
@@ -176,7 +178,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         // 비동기 처리가 필요하므로 함수 내부에서 step 변경을 막고 확인 후 진행
         db.checkIsOnLand(lat, lng).then(async isOnLand => {
             if (!isOnLand) {
-                setAlertState({ open: true, message: "바다 위나 대한민국 영토 밖에는\n등록할 수 없습니다.\n(해안가/섬 지역은 오차가 있을 수 있음)", type: 'error' });
+                setAlertState({ open: true, message: t('submit_location_land_only', "바다 위나 대한민국 영토 밖에는\n등록할 수 없습니다.\n(해안가/섬 지역은 오차가 있을 수 있음)"), type: 'error' });
                 return;
             }
 
@@ -187,7 +189,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             if (addr) {
                 setFormData(prev => ({ ...prev, lat, lng, address: addr }));
             } else {
-                setFormData(prev => ({ ...prev, lat, lng, address: "주소 정보 없음" }));
+                setFormData(prev => ({ ...prev, lat, lng, address: t('submit_address_none', "주소 정보 없음") }));
             }
             setStep('details');
         });
@@ -220,9 +222,9 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             if (updatedUser) {
                 onUserUpdate(updatedUser);
             }
-            alert(`삭제되었습니다. 5크레딧이 차감되었습니다.`);
+            alert(t('submit_delete_success_deduct', '삭제되었습니다. 5크레딧이 차감되었습니다.'));
         } else {
-            alert("삭제되었습니다.");
+            alert(t('submit_delete_success', "삭제되었습니다."));
         }
 
         onSubmitSuccess();
@@ -241,7 +243,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             // Default Name Logic
             let finalName = formData.name.trim();
             if (!finalName) {
-                finalName = formData.password ? "미개방화장실" : "개방화장실";
+                finalName = formData.password ? t('submit_default_pw_name', "미개방화장실") : t('submit_default_open_name', "개방화장실");
             }
 
             const toiletData: Toilet = {
@@ -254,7 +256,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 hasBidet: formData.hasBidet,
                 lat: formData.lat || myLocation.lat,
                 lng: formData.lng || myLocation.lng,
-                address: formData.address || "주소 없음",
+                address: formData.address || t('submit_address_none', "주소 없음"),
                 type: 'user_registered',
                 cleanliness: 5,
                 stallCount: formData.stallCount,
@@ -275,7 +277,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             }
 
             if (!result.success) {
-                alert(result.message || "처리 실패");
+                alert(result.message || t('submit_fail_process', "처리 실패"));
                 setSubmitState('idle');
                 return;
             }
@@ -305,7 +307,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             setSubmitState('success');
         } catch (e) {
             console.error("Submission Error", e);
-            alert("오류가 발생했습니다. 다시 시도해주세요.");
+            alert(t('submit_error_general', "오류가 발생했습니다. 다시 시도해주세요."));
             setSubmitState('idle');
         }
     };
@@ -349,7 +351,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 {/* Adjust padding for Ad Banner logic (100px + safe area) */}
                 <div className="bg-white p-4 pb-[calc(100px+env(safe-area-inset-bottom))] rounded-t-2xl shadow-2xl space-y-3 z-20 flex justify-center border-t border-gray-200">
                     <div className="w-full max-w-md space-y-3">
-                        <button onClick={handleSetLocation} className="w-full py-4 bg-primary text-white font-bold rounded-xl text-lg shadow-lg">이 위치로 설정</button>
+                        <button onClick={handleSetLocation} className="w-full py-4 bg-primary text-white font-bold rounded-xl text-lg shadow-lg">{t('submit_set_location', '이 위치로 설정')}</button>
                     </div>
                 </div>
 
@@ -365,31 +367,31 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
 
     return (
         <PageLayout className="pb-48 p-4">
-            <h2 className="text-2xl font-black mb-6 dark:text-white">{editId ? "화장실 수정" : "화장실 등록"}</h2>
+            <h2 className="text-2xl font-black mb-6 dark:text-white">{editId ? t('submit_page_title_edit', "화장실 수정") : t('submit_page_title_new', "화장실 등록")}</h2>
             <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
-                    <button onClick={() => setStep('location')} className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md"><Crosshair className="w-4 h-4" /> {formData.address ? "위치 수정하기" : "지도에서 위치 찾기"}</button>
+                    <button onClick={() => setStep('location')} className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md"><Crosshair className="w-4 h-4" /> {formData.address ? t('submit_edit_location', "위치 수정하기") : t('submit_find_location', "지도에서 위치 찾기")}</button>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">주소</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">{t('submit_label_address', '주소')}</label>
                         <div className={`w-full p-3 rounded-lg text-sm font-medium border transition-colors ${formData.address ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white' : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-400'}`}>
-                            {formData.address || "위치를 선택하면 자동 입력됩니다"}
+                            {formData.address || t('submit_placeholder_address', "위치를 선택하면 자동 입력됩니다")}
                         </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">건물명 또는 위치설명</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">{t('submit_label_name', '건물명 또는 위치설명')}</label>
                         <input
                             type="text"
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="예: 편의점 우측끼고 돌아서 계단실 안쪽"
+                            placeholder={t('submit_placeholder_name', "예: 편의점 우측끼고 돌아서 계단실 안쪽")}
                             className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-lg border border-transparent focus:bg-white dark:focus:bg-gray-600 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none transition-all placeholder:text-gray-400"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">층수</label>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">{t('submit_label_floor', '층수')}</label>
                             <div className="flex items-center gap-1 w-full h-[46px] bg-gray-50 dark:bg-gray-700 rounded-lg p-1 border border-transparent transition-all">
                                 <button
                                     onClick={() => setFormData(prev => {
@@ -424,19 +426,19 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">비번</label>
+                            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">{t('submit_label_password', '비번')}</label>
                             <button
                                 onClick={() => setShowDoorlock(true)}
                                 className={`w-full h-10 mt-[1px] rounded-lg flex items-center justify-center transition-all active:scale-95 ${formData.password ? 'bg-primary-50 border-2 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300 font-mono text-lg tracking-widest shadow-sm' : 'bg-white dark:bg-gray-800 border-2 border-dashed border-blue-300 dark:border-blue-700 text-blue-500 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-400'}`}
                                 style={{ height: '42px' }}
                             >
-                                {formData.password ? formData.password : <span className="text-sm font-bold flex items-center gap-2 animate-pulse"><Lock className="w-4 h-4" /> 비번 입력</span>}
+                                {formData.password ? formData.password : <span className="text-sm font-bold flex items-center gap-2 animate-pulse"><Lock className="w-4 h-4" /> {t('submit_placeholder_password', '비번 입력')}</span>}
                             </button>
                         </div>
                     </div>
 
                     <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-transparent transition-all">
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">변기 개수</label>
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t('submit_label_stalls', '변기 개수')}</label>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setFormData(prev => ({ ...prev, stallCount: Math.max(1, prev.stallCount - 1) }))}
@@ -457,25 +459,25 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                     <div className="flex gap-3">
                         <button onClick={() => setFormData({ ...formData, hasPaper: !formData.hasPaper })} className={`flex-1 py-4 rounded-xl border flex flex-col items-center justify-center gap-2 ${formData.hasPaper ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800' : 'bg-surface dark:bg-surface-dark border-border dark:border-border-dark text-text-muted'}`}>
                             <img src="/images/icons/tissue.png" width={45} height={45} alt="tissue" className={`object-contain ${!formData.hasPaper && 'opacity-40 grayscale'}`} />
-                            <span className={`text-sm font-bold ${formData.hasPaper ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{formData.hasPaper ? '휴지 있음' : '휴지 없음'}</span>
+                            <span className={`text-sm font-bold ${formData.hasPaper ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{formData.hasPaper ? t('submit_paper_yes', '휴지 있음') : t('submit_paper_no', '휴지 없음')}</span>
                         </button>
                         <button onClick={() => setFormData({ ...formData, hasBidet: !formData.hasBidet })} className={`flex-1 py-4 rounded-xl border flex flex-col items-center justify-center gap-2 ${formData.hasBidet ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800' : 'bg-surface dark:bg-surface-dark border-border dark:border-border-dark text-text-muted'}`}>
                             <img src="/images/icons/bidet.png" width={45} height={45} alt="bidet" className={`object-contain ${!formData.hasBidet && 'opacity-40 grayscale'}`} />
-                            <span className={`text-sm font-bold ${formData.hasBidet ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{formData.hasBidet ? '비데 있음' : '비데 없음'}</span>
+                            <span className={`text-sm font-bold ${formData.hasBidet ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{formData.hasBidet ? t('submit_bidet_yes', '비데 있음') : t('submit_bidet_no', '비데 없음')}</span>
                         </button>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={() => setFormData({ ...formData, genderType: Gender.MALE })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.MALE ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>남성</button>
-                        <button onClick={() => setFormData({ ...formData, genderType: Gender.FEMALE })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.FEMALE ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>여성</button>
-                        <button onClick={() => setFormData({ ...formData, genderType: Gender.UNISEX })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.UNISEX ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>공용</button>
+                        <button onClick={() => setFormData({ ...formData, genderType: Gender.MALE })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.MALE ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>{t('submit_gender_male', '남성')}</button>
+                        <button onClick={() => setFormData({ ...formData, genderType: Gender.FEMALE })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.FEMALE ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>{t('submit_gender_female', '여성')}</button>
+                        <button onClick={() => setFormData({ ...formData, genderType: Gender.UNISEX })} className={`flex-1 py-3 rounded-lg text-sm font-medium border ${formData.genderType === Gender.UNISEX ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800 text-primary-700 dark:text-primary-300' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark text-text-muted'}`}>{t('submit_gender_unisex', '공용')}</button>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">참고사항 (선택)</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">{t('submit_label_note', '참고사항 (선택)')}</label>
                         <textarea
                             value={formData.note}
                             onChange={e => setFormData({ ...formData, note: e.target.value })}
-                            placeholder="예: 휴지가 자주 없음, 도어락 뻑뻑함 등"
+                            placeholder={t('submit_placeholder_note', "예: 휴지가 자주 없음, 도어락 뻑뻑함 등")}
                             className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-medium rounded-lg border border-transparent focus:bg-white dark:focus:bg-gray-600 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 outline-none min-h-[80px] resize-none transition-all placeholder:text-gray-400"
                         />
                     </div>
@@ -491,31 +493,31 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                             <div className="flex gap-2">
                                 <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(true)} className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex justify-center items-center gap-2 text-sm">
                                     {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Check className="w-4 h-4" />}
-                                    수정완료
+                                    {t('submit_btn_edit_complete', '수정완료')}
                                 </button>
                                 {!isFromAdminRef.current && (
                                     <button disabled={submitState !== 'idle'} onClick={handleDeleteClick} className="flex-1 py-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-100 dark:border-red-800 flex justify-center items-center gap-2 text-sm">
                                         <Trash2 className="w-4 h-4" />
-                                        삭제하기
+                                        {t('submit_btn_delete', '삭제하기')}
                                     </button>
                                 )}
                             </div>
                             <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="w-full py-4 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 shadow-lg shadow-blue-200 transition-colors flex justify-center items-center gap-2 text-base">
                                 {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Globe className="w-4 h-4" />}
-                                공유하기로 변경등록 (+5 Cr)
+                                {t('submit_btn_share_update', '공유하기로 변경등록 (+5 Cr)')}
                             </button>
                         </div>
                     ) : (
                         // Public Toilet Edit
                         <div className="flex gap-2 mt-4">
-                            <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="flex-1 py-4 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 shadow-lg shadow-blue-200 transition-colors flex justify-center items-center gap-2 text-base">
+                            <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="flex-1 py-4 bg-primary text-white font-bold rounded-xl hover:bg-blue-600 transition-colors flex justify-center items-center gap-2 text-base">
                                 {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Check className="w-4 h-4" />}
-                                수정완료
+                                {t('submit_btn_edit_complete', '수정완료')}
                             </button>
                             {!isFromAdminRef.current && (
                                 <button disabled={submitState !== 'idle'} onClick={handleDeleteClick} className="flex-1 py-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-100 dark:border-red-800 flex justify-center items-center gap-2 text-sm">
                                     <Trash2 className="w-4 h-4" />
-                                    삭제하기 (-5 Cr)
+                                    {t('submit_btn_delete', '삭제하기')} (-5 Cr)
                                 </button>
                             )}
                         </div>
@@ -526,14 +528,14 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                         <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(true)} className="flex-1 py-3 px-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 flex flex-col justify-center items-center gap-0.5">
                             <div className="flex items-center gap-1.5">
                                 {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                <span className="text-sm sm:text-base">나만보기</span>
+                                <span className="text-sm sm:text-base">{t('submit_btn_private', '나만보기')}</span>
                             </div>
                             <span className="text-xs opacity-70 font-medium">(0cr)</span>
                         </button>
                         <button disabled={submitState !== 'idle'} onClick={() => handleSubmit(false)} className="flex-[2] py-3 px-2 bg-gray-900 dark:bg-black text-white font-bold rounded-xl hover:bg-gray-800 shadow-xl shadow-gray-200 dark:shadow-none transition-colors flex flex-col justify-center items-center gap-0.5">
                             <div className="flex items-center gap-1.5">
                                 {submitState === 'processing' ? <Loader2 className="animate-spin w-4 h-4" /> : <Globe className="w-4 h-4" />}
-                                <span className="text-base sm:text-lg">공유하기</span>
+                                <span className="text-base sm:text-lg">{t('submit_btn_share', '공유하기')}</span>
                             </div>
                             <span className="text-xs sm:text-sm opacity-80 font-medium text-blue-200">(+5cr)</span>
                         </button>
@@ -544,41 +546,41 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             {/* Registration Processing/Success Modal with Ad */}
             {submitState !== 'idle' && (
                 <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-8 shadow-2xl flex flex-col items-center text-center space-y-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col items-center text-center space-y-3">
 
                         {submitState === 'processing' ? (
                             <div className="relative">
                                 <div className="absolute inset-0 bg-primary-500 rounded-full opacity-20 animate-ping"></div>
-                                <div className="relative w-20 h-20 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                                    <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+                                <div className="relative w-16 h-16 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                                    <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
                                 </div>
                             </div>
                         ) : (
-                            <div className="w-20 h-20 bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
-                                <Check className="w-10 h-10 text-green-500" />
+                            <div className="w-16 h-16 bg-green-50 dark:bg-green-900/30 rounded-full flex items-center justify-center animate-in zoom-in duration-300">
+                                <Check className="w-8 h-8 text-green-500" />
                             </div>
                         )}
 
                         <div>
                             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">
                                 {submitState === 'processing'
-                                    ? (editId ? '수정 중입니다...' : '등록 중입니다...')
-                                    : (editId ? '수정이 완료되었습니다!' : '등록이 완료되었습니다!')
+                                    ? (editId ? t('submit_processing_edit', '수정 중입니다...') : t('submit_processing_new', '등록 중입니다...'))
+                                    : (editId ? t('submit_complete_edit', '수정이 완료되었습니다!') : t('submit_complete_new', '등록이 완료되었습니다!'))
                                 }
                             </h3>
                             <p className="text-gray-500 dark:text-gray-400 text-sm">
                                 {submitState === 'processing' ? (
-                                    <>잠시만 기다려주세요.<br />소중한 정보를 저장하고 있습니다. 💾</>
+                                    <span dangerouslySetInnerHTML={{ __html: t('submit_desc_processing', '잠시만 기다려주세요.<br />소중한 정보를 저장하고 있습니다. 💾') }} />
                                 ) : (
-                                    <><span className="text-primary-600 dark:text-primary-400 font-bold">크레딧이 성공적으로 지급되었습니다.</span><br />감사합니다! 💖</>
+                                    <span dangerouslySetInnerHTML={{ __html: t('submit_desc_complete', '<span className="text-primary-600 dark:text-primary-400 font-bold">크레딧이 성공적으로 지급되었습니다.</span><br />감사합니다! 💖') }} />
                                 )}
                             </p>
                         </div>
 
                         {/* Persistent Ad Banner */}
-                        <div className="w-full max-w-[300px] h-auto min-h-[120px] bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="w-full max-w-[300px] h-auto min-h-[100px] bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 flex flex-col items-center justify-center relative overflow-hidden">
                             <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-[10px] text-gray-500 dark:text-gray-400 rounded z-10">AD</span>
-                            <AdBanner isInline maxHeight={250} maxRatio={3.5} className="w-full h-full" />
+                            <AdBanner isInline maxHeight={260} maxRatio={3.5} className="w-full h-full" type="NATIVE_MODAL" />
                         </div>
 
                         {submitState === 'success' && (
@@ -586,7 +588,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                                 onClick={handleCloseAfterSuccess}
                                 className="w-full py-4 bg-gray-900 dark:bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all animate-in slide-in-from-bottom-2"
                             >
-                                닫기
+                                {t('submit_btn_close', '닫기')}
                             </button>
                         )}
                     </div>
@@ -600,30 +602,28 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Trash2 className="w-8 h-8 text-red-600" />
                         </div>
-                        <h3 className="text-xl font-bold text-center mb-3 dark:text-white">정말 삭제하시겠습니까?</h3>
+                        <h3 className="text-xl font-bold text-center mb-3 dark:text-white">{t('submit_delete_confirm_title', '정말 삭제하시겠습니까?')}</h3>
                         {!originalIsPrivate && (
                             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl p-4 mb-4">
-                                <p className="text-sm text-amber-800 dark:text-amber-200 text-center font-medium">
-                                    ⚠️ 공유된 화장실을 삭제하면<br />
-                                    <span className="font-bold text-red-600 dark:text-red-400">5크레딧이 차감</span>됩니다.
+                                <p className="text-sm text-amber-800 dark:text-amber-200 text-center font-medium" dangerouslySetInnerHTML={{ __html: t('submit_delete_warning', '⚠️ 공유된 화장실을 삭제하면<br /><span className="font-bold text-red-600 dark:text-red-400">5크레딧이 차감</span>됩니다.') }}>
                                 </p>
                             </div>
                         )}
                         <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-6">
-                            삭제된 화장실은 복구할 수 없습니다.
+                            {t('submit_delete_desc', '삭제된 화장실은 복구할 수 없습니다.')}
                         </p>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowDeleteModal(false)}
                                 className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
-                                취소
+                                {t('submit_btn_cancel', '취소')}
                             </button>
                             <button
                                 onClick={handleDeleteConfirm}
                                 className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
                             >
-                                삭제하기
+                                {t('submit_btn_delete', '삭제하기')}
                             </button>
                         </div>
                     </div>

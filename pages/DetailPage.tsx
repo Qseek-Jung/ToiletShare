@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Lock, ArrowRight, Edit, Share2, Star, MapIcon, ScrollText, Waves, DoorClosed, MessageSquareQuote, Flag, X, Trash2, Edit2, Crosshair, PlayCircle, Gift } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Lock, ArrowRight, Edit, Share2, Star, MapIcon, ScrollText, Waves, DoorClosed, MessageSquareQuote, Flag, X, Trash2, Edit2, Crosshair, PlayCircle, Gift, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { AlertModal } from '../components/AlertModal';
 import { Toilet, Review, User, UserRole } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
@@ -14,6 +15,7 @@ import { ABUSE_LIMITS, validateContent } from '../policies/AbuseProtection';
 import { adMobService } from '../services/admob';
 import { AdManager } from '../components/AdManager';
 import { AdBanner } from '../components/AdBanner';
+import { notificationService } from '../services/notification_service';
 
 const DARK_MAP_STYLE = [
     { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -42,10 +44,12 @@ interface NavigationModalProps {
     myLocation: { lat: number, lng: number };
     onClose: () => void;
     darkMode?: boolean;
-    onNavigate: (type: 'kakao' | 'naver') => void;
+    onNavigate: (type: 'kakao' | 'naver' | 'google') => void;
 }
 
 const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, onClose, darkMode, onNavigate }) => {
+    const { t, i18n } = useTranslation();
+    const isKorean = i18n.language.startsWith('ko');
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const myMarkerRef = useRef<any>(null);
@@ -65,7 +69,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
             // Heuristic: Distance * 1.5 detour / 4km/h walking speed
             const straightDistance = calculateDistance(myLocation.lat, myLocation.lng, toilet.lat, toilet.lng);
             const distText = formatDistance(straightDistance);
-            const timeText = `약 ${Math.ceil((straightDistance * 1.5) / 67)}분`;
+            const timeText = t('walking_time_approx_short', '약 {{time}}분', { time: Math.ceil((straightDistance * 1.5) / 67) });
             setDirectionsData({
                 distance: distText,
                 duration: timeText
@@ -77,7 +81,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                 if (window.google?.maps && mapRef.current) {
                     // Retry logic if needed, but for now just proceed
                 } else {
-                    setMapError("지도 로딩 실패");
+                    setMapError(t('map_load_fail', "지도 로딩 실패"));
                     return;
                 }
             }
@@ -232,10 +236,10 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
 
     return (
         <div className="fixed inset-0 z-[2000] flex justify-center bg-black/10 backdrop-blur-[1px]">
-            <div className="w-full max-w-md h-full bg-surface dark:bg-surface-dark flex flex-col shadow-2xl animate-in slide-in-from-bottom-full duration-300 relative">
+            <div className="w-full h-full bg-surface dark:bg-surface-dark flex flex-col shadow-2xl animate-in slide-in-from-bottom-full duration-300 relative">
                 <div className="p-4 flex items-center justify-between border-b border-border dark:border-border-dark bg-surface dark:bg-surface-dark z-10 shadow-sm shrink-0">
                     <div>
-                        <div className="text-xs text-text-muted font-bold mb-0.5">목적지</div>
+                        <div className="text-xs text-text-muted font-bold mb-0.5">{t('destination', '목적지')}</div>
                         <h3 className="font-bold text-lg leading-none text-text-main dark:text-text-light">{toilet.name}</h3>
                     </div>
                     <button onClick={onClose} className="p-2 bg-background dark:bg-background-dark rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
@@ -244,13 +248,12 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                 </div>
 
                 {/* Map Top Banner Ad Area */}
+                {/* Map Top Banner Ad Area */}
                 <AdBanner
                     position="top"
                     margin={80}
-                    minRatio={4.8}
-                    maxRatio={6.0}
-                    maxHeight={90}
-                    className="w-full aspect-[5/1] h-auto shadow-sm"
+                    className="w-full max-w-[360px] mx-auto aspect-[4/1] h-auto shadow-sm rounded-lg overflow-hidden my-2"
+                    type="NATIVE_DETAIL"
                 />
 
                 <div className="flex-1 relative w-full h-full min-h-0">
@@ -259,12 +262,12 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                     {directionsData && (
                         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 bg-surface dark:bg-surface-dark px-6 py-3 rounded-full shadow-xl border border-border dark:border-border-dark flex items-center gap-4 animate-in fade-in slide-in-from-top-4">
                             <div className="flex flex-col items-center">
-                                <span className="text-[10px] text-text-muted font-bold">거리</span>
+                                <span className="text-[10px] text-text-muted font-bold">{t('distance', '거리')}</span>
                                 <span className="text-sm font-black text-text-main dark:text-text-light">{directionsData.distance}</span>
                             </div>
                             <div className="w-px h-6 bg-border dark:bg-border-dark"></div>
                             <div className="flex flex-col items-center">
-                                <span className="text-[10px] text-text-muted font-bold">소요시간</span>
+                                <span className="text-[10px] text-text-muted font-bold">{t('duration', '소요시간')}</span>
                                 <span className="text-sm font-black text-primary">{directionsData.duration}</span>
                             </div>
                         </div>
@@ -286,29 +289,46 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
 
                     <div className="absolute bottom-0 left-0 right-0 p-4 pb-4 pb-safe bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center">
                         <div className="flex gap-4 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
-                            <button
-                                onClick={() => onNavigate('kakao')}
-                                className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
-                                aria-label="카카오맵"
-                            >
-                                <img
-                                    src="https://play-lh.googleusercontent.com/pPTTNz433EYFurg2j__bFU5ONdMoU_bs_-yS2JLZriua3iHrksGP6XBPF5VtDPlpGcW4=s64-rw"
-                                    alt="Kakao Map"
-                                    className="h-10 w-10 object-contain rounded-xl"
-                                />
-                            </button>
+                            {isKorean ? (
+                                <>
+                                    <button
+                                        onClick={() => onNavigate('kakao')}
+                                        className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
+                                        aria-label={t('kakao_map', '카카오맵')}
+                                    >
+                                        <img
+                                            src="https://play-lh.googleusercontent.com/pPTTNz433EYFurg2j__bFU5ONdMoU_bs_-yS2JLZriua3iHrksGP6XBPF5VtDPlpGcW4=s64-rw"
+                                            alt="Kakao Map"
+                                            className="h-10 w-10 object-contain rounded-xl"
+                                        />
+                                    </button>
 
-                            <button
-                                onClick={() => onNavigate('naver')}
-                                className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
-                                aria-label="네이버지도"
-                            >
-                                <img
-                                    src="https://play-lh.googleusercontent.com/FZCOcEqapjBkvBmv2RkIMlJ1mteGJh8eq4239jAm-4QgpzvCa9sBj4msNlUBsWvf3hX69-fJoTnFZR2pFdZdwxY=s64-rw"
-                                    alt="Naver Map"
-                                    className="h-10 w-10 object-contain rounded-xl"
-                                />
-                            </button>
+                                    <button
+                                        onClick={() => onNavigate('naver')}
+                                        className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
+                                        aria-label={t('naver_map', '네이버지도')}
+                                    >
+                                        <img
+                                            src="https://play-lh.googleusercontent.com/FZCOcEqapjBkvBmv2RkIMlJ1mteGJh8eq4239jAm-4QgpzvCa9sBj4msNlUBsWvf3hX69-fJoTnFZR2pFdZdwxY=s64-rw"
+                                            alt="Naver Map"
+                                            className="h-10 w-10 object-contain rounded-xl"
+                                        />
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => onNavigate('google')}
+                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200 gap-2"
+                                    aria-label="Google Maps"
+                                >
+                                    <img
+                                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/512px-Google_Maps_icon_%282020%29.svg.png"
+                                        alt="Google Maps"
+                                        className="h-8 w-8 object-contain"
+                                    />
+                                    <span className="font-bold text-gray-700">{t('google_map', 'Google Maps')}</span>
+                                </button>
+                            )}
                         </div>
 
 
@@ -354,6 +374,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     requestAd,
     onModalStateChange
 }) => {
+    const { t } = useTranslation();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
@@ -369,6 +390,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
         isOpen: false,
         message: '',
     });
+
+    const hasIncrementedView = useRef<string | null>(null);
 
     const showAlert = (message: string) => {
         setAlertModal({ isOpen: true, message, isConfirm: false });
@@ -389,8 +412,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
     useEffect(() => {
         const loadReviews = async () => {
             if (toilet) {
-                // Increment View Count
-                db.incrementToiletView(toilet.id);
+                // Increment View Count (Only once per toilet id in this instance)
+                if (hasIncrementedView.current !== toilet.id) {
+                    db.incrementToiletView(toilet.id);
+                    hasIncrementedView.current = toilet.id;
+                }
 
                 const loadedReviews = await db.getReviews(toilet.id);
                 setReviews(loadedReviews);
@@ -399,11 +425,56 @@ const DetailPage: React.FC<DetailPageProps> = ({
         loadReviews();
     }, [toilet]);
 
+    // Track reviews for unmount check
+    const reviewsRef = useRef<Review[]>([]);
+    useEffect(() => {
+        reviewsRef.current = reviews;
+    }, [reviews]);
+
+    // Helper to schedule reminder if eligible
+    const scheduleReminderIfEligible = useCallback(() => {
+        if (!toilet || !user?.id) return;
+
+        const isCreator = toilet.createdBy === user.id;
+        const hasReviewed = reviews.some(r => r.userId === user.id);
+
+        if (!isCreator && !hasReviewed) {
+            console.log(`📌 Triggered Review Reminder Scheduling for ${toilet.name} (3 mins)`);
+            notificationService.scheduleReviewReminder(toilet.id, toilet.name);
+        }
+    }, [toilet, user.id, reviews]);
+
+    // Schedule Review Reminder on Entry (after 3s dwell time)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            scheduleReminderIfEligible();
+        }, 3000); // 3 seconds stay
+
+        return () => clearTimeout(timer);
+    }, [scheduleReminderIfEligible]);
+    // If toilet prop changes, it unmounts/remounts logic effectively if key changes or component re-renders. 
+    // DetailPage usually unmounts when navigation changes. 
+    // But if we swipe to next toilet (unlikely in this router), it might update props.
+    // If props update, cleanup runs for OLD toilet. So this is correct.
+    // When Toilet A changes to Toilet B:
+    // 1. Cleanup A runs -> Schedules for A.
+    // 2. Setup B runs.
+
+    // BUT: reviewsRef might be empty if we just loaded A and immediately switched? 
+    // reviewsRef updates when reviews load. If user leaves fast, reviews might not be loaded.
+    // Then hasReviewed is false -> Schedules reminder. This is acceptable.
+    // If they reviewed previously, fetched reviews would set hasReviewed.
+    // If fetch is slow and they leave, they get a reminder. Checking DB later is hard.
+    // Review Reminder in notification service doesn't check DB.
+    // This is valid behavior (remind if we don't know they reviewed).
+
     const handleUnlockRequest = (method: 'credit' | 'ad') => {
         if (user.role === UserRole.GUEST) {
             onShowLogin();
             return;
         }
+        // Interaction Trigger: Unlock Request
+        scheduleReminderIfEligible();
         onUnlock(method);
     };
 
@@ -436,9 +507,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
     const [showOwnerConfirmModal, setShowOwnerConfirmModal] = useState(false);
     const [showReviewSuccessModal, setShowReviewSuccessModal] = useState(false); // New Success Modal
     const [showAdModal, setShowAdModal] = useState(false); // Controls AdManager
-    const [pendingNavType, setPendingNavType] = useState<'kakao' | 'naver' | null>(null);
+    const [pendingNavType, setPendingNavType] = useState<'kakao' | 'naver' | 'google' | null>(null);
 
-    const executeNavigation = (type: 'kakao' | 'naver') => {
+    const executeNavigation = (type: 'kakao' | 'naver' | 'google') => {
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (!toilet) return;
 
@@ -481,7 +552,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         }
     };
 
-    const handleNavigation = (type: 'kakao' | 'naver') => {
+    const handleNavigation = (type: 'kakao' | 'naver' | 'google') => {
         setPendingNavType(type);
         setShowAdModal(true);
     };
@@ -489,6 +560,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
     const handleAdClose = () => {
         setShowAdModal(false);
         if (pendingNavType) {
+            // Record Ad View for Navigation (Count as Unlock)
+            db.recordAdView('unlock').catch(console.error);
             executeNavigation(pendingNavType);
             setPendingNavType(null);
             setShowMapModal(false); // Close NavigationModal after redirect
@@ -538,7 +611,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             console.log(`Review write time: ${timeTaken}ms`);
 
             if (timeTaken < ABUSE_LIMITS.MIN_WRITE_TIME_MS) {
-                showAlert("조금만 더 자세히 적어주시면 더 좋은 정보가 됩니다 :)");
+                showAlert(t('alert_review_fast', "조금만 더 자세히 적어주시면 더 좋은 정보가 됩니다 :)"));
                 return;
             }
 
@@ -549,7 +622,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 // 4. Check Daily Limit
                 const dailyCount = await db.getDailyReviewCount(user.id);
                 if (dailyCount >= ABUSE_LIMITS.DAILY_REVIEW_LIMIT) {
-                    showAlert(`하루에 남길 수 있는 리뷰는 ${ABUSE_LIMITS.DAILY_REVIEW_LIMIT}개까지예요. 천천히, 좋은 경험만 나눠주세요!`);
+                    showAlert(t('alert_review_limit', `하루에 남길 수 있는 리뷰는 {{limit}}개까지예요. 천천히, 좋은 경험만 나눠주세요!`, { limit: ABUSE_LIMITS.DAILY_REVIEW_LIMIT }));
                     return;
                 }
             }
@@ -557,7 +630,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             // 5. Check Duplicate (One review per place per day)
             const hasRecent = await db.checkRecentReview(user.id, toilet.id);
             if (hasRecent && !editingReviewId) { // Allow editing
-                showAlert("동일 장소에 대한 리뷰는 하루에 한 번만 남길 수 있어요. 양해 부탁드립니다 :)");
+                showAlert(t('alert_review_duplicate', "동일 장소에 대한 리뷰는 하루에 한 번만 남길 수 있어요. 양해 부탁드립니다 :)"));
                 return;
             }
 
@@ -584,7 +657,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 setRating(5);
                 setEditingReviewId(null);
                 await db.updateReview(updatedReview);
-                showAlert("리뷰가 수정되었습니다.");
+                showAlert(t('alert_review_saved', "리뷰가 수정되었습니다."));
             } else {
                 // New Review
                 const newReview: Review = {
@@ -600,26 +673,25 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                 await db.addReview(newReview);
 
+                // Cancel pending reminder
+                notificationService.cancelReviewReminder(toilet.id);
+
                 // UI Update
                 setReviews(prev => [newReview, ...prev]);
                 setShowReviewModal(false);
                 setReviewContent("");
                 setRating(5);
 
-                // Reward Logic
+                // Success Feedback
                 if (isVipOrAdmin) {
-                    // Immediate Reward
-                    newReview.rewarded = true; // VIP gets it
-                    const optimisticallyUpdatedUser = { ...user, credits: (user.credits || 0) + reviewRewardAmount };
-                    onUserUpdate(optimisticallyUpdatedUser);
-                    await db.updateUserCredits(user.id, reviewRewardAmount); // Ensure DB sync
-                    // Also update review rewarded status immediately (since we inserted false)
-                    // Actually clearer to insert true if we knew. But let's update.
-                    await db.updateReviewReward(newReview.id, true);
-
-                    setShowRewardModal({ show: true, message: '리뷰 작성 감사합니다! (VIP/Admin)', points: reviewRewardAmount });
+                    // VIP/Admin points are automatically awarded in db.addReview
+                    setShowRewardModal({
+                        show: true,
+                        message: t('review_thanks_vip_admin', '리뷰 작성 감사합니다!\n활동 크래딧이 지급되었습니다.'),
+                        points: reviewRewardAmount
+                    });
                 } else {
-                    // Show Success Celebration Modal first
+                    // Regular users see the reward celebration (points awarded later via ad complete or directly)
                     setPendingReviewCredit(reviewRewardAmount);
                     setPendingReviewId(newReview.id);
                     setShowReviewSuccessModal(true);
@@ -627,7 +699,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             }
         } catch (err) {
             console.error("Failed to save review", err);
-            showAlert("앗, 리뷰가 저장되지 않았어요. 다시 시도해주시면 감사하겠습니다!");
+            showAlert(t('alert_review_failed', "앗, 리뷰가 저장되지 않았어요. 다시 시도해주시면 감사하겠습니다!"));
         }
     };
 
@@ -643,7 +715,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
             setReviews(prev => prev.map(r => r.id === pendingReviewId ? { ...r, rewarded: true } : r));
         }
 
-        setShowRewardModal({ show: true, message: '광고 시청 완료!\n크래딧이 지급되었습니다.', points: points });
+        setShowRewardModal({ show: true, message: t('ad_reward_message', '광고 시청 완료!\n크래딧이 지급되었습니다.'), points: points });
 
         // 2. Background DB Updates (Non-blocking)
         Promise.all([
@@ -665,8 +737,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
         const shouldDeduct = review?.rewarded === true;
 
         const confirmMessage = shouldDeduct
-            ? `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 ${reviewRewardAmount} 크래딧이 회수됩니다)`
-            : "정말로 이 리뷰를 삭제하시겠습니까?";
+            ? t('review_delete_confirm', `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 {{amount}} 크래딧이 회수됩니다)`, { amount: reviewRewardAmount })
+            : t('review_delete_confirm_simple', "정말로 이 리뷰를 삭제하시겠습니까?");
 
         showConfirm(confirmMessage, () => {
             // Optimistic Delete
@@ -674,7 +746,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
             // Background DB Delete
             db.deleteReview(reviewId).then(async () => {
-                let message = "리뷰가 삭제되었습니다.";
+                let message = t('review_deleted', "리뷰가 삭제되었습니다.");
 
                 if (shouldDeduct) {
                     // Deduct Credits
@@ -686,14 +758,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
                     // DB Update
                     await db.updateUserCredits(user.id, DEDUCTION_AMOUNT);
-                    message = "리뷰가 삭제되었으며,\n지급된 크래딧이 차감되었습니다.";
+                    message = t('review_deleted_deducted', "리뷰가 삭제되었으며,\n지급된 크래딧이 차감되었습니다.");
                 }
 
                 showAlert(message);
                 onRefresh(); // Optional: sync fully after success
             }).catch(err => {
                 console.error("Failed to delete review", err);
-                showAlert("리뷰 삭제에 실패했습니다.");
+                showAlert(t('review_delete_fail', "리뷰 삭제에 실패했습니다."));
                 onRefresh(); // Revert logic by refreshing
             });
         });
@@ -712,12 +784,14 @@ const DetailPage: React.FC<DetailPageProps> = ({
         let finalReason = selectedReportType;
         if (selectedReportType === '기타') {
             if (!reportReason.trim()) {
-                showAlert('추가로 알려주실 내용을 자세히 부탁드려요.');
+                showAlert(t('report_add_detail', '추가로 알려주실 내용을 자세히 부탁드려요.'));
                 return;
             }
+            // Keep hardcoded "기타: " prefix for logic, but maybe translate display? 
+            // The DB stores "기타: reason". This is internal data.
             finalReason = `기타: ${reportReason.trim()}`;
         } else if (!selectedReportType) {
-            showAlert('어떤 문제인지 알려주세요!');
+            showAlert(t('report_select_reason', '어떤 문제인지 알려주세요!'));
             return;
         }
 
@@ -749,7 +823,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         // Actually user said 10s. Let's apply 5s for predefined, 10s for custom if possible.
         // For simplicity, let's enforce 3s buffer to prevent accidental double clicks or bot-like speed.
         if (timeTaken < 3000) {
-            showAlert("조금 더 신중하게 확인 후 제출해주세요.");
+            showAlert(t('alert_report_fast', "조금 더 신중하게 확인 후 제출해주세요."));
             return;
         }
 
@@ -758,13 +832,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
         if (!isVipOrAdmin) {
             const dailyCount = await db.getDailyReportCount(user.id);
             if (dailyCount >= ABUSE_LIMITS.DAILY_REPORT_LIMIT) {
-                showAlert(`신고는 하루 ${ABUSE_LIMITS.DAILY_REPORT_LIMIT}회까지 가능해요. 혼자 운영하고 있어서, 너무 많으면 힘들어요.`);
+                showAlert(t('alert_report_limit', `신고는 하루 {{limit}}회까지 가능해요. 혼자 운영하고 있어서, 너무 많으면 힘들어요.`, { limit: ABUSE_LIMITS.DAILY_REPORT_LIMIT }));
                 return;
             }
 
             const hasRecent = await db.checkRecentReport(user.id, toilet.id);
             if (hasRecent) {
-                showAlert("동일 장소에 대한 신고는 하루에 한 번만 가능합니다. 보다 정확한 정보를 위해 운영되고 있어요!");
+                showAlert(t('alert_report_duplicate', "동일 장소에 대한 신고는 하루에 한 번만 가능합니다. 보다 정확한 정보를 위해 운영되고 있어요!"));
                 return;
             }
         }
@@ -789,12 +863,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
             setSelectedReportType('');
 
             // Show Pending Message (No points yet)
+            // Show Pending Message (No points yet)
             // Show Pending Message
-            setShowRewardModal({ show: true, message: '신고 접수 감사합니다.\n최대한 빨리 처리해드릴게요.', points: 0 });
+            setShowRewardModal({ show: true, message: t('report_thanks_title', '신고 접수 감사합니다.\n최대한 빨리 처리해드릴게요.'), points: 0 });
 
         } catch (err) {
             console.error("Failed to submit report", err);
-            showAlert("신고 접수 중 오류가 발생했습니다.");
+            showAlert(t('alert_report_error', "신고 접수 중 오류가 발생했습니다."));
         }
     };
 
@@ -859,16 +934,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         <div className="flex items-center gap-2 text-xs font-bold text-text-muted mt-1">
                                             <span className="text-primary">{formatDistance(toilet.distance)}</span>
                                             <span className="w-1 h-1 rounded-full bg-border"></span>
-                                            <span>도보 {Math.ceil((toilet.distance * 1.5) / 67)}분</span>
+                                            <span>{t('walking_time', '도보 {{time}}분', { time: Math.ceil((toilet.distance * 1.5) / 67) })}</span>
                                         </div>
                                     )}
                                 </div>
                                 <button
-                                    onClick={() => { setShowMapModal(true); onModalStateChange?.(true); }}
+                                    onClick={() => {
+                                        scheduleReminderIfEligible(); // Interaction Trigger: Map View
+                                        setShowMapModal(true);
+                                        onModalStateChange?.(true);
+                                    }}
                                     className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 dark:text-primary-400 transition-colors"
                                 >
                                     <MapIcon className="w-6 h-6" />
-                                    <span className="text-[10px] font-bold">지도보기</span>
+                                    <span className="text-[10px] font-bold">{t('view_map', '지도보기')}</span>
                                 </button>
                             </div>
 
@@ -877,15 +956,15 @@ const DetailPage: React.FC<DetailPageProps> = ({
                         <div className="grid grid-cols-3 gap-2">
                             <div className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${toilet.hasPaper ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark'}`}>
                                 <img src="/images/icons/tissue.png" alt="휴지" className={`w-10 h-10 object-contain ${!toilet.hasPaper && 'opacity-40 grayscale'}`} />
-                                <span className={`text-xs font-bold ${toilet.hasPaper ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>휴지 {toilet.hasPaper ? '있음' : '없음'}</span>
+                                <span className={`text-xs font-bold ${toilet.hasPaper ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{t('tissue', '휴지')} {toilet.hasPaper ? t('tissue_yes', '있음') : t('tissue_no', '없음')}</span>
                             </div>
                             <div className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${toilet.hasBidet ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark'}`}>
                                 <img src="/images/icons/bidet.png" alt="비데" className={`w-10 h-10 object-contain ${!toilet.hasBidet && 'opacity-40 grayscale'}`} />
-                                <span className={`text-xs font-bold ${toilet.hasBidet ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>비데 {toilet.hasBidet ? '있음' : '없음'}</span>
+                                <span className={`text-xs font-bold ${toilet.hasBidet ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{t('bidet', '비데')} {toilet.hasBidet ? t('bidet_yes', '있음') : t('bidet_no', '없음')}</span>
                             </div>
                             <div className={`p-3 rounded-lg border flex flex-col items-center gap-2 ${toilet.stallCount ? 'bg-primary-50 border-primary-100 dark:bg-primary-900/40 dark:border-primary-800' : 'bg-background dark:bg-background-dark border-border dark:border-border-dark'}`}>
                                 <img src="/images/icons/toilet.png" alt="화장실" className={`w-10 h-10 object-contain ${!toilet.stallCount && 'opacity-40 grayscale'}`} />
-                                <span className={`text-xs font-bold ${toilet.stallCount ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{toilet.stallCount}칸</span>
+                                <span className={`text-xs font-bold ${toilet.stallCount ? 'text-primary-700 dark:text-primary-300' : 'text-text-muted'}`}>{t('stalls_count', '{{count}}칸', { count: toilet.stallCount })}</span>
                             </div>
                         </div>
 
@@ -893,7 +972,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 text-sm text-gray-700 flex gap-3">
                                 <MessageSquareQuote className="w-5 h-5 text-amber-500 shrink-0" />
                                 <div>
-                                    <div className="font-bold text-amber-800 text-xs mb-1">참고사항</div>
+                                    <div className="font-bold text-amber-800 text-xs mb-1">{t('note', '참고사항')}</div>
                                     {toilet.note}
                                 </div>
                             </div>
@@ -903,18 +982,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     {/* Reviews Section */}
                     <div className="pt-2">
                         <div className="flex justify-between items-end mb-3 px-1">
-                            <h3 className="font-bold text-text-main dark:text-text-light text-lg">리뷰 ({reviews.length})</h3>
+                            <h3 className="font-bold text-text-main dark:text-text-light text-lg">{t('reviews', '리뷰')} ({reviews.length})</h3>
                             <button onClick={() => {
                                 if (user.role === UserRole.GUEST) {
                                     onShowLogin();
                                 } else {
                                     setShowReviewModal(true);
                                 }
-                            }} className="text-xs bg-primary text-white px-3 py-1.5 rounded-lg font-bold">리뷰 쓰기</button>
+                            }} className="text-xs bg-primary text-white px-3 py-1.5 rounded-lg font-bold">{t('write_review', '리뷰 쓰기')}</button>
                         </div>
                         {reviews.length === 0 ? (
                             <div className="space-y-3">
-                                <div className="p-8 text-center text-text-muted text-sm border border-border dark:border-border-dark rounded-xl bg-background dark:bg-background-dark">첫 리뷰를 남겨주세요!</div>
+                                <div className="p-8 text-center text-text-muted text-sm border border-border dark:border-border-dark rounded-xl bg-background dark:bg-background-dark">{t('first_review', '첫 리뷰를 남겨주세요!')}</div>
                                 {/* Ad (Review Style - Empty State) */}
                                 {/* Ad (Review Style - Empty State) */}
 
@@ -966,7 +1045,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                                         // Max 6 chars, last 2 masked
                                                         let raw = r.userName && r.userName !== '익명' ? r.userName : (r.userEmail ? r.userEmail.split('@')[0] : '익명');
 
-                                                        if (raw === '익명') return '익명';
+                                                        if (raw === '익명') return t('anonymous', '익명');
 
                                                         if (raw.length > 6) {
                                                             raw = raw.slice(0, 6);
@@ -1005,13 +1084,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             } else {
                                 setShowReportModal(true);
                             }
-                        }} className="text-text-muted text-xs underline flex items-center justify-center gap-1 mx-auto hover:text-urgency"><Flag className="w-3 h-3" /> 신고하기</button>
+                        }} className="text-text-muted text-xs underline flex items-center justify-center gap-1 mx-auto hover:text-urgency"><Flag className="w-3 h-3" /> {t('report', '신고하기')}</button>
 
                         {(toilet.updatedAt || toilet.createdAt) && (
                             <div className="mt-2 text-[10px] text-text-muted opacity-50 font-medium">
                                 {toilet.updatedAt
-                                    ? `업데이트: ${new Date(toilet.updatedAt).toLocaleDateString()}`
-                                    : `등록일: ${new Date(toilet.createdAt!).toLocaleDateString()}`
+                                    ? t('update_date', '업데이트: {{date}}', { date: new Date(toilet.updatedAt).toLocaleDateString() })
+                                    : t('reg_date', '등록일: {{date}}', { date: new Date(toilet.createdAt!).toLocaleDateString() })
                                 }
                             </div>
                         )}
@@ -1042,10 +1121,10 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     className="w-full bg-background dark:bg-background-dark text-text-main dark:text-text-light rounded-xl p-3 text-sm min-h-[100px] border border-border dark:border-border-dark mb-4 outline-none resize-none"
                                     value={reviewContent}
                                     onChange={(e) => setReviewContent(e.target.value)}
-                                    onPaste={(e) => { e.preventDefault(); showAlert('복사한 내용보다는 직접 적어주신 말씀이 더 정확한 정보가 됩니다!'); }}
-                                    placeholder={`최소 ${ABUSE_LIMITS.MIN_CONTENT_LENGTH}자 이상 작성해주세요.`}
+                                    onPaste={(e) => { e.preventDefault(); showAlert(t('alert_copy_paste', '복사한 내용보다는 직접 적어주신 말씀이 더 정확한 정보가 됩니다!')); }}
+                                    placeholder={t('alert_min_length', `최소 {{length}}자 이상 작성해주세요.`, { length: ABUSE_LIMITS.MIN_CONTENT_LENGTH })}
                                 ></textarea>
-                                <div className="flex gap-2"><button onClick={() => { setShowReviewModal(false); setEditingReviewId(null); setReviewContent(""); setRating(5); }} className="flex-1 py-3 bg-background dark:bg-background-dark text-text-muted rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600">취소</button><button onClick={handleSubmitReview} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold">{editingReviewId ? '수정' : '등록'}</button></div>
+                                <div className="flex gap-2"><button onClick={() => { setShowReviewModal(false); setEditingReviewId(null); setReviewContent(""); setRating(5); }} className="flex-1 py-3 bg-background dark:bg-background-dark text-text-muted rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600">{t('cancel', '취소')}</button><button onClick={handleSubmitReview} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold">{editingReviewId ? t('review_edit', '수정') : '등록'}</button></div>
 
 
                             </div>
@@ -1061,33 +1140,33 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ WebkitOverflowScrolling: 'touch' }}
                             >
-                                <h3 className="text-lg font-bold text-center mb-4 text-text-main dark:text-text-light">신고하기</h3>
-                                <p className="text-sm text-text-muted text-center mb-4">신고 사유를 선택해주세요</p>
+                                <h3 className="text-lg font-bold text-center mb-4 text-text-main dark:text-text-light">{t('report_title', '신고하기')}</h3>
+                                <p className="text-sm text-text-muted text-center mb-4">{t('report_reason_select', '신고 사유를 선택해주세요')}</p>
 
                                 {/* Report Reason Selection */}
                                 <div className="space-y-2 mb-4">
                                     {[
-                                        '비밀번호가 틀려요',
-                                        '건물주 요청으로 삭제해주세요',
-                                        '도어락이 생겼어요',
-                                        '휴지가 없어요',
-                                        '비데가 없어요',
-                                        '기타'
-                                    ].map((reason) => (
+                                        { key: 'report_reason_password', value: '비밀번호가 틀려요' },
+                                        { key: 'report_reason_owner', value: '건물주 요청으로 삭제해주세요' },
+                                        { key: 'report_reason_doorlock', value: '도어락이 생겼어요' },
+                                        { key: 'report_reason_tissue', value: '휴지가 없어요' },
+                                        { key: 'report_reason_bidet', value: '비데가 없어요' },
+                                        { key: 'report_reason_other', value: '기타' }
+                                    ].map((item) => (
                                         <button
-                                            key={reason}
+                                            key={item.key}
                                             onClick={() => {
-                                                setSelectedReportType(reason);
-                                                if (reason !== '기타') {
+                                                setSelectedReportType(item.value);
+                                                if (item.value !== '기타') {
                                                     setReportReason('');
                                                 }
                                             }}
-                                            className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all ${selectedReportType === reason
+                                            className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all ${selectedReportType === item.value
                                                 ? 'bg-primary-50 text-primary-700 border border-primary-200 shadow-sm'
                                                 : 'bg-background dark:bg-background-dark text-text-main dark:text-text-light hover:bg-gray-200 dark:hover:bg-gray-700'
                                                 }`}
                                         >
-                                            {reason}
+                                            {t(item.key, item.value)}
                                         </button>
                                     ))}
                                 </div>
@@ -1096,7 +1175,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                 {selectedReportType === '기타' && (
                                     <textarea
                                         className="w-full bg-background dark:bg-background-dark rounded-xl p-3 text-sm min-h-[80px] border border-urgency dark:border-urgency-500 mb-4 text-text-main dark:text-text-light outline-none"
-                                        placeholder="상세 사유를 입력하세요"
+                                        placeholder={t('report_other_placeholder', "상세 사유를 입력하세요")}
                                         value={reportReason}
                                         onChange={(e) => setReportReason(e.target.value)}
                                         onPaste={(e) => { e.preventDefault(); showAlert('복사한 내용보다는 직접 적어주신 말씀이 더 정확한 정보가 됩니다!'); }}
@@ -1112,13 +1191,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         }}
                                         className="flex-1 py-3 bg-background dark:bg-background-dark text-text-muted rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700"
                                     >
-                                        취소
+                                        {t('cancel', '취소')}
                                     </button>
                                     <button
                                         onClick={handleReportClick}
                                         className="flex-1 py-3 bg-urgency text-white rounded-xl font-bold"
                                     >
-                                        제출
+                                        {t('submit', '제출')}
                                     </button>
                                 </div>
                             </div>
@@ -1136,23 +1215,20 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         <DoorClosed className="w-8 h-8 text-red-500" />
                                     </div>
                                 </div>
-                                <h3 className="text-lg font-bold text-center mb-2">건물주님, 심려를 끼쳐드려 죄송합니다.</h3>
-                                <p className="text-gray-600 text-center text-sm mb-6 leading-relaxed">
-                                    정말 화장실이 급한 사람들을 위해 만든 서비스이니 너른 양해 부탁드립니다.<br /><br />
-                                    <strong>정말 삭제 요청을 진행하시겠습니까?</strong>
-                                </p>
+                                <h3 className="text-lg font-bold text-center mb-2">{t('owner_apology_title', '건물주님, 심려를 끼쳐드려 죄송합니다.')}</h3>
+                                <p className="text-gray-600 text-center text-sm mb-6 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('owner_apology_desc', '정말 화장실이 급한 사람들을 위해 만든 서비스이니 너른 양해 부탁드립니다.<br /><br /><strong>정말 삭제 요청을 진행하시겠습니까?</strong>') }} />
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setShowOwnerConfirmModal(false)}
                                         className="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-600"
                                     >
-                                        취소
+                                        {t('cancel', '취소')}
                                     </button>
                                     <button
                                         onClick={() => submitReport('건물주 요청으로 삭제해주세요')}
                                         className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold"
                                     >
-                                        삭제 요청하기
+                                        {t('request_delete', '삭제 요청하기')}
                                     </button>
                                 </div>
                             </div>
@@ -1180,10 +1256,8 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
                                         <span className="text-4xl">🎉</span>
                                     </div>
-                                    <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">리뷰 작성 감사합니다!</h3>
-                                    <p className="text-gray-600 dark:text-gray-300 text-center text-sm mb-8 leading-relaxed">
-                                        광고 시청 후 <span className="font-bold text-amber-500">크레딧(+{reviewRewardAmount} Cr)</span>이<br />지급됩니다.
-                                    </p>
+                                    <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">{t('review_success_title', '리뷰 작성 감사합니다!')}</h3>
+                                    <p className="text-gray-600 dark:text-gray-300 text-center text-sm mb-8 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('review_reward_desc', '광고 시청 후 <span className="font-bold text-amber-500">크레딧(+{{amount}} Cr)</span>이<br />지급됩니다.', { amount: reviewRewardAmount }) }} />
 
                                     <button
                                         onClick={() => {
@@ -1193,13 +1267,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         className="w-full py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary-600 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                                     >
                                         <PlayCircle className="w-5 h-5 fill-current" />
-                                        광고 시청하기
+                                        {t('watch_ad', '광고 시청하기')}
                                     </button>
                                     <button
                                         onClick={() => setShowReviewSuccessModal(false)}
                                         className="mt-4 text-xs text-gray-400 underline decoration-gray-300 underline-offset-4 hover:text-gray-600"
                                     >
-                                        괜찮습니다, 다음에 받을게요
+                                        {t('later', '괜찮습니다, 다음에 받을게요')}
                                     </button>
                                 </div>
                             </div>
@@ -1241,7 +1315,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                         onClick={() => setShowRewardModal({ ...showRewardModal, show: false })}
                                         className="w-full bg-[#3B82F6] hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-95"
                                     >
-                                        확인
+                                        {t('confirm', '확인')}
                                     </button>
                                 </div>
                             </div>

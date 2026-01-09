@@ -1,12 +1,34 @@
 
 import { supabase } from './supabase';
-import { Toilet, User, Review, Report, BannedLocation, BannedUser, UserRole, Gender, DashboardStats, AdConfig, DailyStats, CreditPolicy, DEFAULT_CREDIT_POLICY, PushNotification, NotificationType, UploadHistory, CreditType, ReferenceType, CreditHistory, ReviewReaction, UserStatus, LoginNotice } from '../types';
+import { Toilet, User, Review, Report, BannedLocation, BannedUser, UserRole, Gender, DashboardStats, AdConfig, DailyStats, CreditPolicy, DEFAULT_CREDIT_POLICY, PushNotification, NotificationType, UploadHistory, CreditType, ReferenceType, CreditHistory, ReviewReaction, UserStatus, LoginNotice, VersionPolicy, AppNotice } from '../types';
 
 // Supabase Database Service (Async)
 export class SupabaseDatabaseService {
+    public get supabase() { return supabase; }
     private adConfigCache: AdConfig | null = null;
 
     // --- Helper Methods ---
+    async getCurrentUser() {
+        // Try precise server-side validation first
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) return user;
+
+        // Fallback to local session (useful if network is flaky or getUser fails curiously while session exists)
+        const { data: { session } } = await supabase.auth.getSession();
+        return session?.user ?? null;
+    }
+
+    async updateUserPushToken(userId: string, token: string) {
+        if (!userId || !token) return;
+        const { error } = await supabase
+            .from('users')
+            .update({ push_token: token })
+            .eq('id', userId);
+
+        if (error) console.error("Error updating push token:", error);
+        else console.log("Push token updated for user:", userId);
+    }
+
     private mapToilet(t: any): Toilet {
         const creator = Array.isArray(t.users) ? t.users[0] : t.users;
         const reviews = Array.isArray(t.reviews) ? t.reviews : (t.reviews ? [t.reviews] : []);
@@ -435,6 +457,45 @@ export class SupabaseDatabaseService {
             .eq('id', toilet.id);
 
         if (error) return { success: false, message: error.message };
+
+        // --- Auto-Resolve Reports on Toilet Update ---
+        (async () => {
+            try {
+                // 1. Find pending reports
+                const { data: reports } = await supabase
+                    .from('reports')
+                    .select('id, reporter_id')
+                    .eq('toilet_id', toilet.id)
+                    .eq('status', 'pending');
+
+                if (reports && reports.length > 0) {
+                    // 2. Resolve them
+                    const { error: resolveErr } = await supabase
+                        .from('reports')
+                        .update({ status: 'resolved' }) // Mark as resolved by user update
+                        .in('id', reports.map(r => r.id));
+
+                    if (!resolveErr) {
+                        console.log(`✅ Auto-resolved ${reports.length} reports for toilet ${toilet.id}`);
+
+                        // 3. Notify Reporters
+                        for (const r of reports) {
+                            const notif = await this.createNotification(
+                                NotificationType.REPORT_RESULT,
+                                r.reporter_id,
+                                '신고 처리 완료',
+                                `[${toilet.name}] 화장실에 대한 신고가 주인의 정보 수정으로 처리되었습니다. 감사합니다.`,
+                                { reportId: r.id, toiletId: toilet.id }
+                            );
+                            await this.sendPushNotification(notif);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Auto-resolve failed:", e);
+            }
+        })();
+
         return { success: true };
     }
 
@@ -517,6 +578,47 @@ export class SupabaseDatabaseService {
         this.updateActivityScore(review.userId, 0.8, '리뷰 작성').catch(err => {
             console.error('Failed to update activity score in background:', err);
         });
+
+        // --- Automated Notification Flow ---
+        (async () => {
+            try {
+                // 1. Fetch toilet creator
+                const { data: toilet, error: toiletErr } = await supabase
+                    .from('toilets')
+                    .select('name, created_by')
+                    .eq('id', review.toiletId)
+                    .single();
+
+                if (toiletErr || !toilet || !toilet.created_by) return;
+
+                // 2. Don't notify self
+                if (toilet.created_by === review.userId) return;
+
+                // 3. Create Notification
+                const title = `🔔 내 화장실에 새 리뷰가 달렸어요!`;
+                // Dynamic Message
+                const msgTemplate = await this.getSystemSetting('msg_review_received', '[name] 화장실에 새로운 리뷰가 등록되었습니다.');
+                const message = msgTemplate.replace('[name]', toilet.name);
+
+                const notif = await this.createNotification(
+                    NotificationType.REVIEW_ADDED,
+                    toilet.created_by,
+                    title,
+                    message,
+                    {
+                        toiletId: review.toiletId,
+                        reviewId: review.id
+                    }
+                );
+
+                // 4. Send Push
+                await this.sendPushNotification(notif);
+                console.log(`✅ Automated review notification sent to creator: ${toilet.created_by}`);
+
+            } catch (err) {
+                console.error('Failed to send automated review notification:', err);
+            }
+        })();
     }
 
     async updateReview(review: Review): Promise<void> {
@@ -603,6 +705,39 @@ export class SupabaseDatabaseService {
         if (!error) {
             this.incrementDailyStat('newReports');
             // Credit is DEFERRED until Admin approval.
+
+            // --- Send Notification to Toilet Owner ---
+            (async () => {
+                try {
+                    // 1. Fetch toilet owner
+                    const { data: toilet, error: tErr } = await supabase
+                        .from('toilets')
+                        .select('created_by, name')
+                        .eq('id', report.toiletId)
+                        .single();
+
+                    if (tErr || !toilet || !toilet.created_by) return;
+                    if (toilet.created_by === report.reporterId) return; // Don't notify self
+
+                    // 2. Create Notification
+                    const msgTemplate = await this.getSystemSetting('msg_report_received', '[name] 화장실에 대한 신고가 접수되었습니다. (사유: [reason])');
+                    const message = msgTemplate.replace('[name]', toilet.name).replace('[reason]', report.reason);
+
+                    const notif = await this.createNotification(
+                        NotificationType.TOILET_REPORTED,
+                        toilet.created_by,
+                        '🚨 내 화장실 신고 접수',
+                        message,
+                        { toiletId: report.toiletId, reportId: report.id } // Link to toilet detail
+                    );
+
+                    // 3. Send Push
+                    await this.sendPushNotification(notif);
+
+                } catch (e) {
+                    console.error("Failed to notify toilet owner of report:", e);
+                }
+            })();
         }
     }
 
@@ -623,6 +758,20 @@ export class SupabaseDatabaseService {
         // Penalty for bad report (-0.2) except if reporter is admin/system
         if (data && data.reporter_id) {
             await this.updateActivityScore(data.reporter_id, -0.2, '신고 반려 (허위 신고)');
+
+            // Notify Reporter of Dismissal
+            (async () => {
+                try {
+                    const notif = await this.createNotification(
+                        NotificationType.REPORT_RESULT,
+                        data.reporter_id,
+                        '신고 반려 알림',
+                        `접수하신 신고가 반려되었습니다. (허위 신고 또는 이미 해결됨)`,
+                        { reportId: reportId }
+                    );
+                    await this.sendPushNotification(notif);
+                } catch (e) { console.error("Failed to notify reporter of dismissal", e); }
+            })();
         }
     }
 
@@ -1149,12 +1298,16 @@ export class SupabaseDatabaseService {
 
     // New: Get System Setting
     async getSystemSetting<T>(key: string, defaultValue: T): Promise<T> {
-        const { data, error } = await supabase.from('system_settings').select('value').eq('key', key).single();
+        const { data, error } = await supabase.from('system_settings').select('value').eq('key', key).maybeSingle();
         if (error || !data) return defaultValue;
         return data.value as T; // JSONB is auto-parsed by Supabase JS client generally
     }
 
     async setSystemSetting<T>(key: string, value: T, description?: string): Promise<void> {
+        // Debug Auth
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[Debug] setSystemSetting: Session:', session?.user?.id, 'Key:', key);
+
         const adminId = await this.getAdminAccountId();
         await supabase.from('system_settings').upsert({
             key: key,
@@ -1267,18 +1420,28 @@ export class SupabaseDatabaseService {
                 await this.logCreditTransaction(userId, rewardAmount, 'level_up_reward', 'user', userId, `레벨업 축하금 (${newLevelName})`);
 
                 title = `🎉 ${newLevelName} 등급으로 상승!`;
-                message = `와우! 꾸준한 활동 덕분에 [${oldLevelName}]에서 [${newLevelName}] 등급으로 올랐어요! 🚀\n축하의 의미로 ${rewardAmount}크래딧을 선물로 드렸답니다. 앞으로도 깨끗한 화장실 공유 부탁드려요! 🥰`;
+                // Dynamic Message
+                const msgTemplate = await this.getSystemSetting('msg_level_up', '와우! 활동 점수가 올라 [old]에서 [new] 등급이 되었어요! 축하 선물로 [reward]크래딧을 드려요!');
+                message = msgTemplate
+                    .replace('[old]', oldLevelName)
+                    .replace('[new]', newLevelName)
+                    .replace('[reward]', String(rewardAmount));
             } else {
                 // Level Down (No penalty)
                 title = `📉 ${newLevelName} 등급으로 하락`;
-                message = `아쉽게도 활동 점수가 변동되어 [${oldLevelName}]에서 [${newLevelName}] 등급으로 하락했어요. 😢\n다시 조금만 더 활동하면 금방 복구할 수 있을 거예요! 화이팅! 💪`;
+                message = `아쉽게도 활동 점수가 변동되어 [${oldLevelName}]에서 [${newLevelName}] 등급으로 하락했어요. 😢`;
             }
 
             updates.next_login_notice = {
-                type: noticeType,
+                type: noticeType === 'level_up' ? NotificationType.LEVEL_UP : 'level_down', // Use enum if compatible or string
                 title: title,
                 message: message
             };
+
+            // Send In-App Notification for Level Up
+            if (noticeType === 'level_up') {
+                this.createNotification(NotificationType.LEVEL_UP, userId, title, message).then(n => this.sendPushNotification(n));
+            }
         }
 
         await supabase.from('users').update(updates).eq('id', userId);
@@ -1387,7 +1550,7 @@ export class SupabaseDatabaseService {
             // Use RPC to bypass RLS for custom auth users (Naver/Kakao without Supabase Auth session)
             const { error } = await supabase.rpc('log_credit_transaction_rpc', {
                 p_user_id: userId,
-                p_amount: amount,
+                p_amount: Math.floor(amount), // RPC expects integer
                 p_type: type,
                 p_related_type: relatedType || null,
                 p_related_id: relatedId || null,
@@ -1430,10 +1593,17 @@ export class SupabaseDatabaseService {
     // --- Notification Methods ---
 
     async savePushToken(userId: string, token: string): Promise<void> {
-        await supabase.from('users').update({
+        console.log(`[db] Saving Push Token for ${userId}: ${token.substring(0, 10)}...`);
+        const { error } = await supabase.from('users').update({
             push_token: token,
             notification_enabled: true
         }).eq('id', userId);
+
+        if (error) {
+            console.error('[db] Failed to save push token:', error);
+        } else {
+            console.log('[db] Push token saved successfully.');
+        }
     }
 
     async getUserPushToken(userId: string): Promise<string | null> {
@@ -1448,13 +1618,21 @@ export class SupabaseDatabaseService {
         message: string,
         data?: PushNotification['data']
     ): Promise<PushNotification> {
+        // FCM requires all data values to be strings
+        const stringifiedData: Record<string, string> = {};
+        if (data) {
+            Object.entries(data).forEach(([key, value]) => {
+                stringifiedData[key] = String(value);
+            });
+        }
+
         const notif = {
             id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             type,
             user_id: userId,
             title,
             message,
-            data,
+            data: stringifiedData,
             is_read: false,
             sent_at: new Date().toISOString(),
             delivery_status: 'pending'
@@ -1477,15 +1655,41 @@ export class SupabaseDatabaseService {
         };
     }
 
-    async sendPushNotification(notification: PushNotification): Promise<boolean> {
-        // In a real app, this would call an Edge Function to trigger FCM/APNs
-        // Here we just update the status to sent
-        const { error } = await supabase
-            .from('notifications')
-            .update({ delivery_status: 'sent' })
-            .eq('id', notification.id);
+    async sendPushNotification(notification: PushNotification): Promise<{ success: boolean, pushSent: boolean }> {
+        try {
+            const { data, error } = await supabase.functions.invoke('push-notification', {
+                body: { notification_id: notification.id }
+            });
 
-        return !error;
+            if (error) {
+                console.error("Functions Invoke Error:", error);
+                throw error;
+            }
+
+            console.log("FCM Edge Response:", data);
+
+            if (data?.inAppOnly) {
+                console.log("ℹ️ Delivered as in-app only (no push token)");
+            }
+
+            return {
+                success: data && data.success === true,
+                pushSent: data && data.success === true && !data.inAppOnly
+            };
+        } catch (e: any) {
+            console.error("Push Notification Failed:", e);
+            if (e.context) {
+                try {
+                    const errorText = await e.context.text();
+                    console.error("FCM Edge Error Details:", errorText);
+                } catch (resErr) {
+                    console.error("Could not read error response body", resErr);
+                }
+            }
+            // Update status to failed locally if not handled by function
+            await supabase.from('notifications').update({ delivery_status: 'failed' }).eq('id', notification.id);
+            return { success: false, pushSent: false };
+        }
     }
 
     async getAllNotifications(): Promise<PushNotification[]> {
@@ -1533,6 +1737,74 @@ export class SupabaseDatabaseService {
         await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
     }
 
+    async markAllNotificationsAsRead(userId: string): Promise<void> {
+        await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId);
+    }
+
+    async deleteAllNotifications(userId: string): Promise<void> {
+        await supabase.from('notifications').delete().eq('user_id', userId);
+    }
+
+    async deleteNotifications(ids: string[]): Promise<void> {
+        if (!ids || ids.length === 0) return;
+        console.log('[db] Attempting to delete notifications:', ids);
+        const { error, count } = await supabase
+            .from('notifications')
+            .delete({ count: 'estimated' }) // Request count to verify deletion
+            .in('id', ids);
+
+        console.log('[db] Delete result - count:', count, 'error:', error);
+
+        if (error) throw error;
+    }
+
+    async getUnreadNotificationCountToday(userId: string): Promise<number> {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { count, error } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact' })
+            .eq('user_id', userId)
+            .eq('is_read', false)
+            .gte('sent_at', today.toISOString());
+
+        if (error) {
+            console.error('Error fetching unread count:', error);
+            return 0;
+        }
+
+        return count || 0;
+    }
+
+    async cleanupExpiredNotifications(userId: string): Promise<void> {
+        // Delete automatic notifications older than 24 hours (D+1 passed)
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() - 1); // 24 hours ago
+
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('user_id', userId)
+            .in('type', [
+                NotificationType.FAVORITE_UPDATE,
+                NotificationType.CREDIT_AWARDED,
+                NotificationType.TOILET_REPORTED,
+                NotificationType.NEARBY_TOILET,
+                NotificationType.REVIEW_ADDED,
+                NotificationType.LEVEL_CHANGE,
+                NotificationType.SCORE_CHANGE,
+                NotificationType.REPORT_RESULT,
+                NotificationType.MILESTONE_REACHED,
+                NotificationType.LEVEL_UP
+            ])
+            .lt('sent_at', expiryDate.toISOString());
+
+        if (error) {
+            console.error('Error cleaning up notifications:', error);
+        }
+    }
+
     // --- Ad Config & Stats ---
 
     async getDashboardStats(): Promise<DashboardStats> {
@@ -1565,8 +1837,17 @@ export class SupabaseDatabaseService {
             interstitialSource: 'admob',
             bannerSource: 'admob',
             testMode: true,
+            bannersEnabled: true,
             youtubeUrls: ['', '', '', '', ''],
-            customBanners: []
+            customBanners: [],
+            adMobIds: {
+                banner: '',
+                interstitial: '',
+                reward: '',
+                rewardInterstitial: '',
+                appOpen: '',
+                native: ''
+            }
         };
         this.adConfigCache = defaultConfig;
         return defaultConfig;
@@ -1585,6 +1866,40 @@ export class SupabaseDatabaseService {
         const { error } = await supabase.from('app_config').delete().eq('key', 'ad_config');
         if (error) throw error;
         this.adConfigCache = null; // Clear cache
+    }
+
+    // --- Version Control ---
+
+    async getVersionPolicy(): Promise<VersionPolicy> {
+        const { data } = await supabase.from('app_config').select('value').eq('key', 'version_policy').maybeSingle();
+
+        const defaultPolicy: VersionPolicy = {
+            android: {
+                latestVersion: '1.0.0',
+                minVersion: '1.0.0',
+                storeUrl: 'market://details?id=com.toiletshare.app',
+                updateMessage: '새로운 버전이 출시되었습니다.\n더 안정적인 서비스 이용을 위해 업데이트 해주세요.'
+            },
+            ios: {
+                latestVersion: '1.0.0',
+                minVersion: '1.0.0',
+                storeUrl: 'https://apps.apple.com/app/id...',
+                updateMessage: '새로운 버전이 출시되었습니다.'
+            }
+        };
+
+        if (data && data.value) {
+            return { ...defaultPolicy, ...data.value };
+        }
+        return defaultPolicy;
+    }
+
+    async saveVersionPolicy(policy: VersionPolicy): Promise<void> {
+        const { error } = await supabase.from('app_config').upsert({
+            key: 'version_policy',
+            value: policy
+        });
+        if (error) throw error;
     }
 
 
@@ -1684,10 +1999,10 @@ export class SupabaseDatabaseService {
         else await this.incrementDailyStat('visitors_pc' as any);
     }
 
-    private async incrementDailyStat(field: keyof DailyStats): Promise<boolean> {
+    private async incrementDailyStat(field: keyof DailyStats, amount: number = 1): Promise<boolean> {
         const today = new Date().toISOString().split('T')[0];
 
-        // Mapping
+        // Mapping matches DB column names used in the RPC
         const fieldMap: Record<string, string> = {
             'newUsers': 'new_users',
             'visitors': 'visitors',
@@ -1704,43 +2019,23 @@ export class SupabaseDatabaseService {
         };
 
         const col = fieldMap[field as string];
-        if (!col) return false;
-
-        // Try to get today's stats
-        const { data, error } = await supabase
-            .from('daily_stats')
-            .select('*')
-            .eq('date', today)
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching daily stats:', error);
+        if (!col) {
+            console.error('[db] Invalid stat field:', field);
             return false;
         }
 
-        const newStats = data ? { ...data } : {
-            date: today,
-            new_users: 0,
-            visitors: 0,
-            new_toilets: 0,
-            new_reviews: 0,
-            ad_views: 0,
-            new_reports: 0,
-            ad_views_charge: 0,
-            ad_views_unlock: 0,
-            ad_views_review: 0
-        };
+        // Use RPC for atomic atomic increment
+        const { error } = await supabase.rpc('increment_daily_stat', {
+            p_date: today,
+            p_field: col,
+            p_amount: amount
+        });
 
-        // Increment locally
-        newStats[col] = (newStats[col] || 0) + 1;
-
-        // Upsert
-        const { error: upsertError } = await supabase.from('daily_stats').upsert(newStats);
-
-        if (upsertError) {
-            console.error('Error updating daily stats (Check RLS permissions for daily_stats):', upsertError);
+        if (error) {
+            console.error('[db] Error incrementing daily stat (RPC):', error);
             return false;
         }
+
         return true;
     }
 
@@ -2256,17 +2551,7 @@ export class SupabaseDatabaseService {
 
     // --- Passive Rewards & View Count ---
 
-    async incrementToiletView(toiletId: string): Promise<void> {
-        const { error } = await supabase.rpc('increment_view_count', { t_id: toiletId });
 
-        if (error) {
-            // Fallback if RPC doesn't exist (though ideally we create it, simple update works for now)
-            const { data } = await supabase.from('toilets').select('view_count').eq('id', toiletId).single();
-            if (data) {
-                await supabase.from('toilets').update({ view_count: (data.view_count || 0) + 1 }).eq('id', toiletId);
-            }
-        }
-    }
 
     // New: Handle Unlock Cost Deduction
     async deductUnlockCost(userId: string, toiletId: string, cost: number): Promise<boolean> {
@@ -2698,6 +2983,194 @@ export class SupabaseDatabaseService {
             return false;
         }
         return true;
+    }
+    async incrementToiletView(toiletId: string): Promise<void> {
+        let newCount: number | null = null;
+        let creatorId: string | null = null;
+        let toiletName: string | null = null;
+
+        // 1. Attempt Atomic Increment via RPC
+        const { data: rpcData, error: rpcError } = await supabase.rpc('increment_toilet_view', { t_id: toiletId });
+
+        if (!rpcError) {
+            newCount = rpcData;
+            // Still need creator and name for notification
+            const { data: t } = await supabase.from('toilets').select('name, created_by').eq('id', toiletId).single();
+            if (t) {
+                toiletName = t.name;
+                creatorId = t.created_by;
+            }
+        } else {
+            console.error("Failed to increment view count via RPC:", rpcError);
+            // Fallback (non-atomic, but ensures notifications still work)
+            const { data: t } = await supabase.from('toilets').select('view_count, name, created_by').eq('id', toiletId).single();
+            if (!t) return;
+
+            newCount = (t.view_count || 0) + 1;
+            toiletName = t.name;
+            creatorId = t.created_by;
+
+            await supabase.from('toilets').update({ view_count: newCount }).eq('id', toiletId);
+        }
+
+        if (newCount === null || !creatorId || !toiletName) return;
+
+        // 2. Check Milestone (e.g., every 10 views)
+        const thresholdStr = await this.getSystemSetting('milestone_threshold', '10');
+        const threshold = parseInt(thresholdStr, 10) || 10;
+
+        // Only notify if we exactly hit the milestone
+        if (newCount % threshold === 0 && newCount > 0) {
+            // Send Notification
+            const msgTemplate = await this.getSystemSetting('msg_milestone_reached', '축하합니다! [name] 화장실이 [count]명의 사용자에게 도움을 주었어요!');
+            const message = msgTemplate.replace('[name]', toiletName).replace('[count]', String(newCount));
+
+            // Notify Creator
+            const notif = await this.createNotification(
+                NotificationType.MILESTONE_REACHED,
+                creatorId,
+                '🎉 화장실 인기 달성!',
+                message,
+                { toiletId }
+            );
+            await this.sendPushNotification(notif);
+        }
+    }
+
+    async giveUserPoints(userId: string, amount: number, reason: string): Promise<void> {
+        await this.updateUserCredits(userId, amount);
+        const adminId = await this.getAdminAccountId();
+        await this.logCreditTransaction(userId, amount, 'admin_adjust', 'admin', adminId, reason);
+
+        // Send Notification
+        const msgTemplate = await this.getSystemSetting('msg_point_gift', '관리자로부터 [amount]크래딧 선물이 도착했습니다! (사유: [reason])');
+        const message = msgTemplate.replace('[amount]', String(amount)).replace('[reason]', reason);
+
+        const notif = await this.createNotification(
+            NotificationType.POINT_GIFT,
+            userId,
+            '🎁 포인트 선물 도착',
+            message,
+            { creditAmount: String(amount) }
+        );
+        await this.sendPushNotification(notif);
+    }
+
+
+    // --- App Notice Methods ---
+
+    async getAppNotices(userId?: string): Promise<{ notices: AppNotice[], hiddenIds: Set<string> }> {
+        // 1. Fetch Active Notices
+        const { data: notices, error } = await supabase
+            .from('app_notices')
+            .select('*')
+            .eq('is_active', true)
+            .order('priority', { ascending: false }) // High priority first
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Failed to fetch app notices:', error);
+            return { notices: [], hiddenIds: new Set() };
+        }
+
+        let hiddenIds = new Set<string>();
+
+        // 2. Fetch Hidden IDs for User
+        if (userId) {
+            const { data: hidden } = await supabase
+                .from('user_hidden_notices')
+                .select('notice_id')
+                .eq('user_id', userId);
+
+            if (hidden) {
+                hidden.forEach((h: any) => hiddenIds.add(h.notice_id));
+            }
+        }
+
+        const mappedNotices: AppNotice[] = notices.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            type: n.type,
+            isActive: n.is_active,
+            priority: n.priority,
+            authorId: n.author_id,
+            createdAt: n.created_at,
+            updatedAt: n.updated_at
+        }));
+
+        return { notices: mappedNotices, hiddenIds };
+    }
+
+    async getAllNoticesAdmin(): Promise<AppNotice[]> {
+        const { data, error } = await supabase
+            .from('app_notices')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) return [];
+
+        return data.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            type: n.type,
+            isActive: n.is_active,
+            priority: n.priority,
+            authorId: n.author_id,
+            createdAt: n.created_at,
+            updatedAt: n.updated_at
+        }));
+    }
+
+    async createAppNotice(notice: Partial<AppNotice>, authorId?: string): Promise<void> {
+        let userId = authorId;
+        if (!userId) {
+            const user = await this.getCurrentUser();
+            userId = user?.id;
+        }
+
+        if (!userId) throw new Error("Not logged in");
+
+        const { error } = await supabase.from('app_notices').insert({
+            title: notice.title,
+            content: notice.content,
+            type: notice.type || 'notice',
+            priority: notice.priority || 0,
+            is_active: notice.isActive ?? true,
+            author_id: userId
+        });
+
+        if (error) throw error;
+    }
+
+    async updateAppNotice(id: string, updates: Partial<AppNotice>): Promise<void> {
+        const { error } = await supabase
+            .from('app_notices')
+            .update({
+                title: updates.title,
+                content: updates.content,
+                type: updates.type,
+                priority: updates.priority,
+                is_active: updates.isActive,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) throw error;
+    }
+
+    async deleteAppNotice(id: string): Promise<void> {
+        const { error } = await supabase.from('app_notices').delete().eq('id', id);
+        if (error) throw error;
+    }
+
+    async hideAppNotice(userId: string, noticeId: string): Promise<void> {
+        const { error } = await supabase.from('user_hidden_notices').insert({
+            user_id: userId,
+            notice_id: noticeId
+        });
+        if (error) console.error("Failed to hide notice", error);
     }
 }
 

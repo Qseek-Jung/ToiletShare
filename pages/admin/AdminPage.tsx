@@ -13,8 +13,12 @@ import { DataManagement } from './DataManagement';
 import { CreditPolicyManagement } from './CreditPolicyManagement';
 import { CreditStatistics } from './CreditStatistics';
 import PushNotificationManagement from './PushNotificationManagement';
+import { VersionManagement } from './VersionManagement';
 import { BulkReviewPage } from './BulkReviewPage';
 import { BulkUploadPage } from './BulkUploadPage';
+import { BulkFileConversionPage } from './BulkFileConversionPage';
+import { AutoNotificationManagement } from './AutoNotificationManagement';
+import { NoticeManagement } from './NoticeManagement';
 
 interface AdminPageProps {
     user: User;
@@ -33,7 +37,7 @@ const PageContainer = ({ children, className = '' }: { children: React.ReactNode
 );
 
 export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrigger, setRefreshTrigger }) => {
-    const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'push-notifications'>('dashboard');
+    const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'toilets' | 'reports' | 'reviews' | 'ads' | 'data' | 'credit-management' | 'notifications' | 'version'>('dashboard');
     const [subSection, setSubSection] = useState<string>('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [returnToSection, setReturnToSection] = useState<string | null>(null);
@@ -99,14 +103,20 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                                         subSection === 'toilet-map' ? '📊 지역별 등록현황' :
                                             subSection === 'toilet-chart' ? '📊 화장실 통계' :
                                                 subSection === 'toilet-bulk' ? '📤 화장실 대량등록' :
-                                                    '🚽 화장실 리스트'
+                                                    subSection === 'bulk-conversion' ? '🛠️ 대량등록 파일변환' :
+                                                        '🚽 화장실 리스트'
                                     )}
                                     {activeSection === 'reports' && '🚨 신고 관리'}
                                     {activeSection === 'reviews' && '⭐ 리뷰 관리'}
                                     {activeSection === 'ads' && (
                                         subSection === 'ad-performance' ? '📊 광고 실적' : '📺 광고 정책'
                                     )}
-                                    {activeSection === 'push-notifications' && '🔔 푸시 알림'}
+                                    {activeSection === 'notifications' && (
+                                        subSection === 'auto-notifications' ? '📢 자동 알림 관리' :
+                                            subSection === 'notices' ? '📢 공지사항 관리' :
+                                                '🔔 푸시 알림 발송'
+                                    )}
+                                    {activeSection === 'version' && '📱 앱 버전 관리'}
                                     {activeSection === 'credit-management' && (
                                         subSection === 'credit-stats' ? '📊 크래딧 통계' : '💰 크래딧 정책'
                                     )}
@@ -149,6 +159,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                             <BulkReviewPage />
                         ) : subSection === 'toilet-bulk' ? (
                             <BulkUploadPage />
+                        ) : subSection === 'bulk-conversion' ? (
+                            <BulkFileConversionPage />
                         ) : (
                             <ToiletManagement
                                 subSection={subSection}
@@ -208,10 +220,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                     </>
                 )}
 
-                {activeSection === 'push-notifications' && (
-                    <PushNotificationManagement
-                        onRefresh={() => setRefreshTrigger(prev => prev + 1)}
-                    />
+                {activeSection === 'notifications' && (
+                    <>
+                        {subSection === 'auto-notifications' ? (
+                            <AutoNotificationManagement />
+                        ) : subSection === 'notices' ? (
+                            <NoticeManagement user={user} />
+                        ) : (
+                            <PushNotificationManagement
+                                onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+                            />
+                        )}
+                    </>
+                )}
+
+                {activeSection === 'version' && (
+                    <VersionManagement />
                 )}
 
                 {activeSection === 'data' && (

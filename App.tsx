@@ -3,18 +3,21 @@ import { Geolocation } from '@capacitor/geolocation';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
-import { User, Toilet, UserRole, Gender } from './types';
+import { User, Toilet, UserRole, Gender, UserStatus } from './types';
 import { INITIAL_USER } from './constants';
 import { dbSupabase as db } from './services/db_supabase';
 import { GOOGLE_CLIENT_ID, NAVER_CLIENT_ID, SUPERVISOR_EMAIL, KAKAO_JAVASCRIPT_KEY } from './config';
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
-import { calculateDistance } from './utils';
+
+import { PushNotifications } from '@capacitor/push-notifications';
+import { calculateDistance, compareVersions } from './utils';
 import { PoopIcon } from './components/Icons';
 import { AdManager } from './components/AdManager';
 import { WelcomeModal } from './components/WelcomeModal';
-import { MapPin, User as UserIcon, Plus, X, Star, ArrowRight, Lock, MessageSquareQuote, Loader2, Gift } from 'lucide-react';
+import { MapPin, User as UserIcon, Plus, X, Star, ArrowRight, Lock, MessageSquareQuote, Loader2, Gift, Bell } from 'lucide-react';
 import { AdBanner } from './components/AdBanner';
+import { UpdateModal } from './components/UpdateModal';
 import AdminPage from './pages/admin/AdminPage';
 import HomePage from './pages/HomePage';
 import DetailPage from './pages/DetailPage';
@@ -23,6 +26,7 @@ import SubmitPage from './pages/SubmitPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { getIPLocation, getLastLocation, saveLastLocation, getValidCachedLocation } from './services/location';
+import { notificationService } from './services/notification_service';
 import { UserDetailPage } from './pages/admin/UserDetailPage';
 import { WithdrawnUsersPage } from './pages/admin/WithdrawnUsersPage';
 import { LoginNoticeModal } from './components/LoginNoticeModal';
@@ -34,7 +38,10 @@ import { CreditGuide } from './pages/guide/CreditGuide';
 import { RegistrationGuide } from './pages/guide/RegistrationGuide';
 import { adMobService } from './services/admob';
 import { AppInfoPage } from './pages/AppInfoPage';
+import SettingsPage from './pages/SettingsPage';
 
+
+import { useTranslation } from 'react-i18next';
 
 // Declaration for Google Identity Services & Maps & Social Logins
 declare global {
@@ -48,6 +55,7 @@ declare global {
 }
 
 export default function App() {
+    const { t } = useTranslation();
     const [user, setUser] = useState<User>(INITIAL_USER);
     const [myLocation, setMyLocation] = useState<{ lat: number, lng: number }>({ lat: 37.5048, lng: 127.0884 });
     const [toilets, setToilets] = useState<Toilet[]>([]);
@@ -68,7 +76,11 @@ export default function App() {
     });
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isSubmitMapOpen, setIsSubmitMapOpen] = useState(false);
+    const [notificationToast, setNotificationToast] = useState<{ show: boolean, title: string, body: string, data?: any }>({ show: false, title: '', body: '' });
+
     const [showLoginModal, setShowLoginModal] = useState(false);
+    const [updateModal, setUpdateModal] = useState<{ show: boolean, type: 'force' | 'optional', storeUrl: string, message: string }>({ show: false, type: 'optional', storeUrl: '', message: '' });
+    const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
 
     const toggleDarkMode = () => {
@@ -95,6 +107,11 @@ export default function App() {
             sessionStorage.setItem('has_visited_session', 'true');
             console.log('📢 Visit Recorded:', deviceType);
         }
+
+        // Initialize Notification Service (Create Channels, etc)
+        // Check permissions and create channels essentially
+        notificationService.initialize().catch(e => console.error("Notification Service Init Failed", e));
+
     }, []);
 
     // Capture Referral Code from URL
@@ -105,6 +122,207 @@ export default function App() {
             console.log('🔗 Referral code captured:', refCode);
         }
     }, []);
+
+
+    // Version Check
+    useEffect(() => {
+        const checkVersion = async () => {
+            try {
+                if (Capacitor.getPlatform() === 'web') return;
+
+                const policy = await db.getVersionPolicy();
+                const info = await CapApp.getInfo();
+                const currentVersion = info.version; // e.g., "1.0.0"
+                const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
+                const config = policy[platform];
+
+                // console.log("[VersionCheck] App:", currentVersion, "Target:", config.latestVersion);
+
+                // 1. Force Update Check
+                if (compareVersions(config.minVersion, currentVersion) > 0) {
+                    setUpdateModal({
+                        show: true,
+                        type: 'force',
+                        storeUrl: config.storeUrl,
+                        message: config.updateMessage || '필수 업데이트가 있습니다.'
+                    });
+                    return;
+                }
+
+                // 2. Optional Update Check
+                if (compareVersions(config.latestVersion, currentVersion) > 0) {
+                    // Check if "Do not show again" is set
+                    const skippedDate = localStorage.getItem('update_skipped_date');
+                    const today = new Date().toISOString().split('T')[0];
+
+                    if (skippedDate !== today) {
+                        setUpdateModal({
+                            show: true,
+                            type: 'optional',
+                            storeUrl: config.storeUrl,
+                            message: config.updateMessage || '새로운 버전이 출시되었습니다.'
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Version check failed", e);
+            }
+        };
+        checkVersion();
+    }, []);
+
+    // Realtime Notification Listener (Supabase)
+    useEffect(() => {
+        if (!user.id) return;
+
+        // console.log("🔌 Setting up Realtime Notification listener for:", user.id);
+        const channel = db.supabase
+            .channel('realtime-notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${user.id}`
+                },
+                (payload) => {
+                    console.log('🔔 Realtime Notification Received:', payload);
+                    const newNotif = payload.new as any;
+
+                    // Show Toast immediately
+                    setNotificationToast({
+                        show: true,
+                        title: newNotif.title,
+                        body: newNotif.message,
+                        data: newNotif.data
+                    });
+
+                    // Auto hide
+                    setTimeout(() => {
+                        setNotificationToast(prev => prev.show ? { ...prev, show: false } : prev);
+                    }, 5000);
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    // console.log("🔌 Realtime Connected");
+                }
+            });
+
+        return () => {
+            db.supabase.removeChannel(channel);
+        };
+    }, [user.id]);
+
+
+    // Unified Native Initialization Sequence
+    const initializeNative = async () => {
+        if (Capacitor.getPlatform() === 'web') return;
+
+        try {
+            console.log('[NativeInit] 1. Requesting Location Permission...');
+            await Geolocation.requestPermissions();
+
+            console.log('[NativeInit] Waiting 1s before Push Permission...');
+            await new Promise(r => setTimeout(r, 1000)); // Delay between prompts
+
+            console.log('[NativeInit] 2. Requesting Push Permission...');
+            const pushPerm = await PushNotifications.requestPermissions();
+            if (pushPerm.receive === 'granted') {
+                console.log('[NativeInit] Push Granted. Registering...');
+                await PushNotifications.register();
+            }
+
+            console.log('[NativeInit] 3. Starting Private Service Init...');
+            await notificationService.initialize();
+
+            // Tiny delay before fetch
+            setTimeout(() => {
+                triggerLocationFetch();
+            }, 500);
+        } catch (e) {
+            console.error('[NativeInit] Failed:', e);
+        }
+    };
+
+    const triggerLocationFetch = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
+
+    useEffect(() => {
+        if (Capacitor.getPlatform() !== 'web') {
+            initializeNative();
+
+            // Push Listeners
+            PushNotifications.addListener('registration', async (token) => {
+                console.log('Push Token:', token.value);
+                localStorage.setItem('push_token', token.value);
+
+                // Sync with DB if user is logged in
+                const currentUser = await db.getCurrentUser();
+                if (currentUser) {
+                    await db.updateUserPushToken(currentUser.id, token.value);
+                    console.log('✅ Token synced to DB for user:', currentUser.id);
+                }
+            });
+
+            PushNotifications.addListener('registrationError', (error) => {
+                console.error('Push Registration Error:', error);
+            });
+
+            PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                console.log('Push Received:', notification);
+                // Show In-App Toast
+                setNotificationToast({
+                    show: true,
+                    title: notification.title || '알림',
+                    body: notification.body || '',
+                    data: notification.data
+                });
+
+                // Auto hide after 5 seconds
+                setTimeout(() => {
+                    setNotificationToast(prev => prev.show ? { ...prev, show: false } : prev);
+                }, 5000);
+            });
+
+            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+                console.log('Push Action:', notification);
+                const data = notification.notification.data;
+                if (data?.toiletId) {
+                    window.location.hash = `#/toilet/${data.toiletId}`;
+                } else {
+                    window.location.hash = '#/notifications';
+                }
+            });
+
+            return () => {
+                PushNotifications.removeAllListeners();
+            };
+        }
+    }, []);
+
+    // Sync Push Token
+    useEffect(() => {
+        const syncToken = async () => {
+            const token = localStorage.getItem('push_token');
+            if (user.id && user.role !== UserRole.GUEST && token) {
+                // Simple optimization: only update if different? 
+                // Since we don't always have current DB token in 'user' object accurately without fetch, 
+                // we can just upsert or define logic in DB service.
+                // db.savePushToken does a simple update.
+                if (user.pushToken !== token) {
+                    console.log(`[App] Syncing push token for user ${user.id}...`);
+                    await db.savePushToken(user.id, token);
+                    console.log('✅ Push Token Sync Attempt Finished');
+                } else {
+                    console.log('[App] Push token matches, skipping sync.');
+                }
+            }
+        };
+        syncToken();
+    }, [user.id, user.pushToken]); // Depend on user.id and known token
 
 
 
@@ -375,102 +593,125 @@ export default function App() {
     };
 
     // Initialize Data & Splash
+    // PHASE 2: Real-time Location Tracking (Continuous)
+    useEffect(() => {
+        let watchId: string | null = null;
+
+        const startWatching = async () => {
+            try {
+                // Initial high-accuracy fetch to get a baseline
+                const position = await Geolocation.getCurrentPosition({
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+                setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+                saveLastLocation(position.coords.latitude, position.coords.longitude);
+                console.log('✅ Baseline location acquired');
+
+                // Start continuous watching
+                watchId = await Geolocation.watchPosition({
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }, (pos, err) => {
+                    if (pos) {
+                        setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                        saveLastLocation(pos.coords.latitude, pos.coords.longitude);
+                        // console.log('📍 Real-time location updated');
+                    }
+                    if (err) console.warn('⚠️ watchPosition error:', err);
+                });
+            } catch (e) {
+                console.error('Failed to start location tracking:', e);
+            }
+        };
+
+        const handleAppStateChange = async (state: any) => {
+            if (state.isActive) {
+                console.log('🔄 App Resumed: Refreshing location...');
+                try {
+                    const position = await Geolocation.getCurrentPosition({
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    });
+                    setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+                    saveLastLocation(position.coords.latitude, position.coords.longitude);
+                } catch (e) {
+                    console.warn('Failed to refresh location on resume:', e);
+                }
+            }
+        };
+
+        const appStateListener = CapApp.addListener('appStateChange', handleAppStateChange);
+
+        if (Capacitor.getPlatform() !== 'web') {
+            startWatching();
+        }
+
+        return () => {
+            if (watchId) Geolocation.clearWatch({ id: watchId });
+            appStateListener.then(l => l.remove());
+        };
+    }, []);
+
+    // PHASE 1: Initial Splash & GPS Logic (Kept for initial load/splash dismissal logic)
     useEffect(() => {
         let isMounted = true;
-        const MIN_SPLASH_TIME = 2000; // Minimum 2 seconds
-        const GPS_TIMEOUT = 8000; // 8 seconds for GPS
-        const MAX_WAIT_TIME = 10000; // 10 seconds ultimate fallback
-
+        const MIN_SPLASH_TIME = 2000;
+        const MAX_WAIT_TIME = 10000;
         const startTime = Date.now();
 
-        // Helper to dismiss splash with minimum time check
         const finishSplash = () => {
             if (!isMounted) return;
             const elapsedTime = Date.now() - startTime;
             const remainingTime = Math.max(0, MIN_SPLASH_TIME - elapsedTime);
-
-            setTimeout(() => {
-                if (isMounted) setShowSplash(false);
-            }, remainingTime);
+            setTimeout(() => { if (isMounted) setShowSplash(false); }, remainingTime);
         };
 
-        const initLocation = async () => {
-            let hasReceivedGPS = false;
-
-            // PHASE 1: VALID CACHE (Show while waiting for GPS)
+        const initLocationOnce = async () => {
+            // PHASE 1: VALID CACHE
             const cached = getValidCachedLocation();
             if (cached) {
-                console.log('📦 Phase 1: Showing valid cached location (temporary)');
-                if (isMounted) {
-                    setMyLocation({ lat: cached.lat, lng: cached.lng });
-                    finishSplash(); // Show UI immediately while GPS loads
-                }
+                setMyLocation({ lat: cached.lat, lng: cached.lng });
+                finishSplash();
             }
 
-            // Start IP Location in background (Parallel)
-            const ipPromise = getIPLocation();
-
-            // PHASE 2: GPS (Always prioritized - Fresh location)
+            // PHASE 2: GPS
             try {
-                // Request permissions first (Best practice for native)
-                await Geolocation.checkPermissions();
-
                 const position = await Geolocation.getCurrentPosition({
                     enableHighAccuracy: true,
-                    timeout: 4000, // Reduced from 8000ms to 4000ms for faster fallback
+                    timeout: 8000,
                     maximumAge: 0
                 });
-
                 if (!isMounted) return;
-                hasReceivedGPS = true;
-                const { latitude, longitude } = position.coords;
-                console.log('✅ Phase 2: GPS Success - Fresh location acquired');
-
-                // ALWAYS update to GPS location (even if cache was shown)
-                setMyLocation({ lat: latitude, lng: longitude });
-                saveLastLocation(latitude, longitude);
-
-                // Finish splash if not already done
+                setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+                saveLastLocation(position.coords.latitude, position.coords.longitude);
                 if (!cached) finishSplash();
-
             } catch (err: any) {
-                console.warn(`⚠️ Phase 2: GPS Failed - ${err.message}`);
-
-                // PHASE 3: IP FALLBACK
-                if (!cached && !hasReceivedGPS) {
-                    console.log('🌐 Phase 3: Attempting IP-based location (waiting for background fetch)...');
-                    // Await the promise we started earlier
-                    const ipLoc = await ipPromise;
-
-                    if (isMounted && ipLoc) {
-                        console.log('📍 Phase 3: IP Location acquired');
-                        setMyLocation({ lat: ipLoc.lat, lng: ipLoc.lng });
-                        finishSplash();
-                    } else {
-                        console.log('❌ Phase 3 Failed: Using default location');
-                        finishSplash();
-                    }
-                } else if (cached) {
-                    console.log('📦 GPS failed but valid cache exists - keeping cached location');
+                console.warn(`⚠️ GPS Failed during init: ${err.message}`);
+                const lastKnown = getLastLocation();
+                if (lastKnown) {
+                    setMyLocation({ lat: lastKnown.lat, lng: lastKnown.lng });
                 }
+                finishSplash();
             }
         };
 
-        initLocation();
+        if (Capacitor.getPlatform() === 'web') {
+            initLocationOnce();
+        } else if (refreshTrigger > 0) {
+            initLocationOnce();
+        }
 
-        // Safety Timeout (Ultimate Fail-safe)
-        const safetyTimer = setTimeout(() => {
-            if (isMounted && showSplash) {
-                console.log("⏰ Ultimate Timeout: Forcing splash dismissal");
-                finishSplash();
-            }
-        }, MAX_WAIT_TIME);
+        const safetyTimer = setTimeout(() => { if (isMounted && showSplash) finishSplash(); }, MAX_WAIT_TIME);
 
         return () => {
             isMounted = false;
             clearTimeout(safetyTimer);
         };
-    }, []);
+    }, [refreshTrigger]);
 
     // Restore Login Session (Async)
     useEffect(() => {
@@ -568,9 +809,9 @@ export default function App() {
                         }
 
                         // 2. Check Deleted (Reactivation)
-                        if (targetUser.status === 'deleted') {
+                        if (targetUser.status === UserStatus.WITHDRAWN) {
                             console.log('♻️ Reactivating withdrawn user (Naver):', simulatedEmail);
-                            targetUser.status = 'active';
+                            targetUser.status = UserStatus.ACTIVE;
                             targetUser.deletedAt = undefined;
                             targetUser.withdrawalReason = undefined;
                             await db.saveUser(targetUser);
@@ -854,8 +1095,8 @@ export default function App() {
                             setLoginLoading(false);
                             return;
                         }
-                        if (targetUser.status === 'deleted') {
-                            targetUser.status = 'active';
+                        if (targetUser.status === UserStatus.WITHDRAWN) {
+                            targetUser.status = UserStatus.ACTIVE;
                             targetUser.deletedAt = undefined;
                             targetUser.withdrawalReason = undefined;
                             await db.saveUser(targetUser);
@@ -866,6 +1107,7 @@ export default function App() {
                         localStorage.setItem('currentUser', JSON.stringify(targetUser));
                         setShowLoginModal(false);
                         window.location.hash = '#/';
+                        window.location.reload(); // Reload to refresh state cleanly
                     }
                 } else {
                     console.error("Google Auth credentials missing");
@@ -964,8 +1206,8 @@ export default function App() {
                                 setLoginLoading(false);
                                 return;
                             }
-                            if (targetUser.status === 'deleted') {
-                                targetUser.status = 'active';
+                            if (targetUser.status === UserStatus.WITHDRAWN) {
+                                targetUser.status = UserStatus.ACTIVE;
                                 targetUser.deletedAt = undefined;
                                 await db.saveUser(targetUser);
                                 alert("계정이 복구되었습니다.");
@@ -1003,20 +1245,27 @@ export default function App() {
             console.error("Stack:", error?.stack);
             console.error("Raw:", error);
 
-            let errorMessage = "네이버 로그인 실패\n\n";
+            // Extracted cancel check
+            const isCancel = error?.message === 'user_cancel' || error?.code === '-1' || error?.code === -1;
 
-            // Try to extract any available info
-            if (error?.message) errorMessage += `Message: ${error.message}\n`;
-            if (error?.code) errorMessage += `Code: ${error.code}\n`;
-            if (error?.constructor?.name && error.constructor.name !== 'Object') {
-                errorMessage += `Type: ${error.constructor.name}\n`;
+            if (isCancel) {
+                console.log("Naver login cancelled by user.");
+            } else {
+                let errorMessage = "네이버 로그인 실패\n\n";
+
+                // Try to extract any available info
+                if (error?.message) errorMessage += `Message: ${error.message}\n`;
+                if (error?.code) errorMessage += `Code: ${error.code}\n`;
+                if (error?.constructor?.name && error.constructor.name !== 'Object') {
+                    errorMessage += `Type: ${error.constructor.name}\n`;
+                }
+
+                // Capture ALL properties including non-enumerable
+                const allProps = JSON.stringify(error, Object.getOwnPropertyNames(error), 2);
+                errorMessage += `\n상세정보:\n${allProps}`;
+
+                alert(errorMessage);
             }
-
-            // Capture ALL properties including non-enumerable
-            const allProps = JSON.stringify(error, Object.getOwnPropertyNames(error), 2);
-            errorMessage += `\n상세정보:\n${allProps}`;
-
-            alert(errorMessage);
             setLoginLoading(false);
         } finally {
             if (Capacitor.isNativePlatform()) {
@@ -1199,12 +1448,12 @@ export default function App() {
             }
 
             // 2. Check Deleted (Reactivation)
-            if (targetUser.status === 'deleted') {
+            if (targetUser.status === UserStatus.WITHDRAWN) {
                 console.log(`♻️ Reactivating withdrawn user (${provider}):`, email);
-                targetUser.status = 'active';
+                targetUser.status = UserStatus.ACTIVE;
                 targetUser.deletedAt = undefined;
                 await db.saveUser(targetUser);
-                alert("계정이 복구되었습니다. 환영합니다!");
+                alert(t('account_restored', "계정이 복구되었습니다.") + " " + t('welcome_back', "환영합니다!"));
             }
 
             // Existing user - ensure nickname exists
@@ -1272,8 +1521,8 @@ export default function App() {
                 return;
             }
 
-            if (targetUser.status === 'deleted') {
-                targetUser.status = 'active';
+            if (targetUser.status === UserStatus.WITHDRAWN) {
+                targetUser.status = UserStatus.ACTIVE;
                 targetUser.deletedAt = undefined;
                 targetUser.withdrawalReason = undefined;
                 await db.saveUser(targetUser);
@@ -1481,61 +1730,7 @@ export default function App() {
 
 
     const CurrentPage = (() => {
-        // If Hash is empty or #/, show Home. No Login Page as default.
-        if (currentHash === '' || currentHash === '#/') {
-            return (
-                <HomePage
-                    user={user}
-                    myLocation={myLocation}
-                    filteredToilets={filteredToilets}
-                    onToiletClick={handleToiletClick}
-                    onFetchNewArea={fetchToiletsInRadius}
-                    initialMapState={lastMapState}
-                    onMapChange={setLastMapState}
-                    darkMode={darkMode}
-                    onLoginRequired={() => setShowLoginModal(true)}
-                    showList={isHomeListOpen}
-                    onToggleList={setIsHomeListOpen}
-                />
-            );
-        }
-        if (currentHash.startsWith('#/toilet')) {
-            const toiletId = currentHash.split('/toilet/')[1];
-            const toilet = toilets.find(t => t.id === toiletId) || fetchedToilet;
-
-            if (!toilet) {
-                // If still loading specific toilet?
-                // Simple fallback:
-                return <div className="p-8 text-center flex flex-col items-center justify-center h-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                    <p>화장실 정보를 불러오는 중입니다...</p>
-                </div>;
-            }
-            return (
-                <DetailPage
-                    user={user}
-                    toilet={toilet}
-                    myLocation={myLocation}
-                    bookmarks={bookmarks}
-                    unlockedToilets={unlockedToilets}
-                    onBack={() => {
-                        if (window.history.state || window.history.length > 1) {
-                            window.history.back();
-                        } else {
-                            window.location.hash = '#/';
-                        }
-                    }}
-                    onBookmark={(id) => toggleBookmark(id)}
-                    onUnlock={(method) => handleUnlock(toilet.id, method)}
-                    onShowLogin={() => setShowLoginModal(true)}
-                    onRefresh={() => setRefreshTrigger(prev => prev + 1)}
-                    onUserUpdate={setUser}
-                    darkMode={darkMode}
-                    requestAd={requestAd}
-                    onModalStateChange={setIsDetailModalOpen}
-                />
-            );
-        }
+        // 1. Exclusive Pages (Replace Home)
         if (currentHash === '#/my') {
             return (
                 <MyPage
@@ -1550,11 +1745,10 @@ export default function App() {
                     darkMode={darkMode}
                     onToggleDarkMode={toggleDarkMode}
                     onContactModalChange={setIsContactModalOpen}
+                    onNoticeModalChange={setIsNoticeModalOpen}
                 />
             );
         }
-
-
 
         if (currentHash === '#/submit') {
             return (
@@ -1568,7 +1762,6 @@ export default function App() {
                     darkMode={darkMode}
                     onMapModeChange={setIsSubmitMapOpen}
                 />
-
             );
         }
         if (currentHash.startsWith('#/edit/')) {
@@ -1604,23 +1797,9 @@ export default function App() {
                 />
             );
         }
-        if (currentHash.startsWith('#/admin')) {
-            return user.role === UserRole.ADMIN ? (
+        if (currentHash.startsWith('#/admin') && user.role === UserRole.ADMIN) {
+            return (
                 <AdminPage user={user} setUser={setUser} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} />
-            ) : (
-                <HomePage
-                    user={user}
-                    myLocation={myLocation}
-                    filteredToilets={filteredToilets}
-                    onToiletClick={handleToiletClick}
-                    onFetchNewArea={fetchToiletsInRadius}
-                    initialMapState={lastMapState}
-                    onMapChange={setLastMapState}
-                    darkMode={darkMode}
-                    onLoginRequired={() => setShowLoginModal(true)}
-                    showList={isHomeListOpen}
-                    onToggleList={setIsHomeListOpen}
-                />
             );
         }
         if (currentHash === '#/terms') {
@@ -1642,33 +1821,128 @@ export default function App() {
             return <RegistrationGuide />;
         }
         if (currentHash === '#/notifications') {
-            return <NotificationPage />;
+            return <NotificationPage user={user} onRefreshUser={() => {
+                db.getUserByEmail(user.email).then(u => u && setUser(u));
+            }} onNoticeModalChange={setIsNoticeModalOpen} />;
         }
         if (currentHash === '#/app-info') {
             return <AppInfoPage user={user} onBack={() => window.history.back()} />;
         }
+        if (currentHash === '#/settings') {
+            return <SettingsPage onBack={() => window.history.back()} darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />;
+        }
 
-        // Default Route (Home) - Checks for #/toilet/:id pattern to deep link
+        // 2. Home & Detail Overlay Logic
+        // Handles: '', '#/', '#/toilet/:id', and unmatched routes (Home default)
+
+        let detailOverlay = null;
         let targetToiletId = null;
-        if (currentHash.startsWith('#/toilet/')) {
-            targetToiletId = currentHash.split('#/toilet/')[1];
+
+        if (currentHash.startsWith('#/toilet')) {
+            const parts = currentHash.split('/toilet/');
+            if (parts.length > 1) {
+                targetToiletId = parts[1];
+                const toilet = toilets.find(t => t.id === targetToiletId) || fetchedToilet;
+
+                if (!toilet) {
+                    detailOverlay = (
+                        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+                            <div className="p-8 text-center flex flex-col items-center justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                                <p>화장실 정보를 불러오는 중입니다...</p>
+                            </div>
+                        </div>
+                    );
+                } else {
+                    detailOverlay = (
+                        <DetailPage
+                            user={user}
+                            toilet={toilet}
+                            myLocation={myLocation}
+                            bookmarks={bookmarks}
+                            unlockedToilets={unlockedToilets}
+                            onBack={() => {
+                                if (window.history.state || window.history.length > 1) {
+                                    window.history.back();
+                                } else {
+                                    window.location.hash = '#/';
+                                }
+                            }}
+                            onBookmark={(id) => toggleBookmark(id)}
+                            onUnlock={(method) => handleUnlock(toilet.id, method)}
+                            onShowLogin={() => setShowLoginModal(true)}
+                            onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+                            onUserUpdate={setUser}
+                            darkMode={darkMode}
+                            requestAd={requestAd}
+                            onModalStateChange={setIsDetailModalOpen}
+                        />
+                    );
+                }
+            }
         }
 
         return (
-            <HomePage
-                user={user}
-                myLocation={myLocation}
-                filteredToilets={filteredToilets}
-                onToiletClick={handleToiletClick}
-                onFetchNewArea={fetchToiletsInRadius}
-                initialMapState={lastMapState}
-                onMapChange={setLastMapState}
-                darkMode={darkMode}
-                onLoginRequired={() => setShowLoginModal(true)}
-                showList={isHomeListOpen}
-                onToggleList={setIsHomeListOpen}
-                targetToiletId={targetToiletId}
-            />
+            <>
+                <HomePage
+                    user={user}
+                    myLocation={myLocation}
+                    filteredToilets={filteredToilets}
+                    onToiletClick={handleToiletClick}
+                    onFetchNewArea={fetchToiletsInRadius}
+                    initialMapState={lastMapState}
+                    onMapChange={setLastMapState}
+                    darkMode={darkMode}
+                    onLoginRequired={() => setShowLoginModal(true)}
+                    showList={isHomeListOpen}
+                    onToggleList={setIsHomeListOpen}
+                    targetToiletId={targetToiletId || undefined}
+                    onRefreshLocation={async () => triggerLocationFetch()}
+                />
+                {detailOverlay}
+                {/* In-App Notification Toast */}
+                {notificationToast.show && (
+                    <div
+                        onClick={async () => {
+                            const notifId = notificationToast.data?.id;
+                            if (notifId) {
+                                try {
+                                    await db.deleteNotifications([notifId]);
+                                    // Refresh user to update unread count if visible
+                                    db.getUserByEmail(user.email).then(u => u && setUser(u));
+                                } catch (e) {
+                                    console.error("Failed to delete toast notification", e);
+                                }
+                            }
+
+                            if (notificationToast.data?.toiletId) {
+                                window.location.hash = `#/toilet/${notificationToast.data.toiletId}`;
+                            } else {
+                                window.location.hash = '#/notifications';
+                            }
+                            setNotificationToast({ ...notificationToast, show: false });
+                        }}
+                        className="fixed top-4 left-4 right-4 z-[9999] bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 shadow-xl shadow-blue-500/10 flex gap-3 animate-in fade-in slide-in-from-top-4 duration-300"
+                    >
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Bell className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm text-gray-900 dark:text-gray-100 truncate">{notificationToast.title}</h4>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1">{notificationToast.body}</p>
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setNotificationToast({ ...notificationToast, show: false });
+                            }}
+                            className="p-1 self-start text-gray-400"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </>
         );
     })();
 
@@ -1686,6 +1960,7 @@ export default function App() {
 
             // 2. Close Page-specific Modals / Overlays
             if (isDetailModalOpen) { setIsDetailModalOpen(false); return; }
+            if (isNoticeModalOpen) { setIsNoticeModalOpen(false); window.dispatchEvent(new CustomEvent('closeNoticeDetail')); return; }
             if (isContactModalOpen) { setIsContactModalOpen(false); return; }
             if (isSubmitMapOpen) { setIsSubmitMapOpen(false); return; }
             if (isHomeListOpen) { setIsHomeListOpen(false); return; }
@@ -1724,20 +1999,20 @@ export default function App() {
                                 <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/30 rounded-full flex items-center justify-center mb-4">
                                     <PoopIcon className="w-10 h-10 text-primary-500" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">앱을 종료하시겠습니까?</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">확인을 누르시면 대똥단결 앱이 종료됩니다.</p>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('exit_modal_title', '앱을 종료하시겠습니까?')}</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">{t('exit_modal_desc', '확인을 누르시면 대똥단결 앱이 종료됩니다.')}</p>
                                 <div className="flex gap-3 w-full">
                                     <button
                                         onClick={() => setShowExitModal(false)}
                                         className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                     >
-                                        취소
+                                        {t('exit_modal_cancel', '취소')}
                                     </button>
                                     <button
                                         onClick={() => CapApp.exitApp()}
                                         className="flex-1 py-3 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 shadow-lg shadow-primary-500/30 transition-all hover:scale-[1.02] active:scale-95"
                                     >
-                                        종료
+                                        {t('exit_modal_confirm', '종료')}
                                     </button>
                                 </div>
                             </div>
@@ -1763,9 +2038,9 @@ export default function App() {
                             )}
                         </div>
                         <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-widest drop-shadow-md mb-3">대똥단결</h1>
-                        <p className="text-lg md:text-2xl font-bold opacity-90 tracking-tight">급똥으로 대동단결</p>
-                        <div className="absolute bottom-10 text-xs font-medium opacity-60">
-                            © RNDUS Co., Ltd.
+                        <p className="text-lg md:text-2xl font-bold opacity-90 tracking-tight">{t('splash_subtitle', '급똥으로 대동단결')}</p>
+                        <div className="absolute bottom-16 text-xs font-medium opacity-60">
+                            Powered by Q
                         </div>
                     </div>
                 )}
@@ -1773,21 +2048,21 @@ export default function App() {
                 <div className="flex-1 w-full relative h-full">{!showSplash && CurrentPage}</div>
 
 
-                {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && (
+                {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && !isNoticeModalOpen && (
                     <>
                         {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
-                        {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my') && (
-                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+90px)]'}`}>
+                        {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
+                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+78px)]'}`}>
                                 <div className="pointer-events-auto w-full max-w-md overflow-hidden">
-                                    <AdBanner position="bottom" maxHeight={64} minRatio={4.0} className="w-full h-full shadow-lg" />
+                                    <AdBanner position="bottom" maxHeight={74} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
                                 </div>
                             </div>
                         )}
 
                         {!isSubmitMapOpen && (
-                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[calc(env(safe-area-inset-bottom)+20px)]">
+                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[calc(env(safe-area-inset-bottom)+8px)]">
                                 <div className="w-full max-w-md flex justify-around items-center px-2">
-                                    <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">홈</span></button>
+                                    <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
                                     <button
                                         onClick={() => {
                                             if (currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) return; // Disable if on submit page or contact modal open
@@ -1807,7 +2082,7 @@ export default function App() {
                                             <Plus className="w-8 h-8 drop-shadow-md" />
                                         </div>
                                         <span className={`text-[10px] font-bold mt-2 ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'text-text-muted' : 'text-urgency'
-                                            }`}>등록</span>
+                                            }`}>{t('nav_register', '등록')}</span>
                                         {(user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) && (
                                             <div className="absolute inset-0 bg-transparent" />
                                         )}
@@ -1822,7 +2097,7 @@ export default function App() {
                                         }}
                                         className={`flex flex-col items-center p-2 ${currentHash === '#/my' ? 'text-primary-500' : 'text-text-muted'}`}
                                     >
-                                        <UserIcon className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">내 정보</span>
+                                        <UserIcon className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_my_info', '내 정보')}</span>
                                     </button>
                                 </div>
                             </nav>
@@ -1896,15 +2171,15 @@ export default function App() {
                             {/* Fixed Header */}
                             <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border dark:border-border-dark">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold text-text-main dark:text-text-light">화장실 선택</h3>
+                                    <h3 className="text-xl font-bold text-text-main dark:text-text-light">{t('toilet_selection_title', '화장실 선택')}</h3>
                                     <button onClick={() => setSelectionModalData({ show: false, toilets: [] })} className="p-2 bg-background dark:bg-background-dark rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                                         <X className="w-5 h-5 text-text-muted" />
                                     </button>
                                 </div>
-                                <p className="text-sm text-text-muted mb-3">이 주소에 여러 개의 화장실이 있습니다.<br />원하는 화장실을 선택해주세요.</p>
+                                <p className="text-sm text-text-muted mb-3" dangerouslySetInnerHTML={{ __html: t('toilet_selection_desc', '이 주소에 여러 개의 화장실이 있습니다.<br />원하는 화장실을 선택해주세요.') }} />
                                 <div className="text-xs font-bold text-text-muted bg-background dark:bg-background-dark p-2 rounded-lg flex justify-between items-center">
                                     <span className="truncate">📍 {selectionModalData.toilets[0]?.address}</span>
-                                    <span className="ml-2 shrink-0">{user.role === UserRole.GUEST ? '비회원' : (user.gender === Gender.MALE ? '남성' : (user.gender === Gender.FEMALE ? '여성' : ''))}</span>
+                                    <span className="ml-2 shrink-0">{user.role === UserRole.GUEST ? t('anonymous', '비회원') : (user.gender === Gender.MALE ? t('gender_male', '남성') : (user.gender === Gender.FEMALE ? t('gender_female', '여성') : ''))}</span>
                                 </div>
                             </div>
 
@@ -1956,6 +2231,20 @@ export default function App() {
                 )}
 
                 {/* LOGIN MODAL */}
+                {updateModal.show && (
+                    <UpdateModal
+                        type={updateModal.type}
+                        storeUrl={updateModal.storeUrl}
+                        message={updateModal.message}
+                        onClose={() => {
+                            // Skip for today
+                            const today = new Date().toISOString().split('T')[0];
+                            localStorage.setItem('update_skipped_date', today);
+                            setUpdateModal(prev => ({ ...prev, show: false }));
+                        }}
+                    />
+                )}
+
                 {showLoginModal && (
                     <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
                         <div className="relative bg-surface dark:bg-surface-dark rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 max-h-[85vh] overflow-y-auto ring-1 ring-border/50">
@@ -1970,7 +2259,7 @@ export default function App() {
                             <div className="flex flex-col items-center">
                                 <img src="/images/app/ddong-icon.png" alt="Login Icon" className="w-24 h-24 md:w-32 md:h-32 object-contain mb-0" />
                                 <h2 className="text-2xl font-black text-primary mb-3">대똥단결</h2>
-                                <h3 className="text-xl font-bold text-text-main dark:text-text-light mb-2">로그인이 필요합니다</h3>
+                                <h3 className="text-xl font-bold text-text-main dark:text-text-light mb-2">{t('login_required_title', '로그인이 필요합니다')}</h3>
 
                             </div>
 
@@ -1983,51 +2272,51 @@ export default function App() {
                                     ) : (
                                         <>
                                             <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
-                                            <span>Google로 시작하기</span>
+                                            <span>{t('login_google', 'Google로 시작하기')}</span>
                                         </>
                                     )}
                                 </button>
 
                                 <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                    <span className="font-black text-lg">N</span> Naver로 시작하기
+                                    <span className="font-black text-lg">N</span> {t('login_naver', 'Naver로 시작하기')}
                                 </button>
 
                                 <button onClick={performKakaoLogin} className="w-full py-4 bg-[#FEE500] text-[#000000] rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                    <MessageSquareQuote className="w-5 h-5 fill-current" /> Kakao로 시작하기
+                                    <MessageSquareQuote className="w-5 h-5 fill-current" /> {t('login_kakao', 'Kakao로 시작하기')}
                                 </button>
 
-                                {/* Manual Email Login (Test) */}
-                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                    <p className="text-xs text-gray-400 mb-2">테스트용 이메일 로그인</p>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="email"
-                                            value={manualLoginEmail}
-                                            onChange={(e) => setManualLoginEmail(e.target.value)}
-                                            placeholder="이메일 입력"
-                                            className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
-                                        />
-                                        <button
-                                            onClick={handleManualEmailLogin}
-                                            disabled={loginLoading}
-                                            className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold whitespace-nowrap"
-                                        >
-                                            접속
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Test Buttons */}
-                                {/* Test Buttons - Refactored to Selection Modal */}
-                                {/* Test Buttons - Only show on Localhost */}
-                                {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                {/* Test Buttons & Manual Login - Only show on Localhost Web (Not Native) */}
+                                {(!Capacitor.isNativePlatform() && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
                                     <>
-                                        <button onClick={handleOpenTestAccountModal} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 shadow-sm border border-indigo-100 transition-colors flex items-center justify-center gap-2">
-                                            <span className="text-xl">🧪</span> 테스트 계정 선택 (전체 목록)
-                                        </button>
-                                        <button onClick={() => handleTestLogin(Gender.MALE, UserRole.ADMIN)} className="w-full py-3 bg-gray-800 dark:bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-900 shadow-lg border border-transparent dark:border-gray-700">
-                                            🛡️ 관리자 테스트
-                                        </button>
+                                        {/* Manual Email Login (Test) */}
+                                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                            <p className="text-xs text-gray-400 mb-2">테스트용 이메일 로그인</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="email"
+                                                    value={manualLoginEmail}
+                                                    onChange={(e) => setManualLoginEmail(e.target.value)}
+                                                    placeholder="이메일 입력"
+                                                    className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
+                                                />
+                                                <button
+                                                    onClick={handleManualEmailLogin}
+                                                    disabled={loginLoading}
+                                                    className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold whitespace-nowrap"
+                                                >
+                                                    접속
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-2 space-y-2">
+                                            <button onClick={handleOpenTestAccountModal} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 shadow-sm border border-indigo-100 transition-colors flex items-center justify-center gap-2">
+                                                <span className="text-xl">🧪</span> 테스트 계정 선택 (전체 목록)
+                                            </button>
+                                            <button onClick={() => handleTestLogin(Gender.MALE, UserRole.ADMIN)} className="w-full py-3 bg-gray-800 dark:bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-900 shadow-lg border border-transparent dark:border-gray-700">
+                                                🛡️ 관리자 테스트
+                                            </button>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -2195,6 +2484,43 @@ export default function App() {
                             // No need to save to LS/DB here as component handles it, just update local state to refresh UI
                         }}
                     />
+                )}
+
+                {/* Notification Toast */}
+                {notificationToast.show && (
+                    <div
+                        className="fixed top-4 left-4 right-4 z-[9999] animate-in slide-in-from-top-2 cursor-pointer"
+                        onClick={async () => {
+                            const notifId = notificationToast.data?.id;
+                            if (notifId) {
+                                try {
+                                    await db.deleteNotifications([notifId]);
+                                    db.getUserByEmail(user.email).then(u => u && setUser(u));
+                                } catch (e) {
+                                    console.error("Failed to delete toast notification", e);
+                                }
+                            }
+
+                            if (notificationToast.data?.toiletId) {
+                                window.location.hash = `#/toilet/${notificationToast.data.toiletId}`;
+                            } else {
+                                window.location.hash = '#/notifications';
+                            }
+                            setNotificationToast(prev => ({ ...prev, show: false }));
+                        }}
+                    >
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 flex items-center gap-4 border border-gray-100 dark:border-gray-700 ring-1 ring-black/5">
+                            <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center shrink-0">
+                                <Bell className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-0.5">{notificationToast.title}</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                                    {notificationToast.body}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </GoogleMapsProvider>

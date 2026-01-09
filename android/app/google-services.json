@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "889382704312-qu4t8fvki80vjfp1euoora8thtrn079t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toiletshare.app",
+            "certificate_hash": "d7ce69d3ec895ba06daedde77f6964ed29cdbb68"
+          }
+        },
+        {
           "client_id": "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -1,0 +1,7 @@
+{
+  "name": "대똥단결",
+  "description": "Find nearby restrooms, unlock passwords with credits, and unite in relief.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

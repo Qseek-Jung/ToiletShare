@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "889382704312",
+    "project_id": "toilet20251202",
+    "storage_bucket": "toilet20251202.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:889382704312:android:a00e096ae29da00b76904d",
+        "android_client_info": {
+          "package_name": "com.toiletshare.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "889382704312-4frsfqueqfjtgtbfjb92ffqciqrdv9j9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.toiletshare.app",
+            "certificate_hash": "e43dbc05453b1187bfd4969aba6ce22c204fcef9"
+          }
+        },
+        {
+          "client_id": "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoewZ3hiFNYHk6Mp7r0re1eFj5bVbiDQc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

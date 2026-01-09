@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { adMobService } from '../services/admob';
-import { X, ExternalLink } from 'lucide-react';
+import { X } from 'lucide-react';
 import { dbSupabase } from '../services/db_supabase';
+
+// Helper for YouTube API
+declare global {
+    interface Window {
+        YT: any;
+        onYouTubeIframeAPIReady: () => void;
+    }
+}
 
 interface AdManagerProps {
     isOpen: boolean;
@@ -13,10 +21,15 @@ interface AdManagerProps {
 export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward' }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [showYoutube, setShowYoutube] = useState(false);
-    const [youtubeUrl, setYoutubeUrl] = useState<string | null>(null);
+    const [videoId, setVideoId] = useState<string | null>(null);
     const [canClose, setCanClose] = useState(false);
     const [timeLeft, setTimeLeft] = useState(adType === 'interstitial' ? 5 : 15);
+    // Track actual playing state for accurate timing
+    const [isPlaying, setIsPlaying] = useState(false);
+
     const initialTimeRef = useRef(adType === 'interstitial' ? 5 : 15);
+    const playerRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     // Reset state on open
     useEffect(() => {
@@ -26,17 +39,27 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             setShowYoutube(false);
             setCanClose(false);
             setTimeLeft(duration);
+            setIsPlaying(false);
             initialTimeRef.current = duration;
-            setYoutubeUrl(null);
+            setVideoId(null);
 
             runAdLogic();
+        } else {
+            // Cleanup on close
+            if (playerRef.current) {
+                try {
+                    playerRef.current.destroy();
+                } catch (e) { /* ignore */ }
+                playerRef.current = null;
+            }
         }
     }, [isOpen, adType]);
 
-    // Timer for YouTube Interstitial
+    // Timer logic: Only tick when video is actually playing
     useEffect(() => {
         let timer: any;
-        if (showYoutube && timeLeft > 0) {
+        // Only count down if shown, video is playing, and time remains
+        if (showYoutube && isPlaying && timeLeft > 0) {
             timer = setInterval(() => {
                 setTimeLeft(prev => prev - 1);
             }, 1000);
@@ -44,7 +67,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             setCanClose(true);
         }
         return () => clearInterval(timer);
-    }, [showYoutube, timeLeft]);
+    }, [showYoutube, isPlaying, timeLeft]);
 
     const runAdLogic = async () => {
         try {
@@ -56,17 +79,15 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 const url = validUrls.length > 0 ? validUrls[Math.floor(Math.random() * validUrls.length)] : null;
 
                 if (url) {
-                    // Robust YouTube ID extraction
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
                     const match = url.match(regExp);
                     const vId = (match && match[2].length === 11) ? match[2] : null;
 
                     if (vId) {
-                        // Use youtube-nocookie for maximum compatibility and to avoid some redirect issues
-                        const embedUrl = `https://www.youtube-nocookie.com/embed/${vId}?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&modestbranding=1&rel=0&iv_load_policy=3&widget_referrer=${encodeURIComponent(window.location.href)}`;
-                        setYoutubeUrl(embedUrl);
+                        setVideoId(vId);
                         setShowYoutube(true);
                         setIsLoading(false);
+                        // Initialize player logic is handled by effect dependent on videoId
                     } else {
                         console.warn("YouTube ID extraction failed for URL:", url);
                         handleAdMobFallback(config.testMode);
@@ -86,10 +107,10 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     const handleAdMobFallback = async (testMode: boolean) => {
         try {
             if (adType === 'reward') {
-                const result = await adMobService.showRewardVideo(testMode);
+                const result = await adMobService.showRewardVideo();
                 if (result && onReward) onReward();
             } else {
-                await adMobService.showInterstitial(testMode);
+                await adMobService.showInterstitial();
             }
         } catch (error) {
             console.error("AdMob Playback Failed:", error);
@@ -103,9 +124,89 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         onClose();
     };
 
+    // Load YouTube API and Initialize Player
+    useEffect(() => {
+        if (!showYoutube || !videoId) return;
+
+        const initPlayer = () => {
+            if (!containerRef.current) return;
+
+            // If API not loaded
+            if (!window.YT) {
+                const tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                const firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+                window.onYouTubeIframeAPIReady = () => {
+                    createPlayer(videoId);
+                };
+            } else {
+                createPlayer(videoId);
+            }
+        };
+
+        const createPlayer = (id: string) => {
+            // Avoid duplicates
+            if (playerRef.current) return;
+
+            // The API replaces the node with iframe, so we need a stable ref target
+            playerRef.current = new window.YT.Player('youtube-player-container', {
+                height: '100%',
+                width: '100%',
+                videoId: id,
+                playerVars: {
+                    'autoplay': 1, // Auto play
+                    'controls': 0, // No controls
+                    'disablekb': 1,
+                    'fs': 0,
+                    'monitor': 0, // deprecate modestbranding?
+                    'modestbranding': 1,
+                    'playsinline': 1,
+                    'rel': 0,
+                    'showinfo': 0,
+                    'origin': window.location.origin
+                },
+                events: {
+                    'onReady': (event: any) => {
+                        event.target.playVideo();
+                    },
+                    'onStateChange': (event: any) => {
+                        // YT.PlayerState.PLAYING = 1
+                        if (event.data === 1) {
+                            setIsPlaying(true);
+                        } else {
+                            // Pause timer if buffering or paused
+                            setIsPlaying(false);
+                            // Ended = 0
+                            if (event.data === 0) {
+                                setCanClose(true);
+                            }
+                        }
+                    },
+                    'onError': (e: any) => {
+                        console.error("YT Player Error", e);
+                        // Fallback logic if video fails to play?
+                        // Just allow close after safety timeout?
+                        setCanClose(true);
+                    }
+                }
+            });
+        };
+
+        initPlayer();
+
+        // Safety timeout: if player API completely fails or blocked, enable close after X sec
+        const safetyTimer = setTimeout(() => {
+            if (!isPlaying) setCanClose(true); // Allow close if stuck
+        }, 8000);
+
+        return () => clearTimeout(safetyTimer);
+    }, [showYoutube, videoId]);
+
+
     if (!isOpen) return null;
 
-    // Loading State (Spinner) - show clearly while decisions are being made
     if (isLoading) {
         return (
             <div className="fixed inset-0 z-[3000] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -117,7 +218,6 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         );
     }
 
-    // fallback if no youtube but loading finished (shouldn't happen with the fallbacks above)
     if (!showYoutube) return null;
 
     return (
@@ -134,7 +234,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     {canClose ? (
                         <button
                             onClick={handleYoutubeClose}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300"
+                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300 pointer-events-auto cursor-pointer"
                         >
                             <span className="text-sm font-black">{adType === 'reward' ? '리워드 지급됨' : '닫기'}</span>
                             <div className="w-px h-3 bg-white/30 mx-1" />
@@ -144,22 +244,24 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
                             <span className="text-white text-sm font-black tabular-nums">{timeLeft}</span>
                             <div className="w-px h-3 bg-white/20" />
-                            <span className="text-white/70 text-xs font-medium">광고 중...</span>
+                            <span className="text-white/70 text-xs font-medium">
+                                {!isPlaying ? "로딩/대기 중..." : "광고 중..."}
+                            </span>
                         </div>
                     )}
                 </div>
 
                 {/* Full Width Video Container */}
                 <div className="w-full h-full flex items-center justify-center relative">
-                    <div className="w-full aspect-[9/16] bg-black relative overflow-hidden">
-                        <iframe
-                            key={youtubeUrl}
-                            src={youtubeUrl || undefined}
-                            className="absolute inset-0 w-full h-full pointer-events-none"
-                            frameBorder="0"
-                            allow="autoplay; encrypted-media"
-                            allowFullScreen
-                        ></iframe>
+                    <div ref={containerRef} className="w-full aspect-[9/16] bg-black relative overflow-hidden flex items-center justify-center">
+                        {/* The Player API will replace this div with the iframe */}
+                        <div id="youtube-player-container" className="w-full h-full absolute inset-0"></div>
+
+                        {!isPlaying && !canClose && (
+                            <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
+                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            </div>
+                        )}
 
                         {/* Progress Bar (Bottom of Video Frame) */}
                         {!canClose && (
@@ -170,6 +272,9 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                                 />
                             </div>
                         )}
+
+                        {/* Overlay to block clicks on video (optional, but good for Ad feel) */}
+                        <div className="absolute inset-0 z-10 bg-transparent" />
                     </div>
                 </div>
             </div>

@@ -194,37 +194,41 @@ export const AdminToiletUpload: React.FC<AdminToiletUploadProps> = ({ onSuccess,
                 // Let's copy the header detection part briefly since it was robust.
 
                 // --- Simple Header Detection reused ---
-                const headerRow = rows.length > 0 ? rows[0] : []; // Actually rows[0] from parseCSV is data if we sliced. 
-                // parseCSV implementation in original code: "return result.slice(1)".
-                // So I need to parse the first line manually or just trust index. 
-                // Wait, original parseCSV logic separated header? 
-                // Ah, code said: "result[0] is header, rows start from index 1".
-                // But the helper `parseCSV` returned `result.slice(1)`. So header is lost?
-                // Actually `headerFound` was detected in the manual loop before calling parseCSV in the original code.
-                // I should probably fix parseCSV to return (header, data) or just do it here.
-
-                // Let's assume standard columns or quick re-parse for header:
+                const headerRow = rows.length > 0 ? rows[0] : [];
                 const lines = text.split(/\r?\n/);
                 const headerLine = lines[0] || '';
                 const headers = headerLine.split(',').map(h => h.replace(/"/g, '').trim());
 
-                let latIndex = headers.findIndex(h => h.includes('위도') || h.toLowerCase().includes('lat'));
-                let lngIndex = headers.findIndex(h => h.includes('경도') || h.toLowerCase().includes('lng'));
+                // --- Header Mapping ---
+                let latIndex = headers.findIndex(h => h.includes('WGS84위도') || h.includes('위도') || h.toLowerCase().includes('lat'));
+                let lngIndex = headers.findIndex(h => h.includes('WGS84경도') || h.includes('경도') || h.toLowerCase().includes('lng'));
                 let nameIndex = headers.findIndex(h => h.includes('화장실명') || h.includes('이름') || h.toLowerCase().includes('name'));
                 let roadIndex = headers.findIndex(h => h.includes('도로명') || h.toLowerCase().includes('road'));
                 let jibunIndex = headers.findIndex(h => h.includes('지번') || h.toLowerCase().includes('jibun'));
                 let typeIndex = headers.findIndex(h => h.includes('구분') || h.toLowerCase().includes('type'));
+                let maleStallIndex = headers.findIndex(h => h.includes('남성용-대변기수') || h.includes('남성변기수'));
+                let femaleStallIndex = headers.findIndex(h => h.includes('여성용-대변기수') || h.includes('여성변기수'));
+                let hoursIndex = headers.findIndex(h => h.includes('개방시간'));
                 let memoIndex = headers.findIndex(h => h.includes('메모') || h.toLowerCase().includes('memo'));
 
-                // Defaults
-                if (latIndex === -1) latIndex = 7;
-                if (lngIndex === -1) lngIndex = 8;
+                // Detect if this is a "Cleaned" (Standard) CSV with coordinates
+                const isFastPath = latIndex !== -1 && lngIndex !== -1;
+
+                if (isFastPath) {
+                    addLog('⚡ 지오코딩이 완료된 파일(Fast-Path)로 감지되었습니다. 직접 업로드를 시작합니다.', 'success');
+                } else {
+                    addLog('🔍 일반 CSV 파일로 감지되었습니다. 지오코딩 및 검토 프로세스를 시작합니다.');
+                    // Fallbacks for basic search
+                    if (latIndex === -1) latIndex = 7;
+                    if (lngIndex === -1) lngIndex = 8;
+                }
+
                 if (nameIndex === -1) nameIndex = 1;
                 if (roadIndex === -1) roadIndex = 2;
                 if (jibunIndex === -1) jibunIndex = 3;
                 if (typeIndex === -1) typeIndex = 0;
 
-                addLog(`📋 컬럼 매핑: 이름(${nameIndex}), 주소(${roadIndex}/${jibunIndex}), 좌표(${latIndex},${lngIndex})`);
+                addLog(`📋 컬럼 매핑: 이름(${nameIndex}), 주소(${roadIndex}/${jibunIndex}), 좌표(${latIndex},${lngIndex})${isFastPath ? ', 변기수(' + maleStallIndex + '/' + femaleStallIndex + ')' : ''}`);
 
                 const immediateList: Toilet[] = [];
                 const stagingList: any[] = []; // items for toilets_bulk
@@ -240,180 +244,190 @@ export const AdminToiletUpload: React.FC<AdminToiletUploadProps> = ({ onSuccess,
                 // Let's generate a temporary batch ID or use the same ID logic as history.
                 const uploadBatchId = `upload_${Date.now()}`;
 
-                setProgress(10);
-                addLog('🔄 데이터 검증 및 분류 중...');
-
                 const total = rows.length;
                 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-                // Import validator dynamically
-                const { validateBulkItem, parseBulkRow } = await import('../../utils/bulkRules');
+                if (isFastPath) {
+                    // --- FAST PATH: Direct Mapping ---
+                    for (let i = 0; i < total; i++) {
+                        try {
+                            const row = rows[i];
+                            if (row.length < 2) continue;
 
-                for (let i = 0; i < total; i++) {
-                    try {
-                        const row = rows[i];
-                        if (row.length < 2) continue;
+                            const name = row[nameIndex]?.trim() || '';
+                            if (!name) continue;
 
-                        const nameRaw = row[nameIndex]?.trim() || '';
-                        if (!nameRaw) continue; // Skip empty names
-
-                        const roadAddr = row[roadIndex]?.trim() || '';
-                        const jibunAddr = row[jibunIndex]?.trim() || '';
-                        const addressRaw = roadAddr || jibunAddr || '';
-
-                        const latRaw = parseFloat(row[latIndex]?.trim() || '0');
-                        const lngRaw = parseFloat(row[lngIndex]?.trim() || '0');
-                        const memo = row[memoIndex]?.trim() || '';
-                        const typeStr = row[typeIndex]?.trim() || 'public';
-
-                        // 1. Parsing & Enrichment (Extract Floor, Append Name to Address)
-                        const parsed = parseBulkRow(nameRaw, addressRaw);
-
-                        // 1.5 Basic Validity Check (On Raw Coords)
-                        let isOnLand = false;
-                        if (latRaw !== 0 && lngRaw !== 0) {
-                            if (latRaw >= 33 && latRaw <= 43 && lngRaw >= 124 && lngRaw <= 132) {
-                                isOnLand = await db.checkIsOnLand(latRaw, lngRaw);
+                            const lat = parseFloat(row[latIndex]?.trim() || '0');
+                            const lng = parseFloat(row[lngIndex]?.trim() || '0');
+                            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+                                // Skip or log silent warning? Let's log to terminal for visibility
+                                if (i < 5) addLog(`[누락] ${name}: 좌표 정보가 유효하지 않습니다.`, 'warning');
+                                continue;
                             }
-                        }
 
-                        // 2. Kakao Geocoding (Using Enriched Address)
-                        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-                        let kakaoResult = null;
-                        if (parsed.address) {
-                            kakaoResult = await geocodeAddressKakao(parsed.address);
-                            await delay(100); // Rate Limit
-                        }
+                            const address = (row[roadIndex] || row[jibunIndex] || '').trim();
+                            const maleStalls = row[maleStallIndex]?.trim() || '';
+                            const femaleStalls = row[femaleStallIndex]?.trim() || '';
+                            const hours = row[hoursIndex]?.trim() || '';
+                            const memo = row[memoIndex]?.trim() || '';
 
-                        // 3. Smart Validation
-                        const result = validateBulkItem(parsed, latRaw, lngRaw, kakaoResult, isOnLand);
+                            let note = '';
+                            if (maleStalls) note += `남성변기: ${maleStalls} `;
+                            if (femaleStalls) note += `여성변기: ${femaleStalls} `;
+                            if (hours) note += `\n개방시간: ${hours}`;
+                            if (memo) note += `\n${memo}`;
 
-                        // 4. Action
-                        if (result.action === 'immediate') {
-                            // Prepare Toilet Object
                             const toiletId = `t_${uploadBatchId}_${i}`;
                             const toilet: Toilet = {
                                 id: toiletId,
-                                name: result.name,
-                                address: result.address, // Enriched address
-                                lat: result.lat,
-                                lng: result.lng,
+                                name,
+                                address,
+                                lat,
+                                lng,
                                 type: 'public',
-                                genderType: Gender.UNISEX, // Default, assume parsed elsewhere if needed
-                                floor: result.floor,
-
-                                // Defaults
-                                hasPassword: false, cleanliness: 3, hasBidet: false, hasPaper: false,
-                                stallCount: 1, crowdLevel: 'medium', isUnlocked: true,
-                                note: memo,
+                                genderType: Gender.UNISEX,
+                                floor: 1,
+                                hasPassword: false,
+                                cleanliness: 3,
+                                hasBidet: false,
+                                hasPaper: false,
+                                stallCount: (parseInt(maleStalls) || 0) + (parseInt(femaleStalls) || 0) || 1,
+                                crowdLevel: 'medium',
+                                isUnlocked: true,
+                                note: note.trim(),
                                 createdBy: adminId,
                                 source: 'admin',
                                 isVerified: true,
                                 createdAt: new Date().toISOString()
                             };
+
                             immediateList.push(toilet);
                             countImmediate++;
-                            addLog(`[즉시등록] ${result.name} - ${result.reason}`, 'success');
+
+                            if (i % 50 === 0) setProgress(10 + Math.floor((i / total) * 80));
+                        } catch (err) {
+                            console.error(`FastPath Row ${i} Error:`, err);
                         }
-                        else if (result.action === 'review') {
-                            // Prepare Staging Object
-                            stagingList.push({
-                                upload_id: uploadBatchId,
-                                name_raw: nameRaw,
-                                address_raw: addressRaw,
-                                lat_raw: latRaw,
-                                lng_raw: lngRaw,
+                    }
+                } else {
+                    // --- STANDARD PATH: Geocoding & Validation ---
+                    const { validateBulkItem, parseBulkRow } = await import('../../utils/bulkRules');
+                    addLog('🔄 데이터 검증 및 분류 중...');
 
-                                name: result.name,
-                                address: result.address,
-                                lat: result.lat,
-                                lng: result.lng,
-                                floor: result.floor,
+                    for (let i = 0; i < total; i++) {
+                        try {
+                            const row = rows[i];
+                            if (row.length < 2) continue;
 
-                                status: 'review_needed',
-                                reason: result.reason,
-                                logs: result.logs
-                            });
-                            countReview++;
-                            addLog(`[검수필요] ${result.name} - ${result.reason}`, 'warning');
+                            const nameRaw = row[nameIndex]?.trim() || '';
+                            if (!nameRaw) continue;
+
+                            const roadAddr = row[roadIndex]?.trim() || '';
+                            const jibunAddr = row[jibunIndex]?.trim() || '';
+                            const addressRaw = roadAddr || jibunAddr || '';
+
+                            const latRaw = parseFloat(row[latIndex]?.trim() || '0');
+                            const lngRaw = parseFloat(row[lngIndex]?.trim() || '0');
+                            const memo = row[memoIndex]?.trim() || '';
+
+                            const parsed = parseBulkRow(nameRaw, addressRaw);
+                            let isOnLand = false;
+                            if (latRaw !== 0 && lngRaw !== 0) {
+                                if (latRaw >= 33 && latRaw <= 43 && lngRaw >= 124 && lngRaw <= 132) {
+                                    isOnLand = await db.checkIsOnLand(latRaw, lngRaw);
+                                }
+                            }
+
+                            let kakaoResult = null;
+                            if (parsed.address) {
+                                kakaoResult = await geocodeAddressKakao(parsed.address);
+                                await delay(100);
+                            }
+
+                            const result = validateBulkItem(parsed, latRaw, lngRaw, kakaoResult, isOnLand);
+
+                            if (result.action === 'immediate') {
+                                const toiletId = `t_${uploadBatchId}_${i}`;
+                                immediateList.push({
+                                    id: toiletId,
+                                    name: result.name,
+                                    address: result.address,
+                                    lat: result.lat,
+                                    lng: result.lng,
+                                    type: 'public',
+                                    genderType: Gender.UNISEX,
+                                    floor: result.floor,
+                                    hasPassword: false, cleanliness: 3, hasBidet: false, hasPaper: false,
+                                    stallCount: 1, crowdLevel: 'medium', isUnlocked: true,
+                                    note: memo,
+                                    createdBy: adminId,
+                                    source: 'admin',
+                                    isVerified: true,
+                                    createdAt: new Date().toISOString()
+                                } as Toilet);
+                                countImmediate++;
+                                addLog(`[즉시등록] ${result.name} - ${result.reason}`, 'success');
+                            } else if (result.action === 'review') {
+                                stagingList.push({
+                                    upload_id: uploadBatchId,
+                                    name_raw: nameRaw, address_raw: addressRaw,
+                                    lat_raw: latRaw, lng_raw: lngRaw,
+                                    name: result.name, address: result.address,
+                                    lat: result.lat, lng: result.lng, floor: result.floor,
+                                    status: 'review_needed', reason: result.reason, logs: result.logs
+                                });
+                                countReview++;
+                                addLog(`[검수필요] ${result.name} - ${result.reason}`, 'warning');
+                            } else {
+                                stagingList.push({
+                                    upload_id: uploadBatchId,
+                                    name_raw: nameRaw, address_raw: addressRaw,
+                                    lat_raw: latRaw, lng_raw: lngRaw,
+                                    name: result.name, address: result.address,
+                                    lat: result.lat, lng: result.lng, floor: result.floor,
+                                    status: 'rejected', reason: result.reason, logs: result.logs
+                                });
+                                countReject++;
+                                addLog(`[등록불가] ${result.name} - ${result.reason}`, 'error');
+                            }
+
+                            if (i % 5 === 0) setProgress(10 + Math.floor((i / total) * 80));
+                        } catch (rowError) {
+                            console.error(`Standard Row ${i} Error:`, rowError);
                         }
-                        else {
-                            // Reject (Log only, or save as rejected in staging?)
-                            // Plan said: "Rejected -> Log (Skip) or rejected status in bulk".
-                            // Let's save to bulk with 'rejected' status so user can see WHY it failed in review page.
-                            stagingList.push({
-                                upload_id: uploadBatchId,
-                                name_raw: nameRaw,
-                                address_raw: addressRaw,
-                                lat_raw: latRaw,
-                                lng_raw: lngRaw,
-
-                                name: result.name,
-                                address: result.address,
-                                lat: result.lat,
-                                lng: result.lng,
-                                floor: result.floor,
-
-                                status: 'rejected',
-                                reason: result.reason,
-                                logs: result.logs
-                            });
-                            countReject++;
-                            addLog(`[등록불가] ${result.name} - ${result.reason}`, 'error');
-                        }
-
-                        // Update Progress
-                        if (i % 5 === 0) setProgress(10 + Math.floor((i / total) * 80));
-
-                    } catch (rowError) {
-                        console.error(`Error processing row ${i}:`, rowError);
-                        addLog(`Row ${i} 처리 중 오류: ${rowError}`, 'error');
-                        // Continue to next row
                     }
                 }
 
-                // 5. Batch Save
+                // --- Final Batch Save ---
                 setProgress(90);
+                const chunk = (arr: any[], size: number) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
 
-                // A. Live DB (Toilets)
                 if (immediateList.length > 0) {
                     addLog(`🚀 즉시 등록 대상 ${immediateList.length}건 저장 중...`);
-                    // Helper to chunk
-                    const chunk = (arr: any[], size: number) => Array.from({ length: Math.ceil(arr.length / size) }, (v, i) => arr.slice(i * size, i * size + size));
                     const batches = chunk(immediateList, 50);
-                    for (const b of batches) {
-                        await db.bulkAddToilets(b);
-                    }
+                    for (const b of batches) await db.bulkAddToilets(b);
                 }
 
-                // B. Staging DB (Toilets Bulk)
                 if (stagingList.length > 0) {
                     addLog(`🧐 검수 대상 ${stagingList.length}건 임시 저장 중...`);
                     const batches = chunk(stagingList, 50);
-                    for (const b of batches) {
-                        await db.bulkSaveStaging(b);
-                    }
+                    for (const b of batches) await db.bulkSaveStaging(b);
                 }
 
-                // 6. Save History
-                // We need to save history row so `upload_id` link works
-                // Note: immediate items are NOT in staging, so they are just "added". 
-                // history.uploadedIds usually tracked IDs. 
-                const uploadedIdsList = immediateList.map(t => t.id); // Only live ones? 
+                const uploadedIdsList = immediateList.map(t => t.id);
 
-                // Construct History Record
                 await db.saveUploadHistory({
                     id: uploadBatchId,
                     fileName: file.name,
                     uploadedAt: new Date().toISOString(),
                     totalCount: total,
-                    successCount: countImmediate, // "Success" in terms of live
+                    successCount: countImmediate,
                     addedCount: countImmediate,
-                    updatedCount: 0, // Simplified
-                    failCount: countReject,
+                    updatedCount: 0,
+                    failCount: countReject + countReview,
                     uploadedToiletIds: uploadedIdsList,
                     uploadedBy: adminId,
-                    logs: logsRef.current.map(l => l.message) // Save all logs
+                    logs: logsRef.current.map(l => l.message)
                 });
 
                 setProgress(100);
@@ -421,9 +435,13 @@ export const AdminToiletUpload: React.FC<AdminToiletUploadProps> = ({ onSuccess,
                 setIsProcessing(false);
 
                 addLog(`\n🏁 처리 완료!`, 'success');
-                addLog(`  - 즉시 등록: ${countImmediate}건`, 'success');
-                addLog(`  - 검수 필요: ${countReview}건 (리뷰 페이지에서 확인)`, 'warning');
-                addLog(`  - 등록 불가: ${countReject}건`, 'error');
+                if (isFastPath) {
+                    addLog(`  - 총 업로드: ${countImmediate}건`, 'success');
+                } else {
+                    addLog(`  - 즉시 등록: ${countImmediate}건`, 'success');
+                    addLog(`  - 검수 필요: ${countReview}건 (리뷰 페이지에서 확인)`, 'warning');
+                    addLog(`  - 등록 불가: ${countReject}건`, 'error');
+                }
 
                 onSuccess({
                     fileName: file.name,
@@ -431,7 +449,7 @@ export const AdminToiletUpload: React.FC<AdminToiletUploadProps> = ({ onSuccess,
                     successCount: countImmediate,
                     addedCount: countImmediate,
                     updatedCount: 0,
-                    failCount: countReject + countReview, // Review is technically 'not done yet'
+                    failCount: countReject + countReview,
                     uploadedIds: uploadedIdsList,
                     logs: logsRef.current.map(l => l.message)
                 });

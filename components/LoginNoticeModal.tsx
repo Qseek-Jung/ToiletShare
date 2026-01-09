@@ -2,6 +2,7 @@ import React from 'react';
 import { LoginNotice, User } from '../types';
 import { Star, UserPlus, Info, CheckCircle } from 'lucide-react';
 import { dbSupabase as db } from '../services/db_supabase';
+import { useTranslation } from 'react-i18next';
 
 interface LoginNoticeModalProps {
     user: User;
@@ -9,6 +10,7 @@ interface LoginNoticeModalProps {
 }
 
 export const LoginNoticeModal: React.FC<LoginNoticeModalProps> = ({ user, onClose }) => {
+    const { t } = useTranslation();
     // Determine which notice to show (FIFO: First In First Out)
     const notice = user.loginNotices && user.loginNotices.length > 0 ? user.loginNotices[0] : null;
 
@@ -66,12 +68,12 @@ export const LoginNoticeModal: React.FC<LoginNoticeModalProps> = ({ user, onClos
                     onClick={handleConfirm}
                     className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]"
                 >
-                    확인했어요
+                    {t('notice_confirm', '확인했어요')}
                 </button>
 
                 {(user.loginNotices?.length || 0) > 1 && (
                     <div className="mt-4 text-xs text-text-muted font-medium">
-                        +{user.loginNotices!.length - 1}개의 알림이 더 있습니다
+                        {t('notice_more', '+{{count}}개의 알림이 더 있습니다', { count: user.loginNotices!.length - 1 })}
                     </div>
                 )}
             </div>

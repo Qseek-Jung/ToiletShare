@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'com.toiletshare.app',
   appName: '대똥단결',
   webDir: 'dist',
+  ios: {
+    contentInset: 'always'
+  },
 
   // ========================================
   // ROLLBACK: Uncomment below to switch back to remote web app mode

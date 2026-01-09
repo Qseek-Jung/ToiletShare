@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, AlertCircle, CheckCircle, Ban } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface AlertModalProps {
     isOpen: boolean;
@@ -11,10 +12,11 @@ interface AlertModalProps {
 }
 
 export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, message, onClose, onConfirm, isConfirm, type = 'success' }) => {
+    const { t } = useTranslation();
     if (!isOpen) return null;
 
     // Determine effective type
-    const effectiveType = isConfirm ? 'confirm' : (type === 'error' ? 'error' : 'success');
+    const effectiveType = isConfirm ? 'confirm' : type;
 
     let icon = <CheckCircle className="w-6 h-6" />;
     let iconBg = 'bg-primary-50 text-primary';
@@ -46,7 +48,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, message, onClose
                                     onClick={onClose}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                 >
-                                    취소
+                                    {t('cancel', '취소')}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -55,7 +57,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, message, onClose
                                     }}
                                     className="flex-1 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-600 transition-colors"
                                 >
-                                    확인
+                                    {t('confirm', '확인')}
                                 </button>
                             </>
                         ) : (
@@ -63,7 +65,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({ isOpen, message, onClose
                                 onClick={onClose}
                                 className={`w-full py-3 rounded-xl font-bold text-white transition-colors ${effectiveType === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary-600'}`}
                             >
-                                확인
+                                {t('confirm', '확인')}
                             </button>
                         )}
                     </div>

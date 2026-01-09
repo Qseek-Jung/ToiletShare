@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { AdConfig, DailyStats } from '../../types';
+import { AdConfig, DailyStats, CustomBannerType } from '../../types';
 import { dbSupabase as db } from '../../services/db_supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -16,13 +16,16 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
             interstitialSource: 'admob',
             bannerSource: 'admob',
             testMode: true,
+            bannersEnabled: true,
             youtubeUrls: ['', '', '', '', ''],
-            customBanners: []
+            customBanners: [],
+            adMobIds: { banner: '', interstitial: '', reward: '', rewardInterstitial: '', appOpen: '', native: '' }
         });
         const [loading, setLoading] = useState(true);
         const [uploading, setUploading] = useState(false);
         const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
         const [newBannerLink, setNewBannerLink] = useState('');
+        const [uploadType, setUploadType] = useState<CustomBannerType>('BANNER');
         const [previewUrl, setPreviewUrl] = useState<string | null>(null);
         const [showResetConfirm, setShowResetConfirm] = useState(false);
         const [bannerToDelete, setBannerToDelete] = useState<string | null>(null);
@@ -30,6 +33,14 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
         const [currentRatio, setCurrentRatio] = useState<number | null>(null);
         const [currentWidth, setCurrentWidth] = useState<number | null>(null);
         const [currentHeight, setCurrentHeight] = useState<number | null>(null);
+        const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+        const TYPE_LABELS: Record<string, string> = {
+            'BANNER': 'Banner (하단/지도)',
+            'NATIVE_LIST': 'Native (목록)',
+            'NATIVE_MODAL': 'Native (모달)',
+            'NATIVE_DETAIL': 'Detail (상세 상단)'
+        };
 
         useEffect(() => {
             const loadConfig = async () => {
@@ -118,17 +129,18 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
             setUploading(true);
 
             // In a real app, upload to storage here. For now, use Base64.
-            const newBanner = {
+            const newBannerLabel = {
                 id: Date.now().toString(),
                 imageUrl: previewUrl,
                 targetUrl: newBannerLink,
                 createdAt: Date.now(),
                 ratio: currentRatio || undefined,
                 width: currentWidth || undefined,
-                height: currentHeight || undefined
+                height: currentHeight || undefined,
+                type: uploadType
             };
 
-            const updatedBanners = [...config.customBanners, newBanner];
+            const updatedBanners = [...config.customBanners, newBannerLabel];
             const newConfig = { ...config, customBanners: updatedBanners }; // Auto-switch to custom if user adds one? Optional.
 
             await saveConfig(newConfig);
@@ -188,6 +200,103 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                             ⚠️ 현재 **테스트 모드**가 켜져 있어 구글의 테스트 광고가 나옵니다. 실제 광고 단위 ID 설정을 완료하셨더라도 테스트 광고만 노출됩니다.
                         </div>
                     )}
+                </section>
+
+                {/* SECTION 0.1: AdMob IDs (Production) */}
+                {!config.testMode && (
+                    <section className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 border-b pb-2 border-gray-200">
+                            <h2 className="text-xl font-black text-gray-900">0.1. 광고 단위 ID 설정</h2>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">Banner ID (하단/지도상단)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.banner || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, banner: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50 from-neutral-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">Native ID (목록/모달)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.native || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, native: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">Interstitial ID (화면전환)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.interstitial || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, interstitial: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">Reward ID (무료충전소)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.reward || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, reward: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">Reward Int. ID (비밀번호)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.rewardInterstitial || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, rewardInterstitial: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500">App Open ID (앱실행)</label>
+                                    <input
+                                        type="text"
+                                        value={config.adMobIds?.appOpen || ''}
+                                        onChange={e => setConfig({ ...config, adMobIds: { ...config.adMobIds, appOpen: e.target.value } })}
+                                        className="w-full p-2 border rounded font-mono text-sm bg-gray-50"
+                                        placeholder="ca-app-pub-..."
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <button onClick={() => saveConfig(config)} className="px-4 py-2 bg-gray-800 text-white rounded font-bold text-sm">설정 저장</button>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* SECTION 0.5: Global Banner Toggle */}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 border-b pb-2 border-gray-200">
+                        <h2 className="text-xl font-black text-gray-900">0.5. 배너 광고 노출 설정</h2>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h3 className="font-bold text-gray-800">모든 배너 광고 표시</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                OFF 시 앱 전체의 하단 배너가 즉시 숨겨집니다. (스크린샷 촬영용)
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => saveConfig({ ...config, bannersEnabled: !config.bannersEnabled })}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${config.bannersEnabled !== false ? 'bg-green-500' : 'bg-gray-200'}`}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.bannersEnabled !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                    </div>
                 </section>
 
                 {/* SECTION 1: Interstitial */}
@@ -275,12 +384,64 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                             </div>
                         </div>
 
+                        {/* Designer Guide (New) */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                            <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                                🎨 디자이너용 배너 제작 가이드 (복사해서 전달하세요)
+                            </h4>
+                            <div className="bg-white p-3 rounded-lg border text-[11px] leading-relaxed font-mono select-all">
+                                [모바일 앱 배너 제작 가이드 - 고화질 권장 규격]<br />
+                                <br />
+                                1. 권장 해상도 (High-DPI 선명도 확보를 위한 규격)<br />
+                                - 하단 바/목록 배너: 1080 x 200 px (또는 가로 최소 720px 이상)<br />
+                                - 길찾기(상세) 상단: 1080 x 270 px (4:1 비율 가로형)<br />
+                                - 홈 화면 리스트: 1080 x 216 px (5:1 비율)<br />
+                                - 등록 성공 팝업: 1080 x 800 px (3:2 ~ 4:3 비율)<br />
+                                <br />
+                                * 1080px은 최신 스마트폰(아이폰/갤럭시)의 너비에 맞춘 기준입니다.<br />
+                                * 실제로는 작게 보이지만, 원본을 큼직하게 제작해야 글자가 깨지지 않고 깨끗하게 나옵니다.<br />
+                                <br />
+                                2. 디자인 세부 가이드<br />
+                                - 상하좌우 10% 영역은 '안전 영역'으로 비워두고 중요한 글자나 로고를 배치하세요.<br />
+                                - 배경색이나 이미지는 캔버스 끝까지 꽉 채워야 잘리지 않고 자연스럽습니다.<br />
+                                - 용량: 파일당 500KB 이하 준수 (JPG/PNG/GIF 지원)<br />
+                                <br />
+                                💡 '상세페이지 배너'는 길찾기 실행 시 화면 상단에 뜨는 배너를 의미합니다.
+                            </div>
+                            <p className="text-[10px] text-gray-500">* 위 내용을 드래그하여 복사한 뒤 디자이너에게 전달하면 규격에 맞는 배너를 제작할 수 있습니다.</p>
+                        </div>
+
                         {/* Custom Banner Manager */}
                         {config.bannerSource === 'custom' && (
                             <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                                 {/* Upload Form */}
                                 <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4">
                                     <h4 className="font-bold text-sm text-gray-800 mb-3">새 배너 등록</h4>
+
+                                    {/* Type Selector */}
+                                    <div className="mb-4">
+                                        <div className="flex gap-2 mb-2">
+                                            {[
+                                                { id: 'BANNER', label: 'Banner (하단/지도)', desc: '1080x200 (5:1)' },
+                                                { id: 'NATIVE_LIST', label: 'Native (목록)', desc: '1080x216 (5:1)' },
+                                                { id: 'NATIVE_MODAL', label: 'Native (모달)', desc: '1080x800 (1.35:1)' },
+                                                { id: 'NATIVE_DETAIL', label: 'Detail (상세 상단)', desc: '1080x270 (4:1)' }
+                                            ].map(type => (
+                                                <button
+                                                    key={type.id}
+                                                    onClick={() => setUploadType(type.id as CustomBannerType)}
+                                                    className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all flex flex-col items-center ${uploadType === type.id
+                                                        ? 'bg-amber-100 border-amber-300 text-amber-800 shadow-sm'
+                                                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    <span>{type.label}</span>
+                                                    <span className="font-normal opacity-75 md:block hidden">{type.desc}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <div className="flex flex-col gap-3">
                                         <div className="flex gap-3 items-start">
                                             <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden border border-gray-300 relative group cursor-pointer shrink-0">
@@ -343,7 +504,10 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                         <div className="grid gap-3">
                                             {config.customBanners.map((banner) => (
                                                 <div key={banner.id} className="flex gap-3 bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative group items-center">
-                                                    <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden shrink-0">
+                                                    <div
+                                                        className="w-16 h-16 bg-gray-100 rounded overflow-hidden shrink-0 cursor-zoom-in ring-1 ring-black/5 hover:ring-indigo-500 transition-all"
+                                                        onClick={() => setSelectedImage(banner.imageUrl)}
+                                                    >
                                                         <img src={banner.imageUrl} className="w-full h-full object-cover" alt="Banner" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
@@ -353,6 +517,15 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                                             {banner.ratio ? ` (${banner.ratio.toFixed(1)}:1)` : ''}
                                                         </div>
                                                         <div className="text-sm font-medium text-blue-600 truncate">{banner.targetUrl || "링크 없음"}</div>
+                                                        <div className="mt-1">
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${banner.type === 'NATIVE_LIST' ? 'bg-purple-100 text-purple-700' :
+                                                                banner.type === 'NATIVE_MODAL' ? 'bg-green-100 text-green-700' :
+                                                                    banner.type === 'NATIVE_DETAIL' ? 'bg-orange-100 text-orange-700' :
+                                                                        'bg-blue-100 text-blue-700'
+                                                                }`}>
+                                                                {TYPE_LABELS[banner.type || 'BANNER'] || banner.type || 'BANNER'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <button
                                                         onClick={() => handleDeleteBanner(banner.id)}
@@ -438,6 +611,26 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                     삭제하기
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Preview Image Modal */}
+                {selectedImage && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedImage(null)}>
+                        <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center">
+                            <img
+                                src={selectedImage}
+                                alt="Full Preview"
+                                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking image
+                            />
+                            <button
+                                onClick={() => setSelectedImage(null)}
+                                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+                            >
+                                <X className="w-8 h-8" />
+                            </button>
                         </div>
                     </div>
                 )}

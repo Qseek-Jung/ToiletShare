@@ -153,19 +153,25 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
         if (!user || creditAdjustAmount === 0) return;
         setProcessing(true);
         try {
-            await db.updateUserCredits(user.id, creditAdjustAmount);
-            await db.logCreditTransaction(
-                user.id,
-                creditAdjustAmount,
-                'admin_adjust',
-                'admin',
-                'manual',
-                creditAdjustReason || '관리자 수동 조정'
-            );
-
-            // Send Notification? Probably not needed for manual adjustment unless significant.
-            // User did not ask for notification, just "add/deduct". 
-            // Current db.updateUserCredits does NOT send notification.
+            if (creditAdjustAmount > 0) {
+                // Use giveUserPoints for positive amounts (Triggers Notification)
+                await db.giveUserPoints(
+                    user.id,
+                    creditAdjustAmount,
+                    creditAdjustReason || '관리자 수동 지급'
+                );
+            } else {
+                // Standard deduction (No Gift Notification)
+                await db.updateUserCredits(user.id, creditAdjustAmount);
+                await db.logCreditTransaction(
+                    user.id,
+                    creditAdjustAmount,
+                    'admin_adjust',
+                    'admin',
+                    'manual',
+                    creditAdjustReason || '관리자 수동 차감'
+                );
+            }
 
             await loadUser();
             setShowCreditModal(false);

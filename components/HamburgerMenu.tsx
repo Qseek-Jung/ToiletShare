@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Share2, Info, MessageSquare, AlertTriangle, LogOut, ChevronRight, Gift, BookOpen, PenTool, ExternalLink, X, FileText } from 'lucide-react';
+import { Share2, Info, MessageSquare, AlertTriangle, LogOut, ChevronRight, Gift, BookOpen, PenTool, ExternalLink, X, FileText, Settings } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { useTranslation } from 'react-i18next';
 import { User, UserRole } from '../types';
 import { SUPERVISOR_EMAIL } from '../config';
 import { shareService } from '../services/shareService';
@@ -28,6 +29,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
     onShareApp,
     onNavigate
 }) => {
+    const { t } = useTranslation();
     const isDev = user.role === UserRole.ADMIN || user.email === SUPERVISOR_EMAIL;
 
     if (!isOpen) return null;
@@ -45,8 +47,8 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                     <div>
-                        <h2 className="font-bold text-lg text-gray-900 dark:text-white">전체 메뉴</h2>
-                        <p className="text-xs text-gray-500 mt-1">대똥단결 v1.0.0</p>
+                        <h2 className="font-bold text-lg text-gray-900 dark:text-white">{t('menu_title', '전체 메뉴')}</h2>
+                        <p className="text-xs text-gray-500 mt-1">대똥단결 v{APP_VERSION}</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -58,31 +60,43 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto py-2">
+                    {/* Section 0: Settings */}
+                    <div className="px-4 py-2">
+                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('settings', '설정')}</div>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
+                            <MenuItem
+                                icon={<Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />}
+                                label={t('settings', '환경 설정')}
+                                onClick={() => { onClose(); onNavigate('#/settings'); }}
+                            />
+                        </div>
+                    </div>
+
                     {/* Section 1: Customer Support */}
                     <div className="px-4 py-2">
-                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">고객 지원</div>
+                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('customer_support', '고객 지원')}</div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
                             <MenuItem
                                 icon={<MessageSquare className="w-5 h-5 text-blue-500" />}
-                                label="문의하기 / 제보"
+                                label={t('contact_us', '문의하기 / 제보')}
                                 onClick={() => { onClose(); onOpenContact(); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<AlertTriangle className="w-5 h-5 text-amber-500" />}
-                                label="광고 문의"
+                                label={t('ad_inquiry', '광고 문의')}
                                 onClick={() => { onClose(); onOpenContact(); }} // Re-use contact modal for now, or specific logic
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<LogOut className="w-5 h-5 text-gray-400" />}
-                                label="로그아웃"
+                                label={t('logout', '로그아웃')}
                                 onClick={() => { onClose(); onLogout(); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<AlertTriangle className="w-5 h-5 text-red-400" />}
-                                label="회원 탈퇴"
+                                label={t('withdraw', '회원 탈퇴')}
                                 onClick={() => { onClose(); onWithdraw(); }}
                             />
                         </div>
@@ -90,23 +104,23 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
 
                     {/* Section 2: Service Guide */}
                     <div className="px-4 py-2">
-                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">서비스 안내</div>
+                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('service_guide', '서비스 안내')}</div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
                             <MenuItem
                                 icon={<BookOpen className="w-5 h-5 text-purple-500" />}
-                                label="이용 안내"
+                                label={t('guide_usage', '이용 안내')}
                                 onClick={() => { onClose(); onNavigate('#/guide'); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<Gift className="w-5 h-5 text-pink-500" />}
-                                label="크레딧 적립/사용 가이드"
+                                label={t('guide_credit', '크레딧 적립/사용 가이드')}
                                 onClick={() => { onClose(); onNavigate('#/guide/credit'); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<PenTool className="w-5 h-5 text-emerald-500" />}
-                                label="화장실 등록 가이드"
+                                label={t('guide_registration', '화장실 등록 가이드')}
                                 onClick={() => { onClose(); onNavigate('#/guide/registration'); }}
                             />
                         </div>
@@ -114,17 +128,17 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
 
                     {/* Section 3: Together */}
                     <div className="px-4 py-2">
-                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">함께하기</div>
+                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('together', '함께하기')}</div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
                             <MenuItem
                                 icon={<ExternalLink className="w-5 h-5 text-indigo-500" />}
-                                label="개발자 후원하기 (준비중)"
-                                onClick={() => { alert("마음만 감사히 받겠습니다! 🙇‍♂️ (기능 준비중)"); }}
+                                label={t('donate', '개발자 후원하기 (준비중)')}
+                                onClick={() => { alert(t('donate_alert', "마음만 감사히 받겠습니다! 🙇‍♂️ (기능 준비중)")); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<Share2 className="w-5 h-5 text-cyan-500" />}
-                                label="앱 공유하기"
+                                label={t('share_app', '앱 공유하기')}
                                 onClick={() => { onClose(); onShareApp(); }}
                             />
                         </div>
@@ -132,17 +146,17 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
 
                     {/* Section 4: App Info */}
                     <div className="px-4 py-2 pb-10">
-                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">앱 정보</div>
+                        <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('app_info', '앱 정보')}</div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
                             <MenuItem
                                 icon={<FileText className="w-5 h-5 text-gray-400" />}
-                                label="서비스 이용약관"
+                                label={t('terms_of_service', '서비스 이용약관')}
                                 onClick={() => { onClose(); onNavigate('#/terms'); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
                             <MenuItem
                                 icon={<FileText className="w-5 h-5 text-gray-400" />}
-                                label="개인정보 처리방침"
+                                label={t('privacy_policy', '개인정보 처리방침')}
                                 onClick={() => { onClose(); onNavigate('#/privacy'); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
@@ -152,7 +166,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                                         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                             <Info className="w-5 h-5 text-gray-500" />
                                         </div>
-                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">버전 정보</span>
+                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">{t('version_info', '버전 정보')}</span>
                                     </div>
                                     <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{APP_VERSION}</span>
                                 </div>
@@ -165,7 +179,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                                         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                             <Info className="w-5 h-5 text-gray-500" />
                                         </div>
-                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">앱 정보</span>
+                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">{t('app_info', '앱 정보')}</span>
                                     </div>
                                     <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{APP_VERSION}</span>
                                 </button>

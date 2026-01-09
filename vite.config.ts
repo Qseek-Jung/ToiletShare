@@ -1,5 +1,6 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
+import fs from 'fs';
 import react from '@vitejs/plugin-react';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
@@ -11,7 +12,44 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'save-file-endpoint',
+        configureServer(server) {
+          server.middlewares.use('/__save_file__', (req, res, next) => {
+            if (req.method === 'POST') {
+              let body = '';
+              req.on('data', chunk => body += chunk);
+              req.on('end', () => {
+                try {
+                  const { filename, content } = JSON.parse(body);
+                  const safeName = filename.replace(/[:*?"<>|]/g, '_'); // Sanitize for Windows
+                  const saveDir = path.resolve(process.cwd(), 'processed_files');
+
+                  // Ensure dir exists
+                  if (!fs.existsSync(saveDir)) {
+                    fs.mkdirSync(saveDir, { recursive: true });
+                  }
+
+                  const filePath = path.join(saveDir, safeName);
+                  fs.writeFileSync(filePath, content, 'utf-8');
+
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ success: true, path: filePath }));
+                } catch (e: any) {
+                  console.error('Save file error:', e);
+                  res.statusCode = 500;
+                  res.end(JSON.stringify({ error: e.message }));
+                }
+              });
+            } else {
+              next();
+            }
+          });
+        }
+      }
+    ],
     css: {
       postcss: {
         plugins: [
@@ -19,10 +57,6 @@ export default defineConfig(({ mode }) => {
           autoprefixer,
         ],
       },
-    },
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
     },
     display: 'standalone',
     build: {

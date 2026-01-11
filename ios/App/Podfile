@@ -30,6 +30,7 @@ end
 target 'App' do
   capacitor_pods
   # Add your Pods here
+  pod 'GoogleUserMessagingPlatform', '~> 2.1' # Fix: Pin UMP SDK to v2.x to avoid renaming breaking changes
 end
 
 post_install do |installer|

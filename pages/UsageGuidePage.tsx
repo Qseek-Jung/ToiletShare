@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Heart, Shield, Star, MapPin, AlertTriangle, CheckCircle2, Crown, Coins } from 'lucide-react';
+import { ArrowLeft, MapPin, AlertTriangle, CheckCircle2, Crown, Coins, HelpCircle, Star, Heart, Shield } from 'lucide-react';
 import { LevelIcon } from '../components/LevelIcon';
 import { PageLayout } from '../components/PageLayout';
+import { ContactModal } from '../components/ContactModal';
 
 import { dbSupabase as db } from '../services/db_supabase';
-import { DEFAULT_CREDIT_POLICY, CreditPolicy } from '../types';
+import { DEFAULT_CREDIT_POLICY, CreditPolicy, User } from '../types';
 
-const UsageGuidePage: React.FC = () => {
+interface UsageGuidePageProps {
+    user?: User;
+}
+
+const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('intro');
     const [policy, setPolicy] = useState<CreditPolicy>(DEFAULT_CREDIT_POLICY);
     const [levelUpReward, setLevelUpReward] = useState<number>(10);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     useEffect(() => {
         const loadPolicy = async () => {
@@ -298,15 +304,31 @@ const UsageGuidePage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="mt-8 text-center">
+                <div className="mt-8 flex flex-col gap-3">
+                    <button
+                        onClick={() => setShowContactModal(true)}
+                        className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <HelpCircle className="w-5 h-5" />
+                        {t('contact_title', '문의하기')}
+                    </button>
                     <button
                         onClick={() => window.location.hash = '#/'}
-                        className="px-6 py-3 bg-gray-900 dark:bg-gray-700 text-white rounded-xl font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                        className="w-full py-4 bg-gray-900 dark:bg-gray-700 text-white rounded-xl font-bold hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors shadow-lg"
                     >
                         {t('go_home_full', '홈으로 돌아가기')}
                     </button>
                 </div>
             </div>
+
+            {/* Contact Modal */}
+            {user && (
+                <ContactModal
+                    isOpen={showContactModal}
+                    onClose={() => setShowContactModal(false)}
+                    user={user}
+                />
+            )}
         </PageLayout>
     );
 };

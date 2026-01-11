@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.toiletshare.app',
+  appId: 'com.toilet.korea',
   appName: '대똥단결',
   webDir: 'dist',
   ios: {

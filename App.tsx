@@ -855,34 +855,53 @@ export default function App() {
     }, [myLocation]); // Re-create if myLocation changes (so distance calc is correct)
 
     // Initialize DB Data & Reload User (Async)
+    // Initialize DB Data & Reload User (Async)
+    // Fix: Use a ref to prevent re-fetching on every GPS update
+    const hasInitialLoaded = useRef(false);
+
     useEffect(() => {
         const loadData = async () => {
             // 1. Reload Toilets (Initial 2km radius) & 2. Reload User (Sync)
-            console.log('🔄 loadData triggered with location:', myLocation);
+            // Only fetch if this is a manual refresh (refreshTrigger > 0) or the FIRST valid location fix
+            const isValidLocation = myLocation.lat !== 0 && myLocation.lng !== 0;
+            const shouldFetch = refreshTrigger > 0 || (isValidLocation && !hasInitialLoaded.current);
 
-            const toiletPromise = (myLocation.lat !== 0 && myLocation.lng !== 0)
-                ? fetchToiletsInRadius(myLocation.lat, myLocation.lng, 2)
-                : fetchToiletsInRadius(37.5665, 126.9780, 2);
+            console.log('🔄 loadData Check:', {
+                validLoc: isValidLocation,
+                trigger: refreshTrigger,
+                initialDone: hasInitialLoaded.current,
+                shouldFetch
+            });
 
-            const userPromise = (async () => {
-                try {
-                    // Skip sync for Guests or if ID is missing/guest
-                    if (user.id && user.role !== UserRole.GUEST && user.id !== 'guest') {
-                        const users = await db.getUsers();
-                        const currentUser = users.find(u => u.id === user.id);
-                        if (currentUser) {
-                            setUser({ ...currentUser });
-                        }
-                        // Also fetch bookmarks
-                        const savedBookmarks = await db.getBookmarks(user.id);
-                        setBookmarks(new Set(savedBookmarks));
-                    }
-                } catch (error) {
-                    console.error("User sync failed in loadData:", error);
+            if (shouldFetch) {
+                if (isValidLocation && !hasInitialLoaded.current) {
+                    hasInitialLoaded.current = true;
                 }
-            })();
 
-            await Promise.all([toiletPromise, userPromise]);
+                const toiletPromise = isValidLocation
+                    ? fetchToiletsInRadius(myLocation.lat, myLocation.lng, 2)
+                    : fetchToiletsInRadius(37.5665, 126.9780, 2); // Default fallback
+
+                const userPromise = (async () => {
+                    try {
+                        // Skip sync for Guests or if ID is missing/guest
+                        if (user.id && user.role !== UserRole.GUEST && user.id !== 'guest') {
+                            const users = await db.getUsers();
+                            const currentUser = users.find(u => u.id === user.id);
+                            if (currentUser) {
+                                setUser({ ...currentUser });
+                            }
+                            // Also fetch bookmarks
+                            const savedBookmarks = await db.getBookmarks(user.id);
+                            setBookmarks(new Set(savedBookmarks));
+                        }
+                    } catch (error) {
+                        console.error("User sync failed in loadData:", error);
+                    }
+                })();
+
+                await Promise.all([toiletPromise, userPromise]);
+            }
         };
         loadData();
     }, [myLocation, refreshTrigger, fetchToiletsInRadius]);

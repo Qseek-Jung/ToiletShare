@@ -128,6 +128,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     useEffect(() => {
         if (!showYoutube || !videoId) return;
 
+        let safetyTimer: NodeJS.Timeout;
+
         const initPlayer = () => {
             if (!containerRef.current) return;
 
@@ -175,6 +177,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         // YT.PlayerState.PLAYING = 1
                         if (event.data === 1) {
                             setIsPlaying(true);
+                            // Clear safety timer if playing successfully
+                            if (safetyTimer) clearTimeout(safetyTimer);
                         } else {
                             // Pause timer if buffering or paused
                             setIsPlaying(false);
@@ -196,10 +200,17 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
         initPlayer();
 
-        // Safety timeout: if player API completely fails or blocked, enable close after X sec
-        const safetyTimer = setTimeout(() => {
-            if (!isPlaying) setCanClose(true); // Allow close if stuck
-        }, 8000);
+        // Safety timeout: if player API completely fails or blocked, enable close after duration + buffer
+        // Default buffer 10s
+        const safetyDuration = (adType === 'interstitial' ? 5 : 15) * 1000 + 10000;
+
+        safetyTimer = setTimeout(() => {
+            // Check ref or state? State is captured in closure, so check ref if needed or rely on cleanup
+            // Actually, if we clear safetyTimer in onStateChange, this callback won't run if playing.
+            // If it DOES run, it means we never started playing (stuck).
+            console.warn("Ad Safety Timer Triggered", videoId);
+            setCanClose(true);
+        }, safetyDuration);
 
         return () => clearTimeout(safetyTimer);
     }, [showYoutube, videoId]);

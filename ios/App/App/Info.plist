@@ -89,6 +89,15 @@
 	<string>화장실 리뷰 사진을 등록하기 위해 갤러리 접근 권한이 필요합니다.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>화장실 리뷰 사진을 촬영하기 위해 카메라 접근 권한이 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>내 주변 화장실을 찾기 위해 현재 위치 정보가 필요합니다.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>앱 기능을 위해 동작 감지 권한이 필요할 수 있습니다.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~3347511713</string>
 </dict>

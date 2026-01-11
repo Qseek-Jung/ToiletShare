@@ -854,6 +854,8 @@ export default function App() {
         }
     }, [myLocation]); // Re-create if myLocation changes (so distance calc is correct)
 
+
+
     // Initialize DB Data & Reload User (Async)
     // Initialize DB Data & Reload User (Async)
     // Fix: Use a ref to prevent re-fetching on every GPS update

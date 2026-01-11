@@ -1833,7 +1833,7 @@ export default function App() {
             return <PhotoTestPage user={user} darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />;
         }
         if (currentHash === '#/guide') {
-            return <UsageGuidePage />;
+            return <UsageGuidePage user={user} />;
         }
         if (currentHash === '#/guide/credit') {
             return <CreditGuide />;

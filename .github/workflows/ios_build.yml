@@ -61,7 +61,7 @@ jobs:
       - name: Build iOS App (xcodebuild)
         run: |
           cd ios/App
-          xcodebuild -workspace App.workspace -scheme App -clean archive -archivePath App.xcarchive -allowProvisioningUpdates \
+          xcodebuild -workspace App.workspace -scheme App clean archive -archivePath App.xcarchive -allowProvisioningUpdates \
             DEVELOPMENT_TEAM=2B62Z33T7Q \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="ShareToilet_App_Store" \

@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
+    base: './', // Essential for Capacitor to load assets from filesystem
     plugins: [
       react(),
       {

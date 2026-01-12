@@ -279,6 +279,11 @@ export interface AdConfig {
   youtubeUrls: string[];
   customBanners: CustomBanner[];
   adMobIds: AdMobIds; // Added IDs
+
+  // New: Duration Settings (seconds)
+  durationUnlock?: number;      // Default 15
+  durationPoint?: number;       // Default 15
+  durationNavigation?: number;  // Default 5
 }
 
 export interface UploadHistory {

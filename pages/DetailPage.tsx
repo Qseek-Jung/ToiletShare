@@ -1321,7 +1321,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
                             </div>
                         </div>
                     )}
-                <AdManager isOpen={showAdModal} onClose={handleAdClose} adType={pendingNavType ? 'interstitial' : 'reward'} />
+                <AdManager
+                    isOpen={showAdModal}
+                    onClose={handleAdClose}
+                    adType={pendingNavType ? 'interstitial' : 'reward'}
+                    triggerType={pendingNavType ? 'navigation' : 'point'}
+                />
                 {/* Alert Modal */}
                 <AlertModal
                     isOpen={alertModal.isOpen}

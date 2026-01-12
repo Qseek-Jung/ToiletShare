@@ -13,6 +13,75 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17808361481"></script>
 
+  <!-- DEBUG LOGGER (Build 30): Essential for diagnosing iOS white screen -->
+  <style>
+    #debug-console {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      overflow-y: scroll;
+      background: rgba(0, 0, 0, 0.9);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      z-index: 999999;
+      padding: 10px;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+  <div id="debug-console" style="display:none;"></div>
+  <script>
+    (function () {
+      // ENABLE DEBUG LOGGING
+      var debugMode = true;
+
+      if (debugMode) {
+        var consoleDiv = document.getElementById('debug-console');
+        consoleDiv.style.display = 'block';
+
+        function logToScreen(msg, color) {
+          try {
+            var p = document.createElement('div');
+            p.style.color = color || '#0f0';
+            p.style.marginBottom = '4px';
+            p.style.borderBottom = '1px solid #333';
+            p.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            if (consoleDiv) consoleDiv.prepend(p);
+          } catch (e) { }
+        }
+
+        window.onerror = function (msg, url, line, col, error) {
+          var extra = error && error.stack ? error.stack : '';
+          logToScreen("ERROR: " + msg + " (" + (url || '').split('/').pop() + ":" + line + ")\n" + extra, '#f55');
+          return false;
+        };
+
+        window.addEventListener('unhandledrejection', function (e) {
+          logToScreen("PROMISE ERROR: " + (e.reason ? (e.reason.message || e.reason) : 'Unknown'), '#f55');
+        });
+
+        // Capture Console
+        var originalLog = console.log;
+        console.log = function () {
+          logToScreen("LOG: " + Array.from(arguments).join(' '), '#fff');
+          if (originalLog) originalLog.apply(console, arguments);
+        };
+
+        var originalError = console.error;
+        console.error = function () {
+          logToScreen("ERR: " + Array.from(arguments).join(' '), '#f55');
+          if (originalError) originalError.apply(console, arguments);
+        };
+
+        logToScreen("✅ Build 30 Logger Ready. Target: ES2015. Env injected?");
+      }
+    })();
+  </script>
+
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }

@@ -62,6 +62,7 @@ export default defineConfig(({ mode }) => {
     display: 'standalone',
     build: {
       outDir: 'dist',
+      target: 'es2015', // Ensuring compatibility with iOS 13+
     },
     resolve: {
       alias: {

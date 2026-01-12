@@ -9,6 +9,89 @@ interface AdManagementProps {
     refreshTrigger: number;
 }
 
+const VideoRow: React.FC<{ url: string, index: number, onChange: (val: string) => void, onRemove: () => void }> = ({ url, index, onChange, onRemove }) => {
+    const [title, setTitle] = React.useState<string | null>(null);
+
+    // Helper to extract ID
+    const extractId = (u: string) => {
+        if (!u) return null;
+        const clean = u.trim();
+        if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+        const match = clean.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const videoId = React.useMemo(() => extractId(url), [url]);
+    const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+
+    React.useEffect(() => {
+        if (!videoId) {
+            setTitle(null);
+            return;
+        }
+
+        // Fetch Title via NoEmbed (CORS friendly)
+        const fetchTitle = async () => {
+            try {
+                // Construct standard URL for NoEmbed
+                const safeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                const res = await fetch(`https://noembed.com/embed?url=${safeUrl}`);
+                const data = await res.json();
+                if (data.title) setTitle(data.title);
+            } catch (e) {
+                // ignore
+            }
+        };
+        fetchTitle();
+    }, [videoId]);
+
+    return (
+        <div className="flex items-start gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm group">
+            {/* Thumbnail Preview */}
+            <div className="w-20 h-14 bg-gray-100 rounded overflow-hidden shrink-0 flex items-center justify-center border border-gray-200 text-xs text-gray-400 relative">
+                {thumbnailUrl ? (
+                    <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                ) : (
+                    <span className="scale-75">No Img</span>
+                )}
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-col justify-center h-14">
+                {/* Title (if available) - Show ABOVE input or inside? 
+                    User said "영상 제목도 자동으로 바로 뜨게". 
+                    Let's put it above the input for clarity, or as a label.
+                */}
+                <div className="mb-1">
+                    {title ? (
+                        <div className="text-xs font-bold text-gray-800 truncate leading-tight" title={title}>
+                            {title}
+                        </div>
+                    ) : (
+                        <div className="text-[10px] text-gray-400 h-3"></div>
+                    )}
+                </div>
+
+                <input
+                    type="text"
+                    placeholder="URL 또는 ID (예: 2S47kMBvbDg)"
+                    className="w-full p-1.5 border rounded text-[11px] focus:border-red-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                    value={url}
+                    onChange={(e) => onChange(e.target.value)}
+                />
+            </div>
+
+            <button
+                onClick={onRemove}
+                className="self-center p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                title="이 영상 삭제"
+            >
+                <X className="w-4 h-4" />
+            </button>
+        </div>
+    );
+};
+
 export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshTrigger }) => {
     // AdManagementView Component
     const AdManagementView = () => {
@@ -50,9 +133,14 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                     if (!cfg.interstitialSource) cfg.interstitialSource = 'admob';
                     if (!cfg.bannerSource) cfg.bannerSource = 'admob';
                     if (!cfg.customBanners) cfg.customBanners = [];
-                    if (!cfg.youtubeUrls || cfg.youtubeUrls.length !== 5) {
-                        cfg.youtubeUrls = ['', '', '', '', ''];
+
+                    // Auto-cleanup: Filter empty URLs and ensure at least empty array
+                    if (cfg.youtubeUrls) {
+                        cfg.youtubeUrls = cfg.youtubeUrls.filter(u => u && u.trim() !== '');
+                    } else {
+                        cfg.youtubeUrls = [];
                     }
+
                     if (cfg.testMode === undefined) cfg.testMode = true; // Migration
                     setConfig(cfg);
                 } catch (e) {
@@ -81,11 +169,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
             saveConfig({ ...config, youtubeUrls: newUrls });
         };
 
-        const handleClearYoutubeUrl = (index: number) => {
-            const newUrls = [...config.youtubeUrls];
-            newUrls[index] = '';
-            saveConfig({ ...config, youtubeUrls: newUrls });
-        };
+
 
         // File Handler
         const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,26 +413,75 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
 
                         {/* YouTube Settings */}
                         {config.interstitialSource === 'youtube' && (
-                            <div className="glass-panel p-4 rounded-xl bg-red-50/50 border border-red-100">
-                                <h3 className="font-bold text-gray-900 mb-2 text-sm flex items-center gap-2">YouTube 재생 목록 <span className="text-[10px] font-normal text-red-500 bg-red-100 px-2 py-0.5 rounded-full">5초 후 닫기 버튼 생성됨</span></h3>
-                                <div className="space-y-2">
+                            <div className="glass-panel p-4 rounded-xl bg-red-50/50 border border-red-100 animate-in slide-in-from-top-2">
+                                <h3 className="font-bold text-gray-900 mb-2 text-sm flex items-center gap-2">
+                                    YouTube 재생 목록
+                                    <span className="text-[10px] font-normal text-red-500 bg-red-100 px-2 py-0.5 rounded-full">자동 순차 재생 / 5초 후 닫기</span>
+                                </h3>
+
+                                <div className="space-y-3">
                                     {config.youtubeUrls.map((url, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                            <span className="text-gray-400 font-bold w-4 text-center text-xs">{index + 1}</span>
-                                            <input
-                                                type="text"
-                                                placeholder="https://youtu.be/..."
-                                                className="flex-1 p-2 border rounded text-sm focus:border-red-500 outline-none bg-white"
-                                                value={url}
-                                                onChange={(e) => handleYoutubeUrlChange(index, e.target.value)}
-                                            />
-                                            {url && (
-                                                <button onClick={() => handleClearYoutubeUrl(index)} className="p-2 text-gray-400 hover:text-red-500">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
+                                        <VideoRow
+                                            key={index}
+                                            url={url}
+                                            index={index}
+                                            onChange={(val) => handleYoutubeUrlChange(index, val)}
+                                            onRemove={() => {
+                                                const newUrls = config.youtubeUrls.filter((_, i) => i !== index);
+                                                saveConfig({ ...config, youtubeUrls: newUrls });
+                                            }}
+                                        />
                                     ))}
+
+                                    {/* Add Button */}
+                                    <button
+                                        onClick={() => {
+                                            saveConfig({ ...config, youtubeUrls: [...config.youtubeUrls, ''] });
+                                        }}
+                                        className="w-full py-2 border-2 border-dashed border-red-200 text-red-400 font-bold rounded-lg hover:border-red-400 hover:text-red-500 hover:bg-red-50 transition-all text-sm flex items-center justify-center gap-1"
+                                    >
+                                        <span>+ 영상 추가하기</span>
+                                    </button>
+
+                                    {config.youtubeUrls.length === 0 && (
+                                        <div className="text-center py-4 text-xs text-red-400 font-medium">
+                                            등록된 영상이 없습니다. 영상을 추가해주세요.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Duration Settings */}
+                                <div className="mt-4 pt-4 border-t border-red-100 grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">비밀번호 확인 (초)</label>
+                                        <input
+                                            type="number"
+                                            value={config.durationUnlock || 15}
+                                            onChange={(e) => saveConfig({ ...config, durationUnlock: Number(e.target.value) })}
+                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                            min="5"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">포인트 충전 (초)</label>
+                                        <input
+                                            type="number"
+                                            value={config.durationPoint || 15}
+                                            onChange={(e) => saveConfig({ ...config, durationPoint: Number(e.target.value) })}
+                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                            min="5"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">길찾기 종료 (초)</label>
+                                        <input
+                                            type="number"
+                                            value={config.durationNavigation || 5}
+                                            onChange={(e) => saveConfig({ ...config, durationNavigation: Number(e.target.value) })}
+                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                            min="3"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}

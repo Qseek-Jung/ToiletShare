@@ -2172,6 +2172,7 @@ export default function App() {
                     isOpen={showAd}
                     onClose={() => setShowAd(false)}
                     onReward={handleAdReward}
+                    triggerType={adRewardType === 'unlock' ? 'unlock' : 'point'}
                 />
 
                 {/* WELCOME MODAL */}

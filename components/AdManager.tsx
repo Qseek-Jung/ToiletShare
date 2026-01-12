@@ -16,34 +16,48 @@ interface AdManagerProps {
     onClose: () => void; // Called when ad is finished/skipped/closed
     onReward?: () => void; // Only for Rewarded Ads
     adType?: 'reward' | 'interstitial';
+    triggerType?: 'unlock' | 'point' | 'navigation'; // New Trigger Type
 }
 
-export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward' }) => {
+export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward', triggerType = 'unlock' }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [showYoutube, setShowYoutube] = useState(false);
-    const [videoId, setVideoId] = useState<string | null>(null);
     const [canClose, setCanClose] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(adType === 'interstitial' ? 5 : 15);
+
+    // Duration Logic
+    const [targetDuration, setTargetDuration] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(15);
+
     // Track actual playing state for accurate timing
     const [isPlaying, setIsPlaying] = useState(false);
 
-    const initialTimeRef = useRef(adType === 'interstitial' ? 5 : 15);
+    // Playlist State
+    const [playlistIds, setPlaylistIds] = useState<string[]>([]);
+
+    // Config State
+    const [config, setConfig] = useState<any>(null);
+
+    const initialTimeRef = useRef(15);
+    const timeLeftRef = useRef(15);
     const playerRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const playlistIdsRef = useRef<string[]>([]);
 
     // Reset state on open
     useEffect(() => {
         if (isOpen) {
-            const duration = adType === 'interstitial' ? 5 : 15;
             setIsLoading(true);
             setShowYoutube(false);
             setCanClose(false);
-            setTimeLeft(duration);
             setIsPlaying(false);
-            initialTimeRef.current = duration;
-            setVideoId(null);
+            setPlaylistIds([]);
 
-            runAdLogic();
+            // Refs RESET
+            playlistIdsRef.current = [];
+            playerRef.current = null; // Ensure new player is created for cleaner state
+
+            // Load Config & Start
+            loadAdConfig();
         } else {
             // Cleanup on close
             if (playerRef.current) {
@@ -53,50 +67,93 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 playerRef.current = null;
             }
         }
-    }, [isOpen, adType]);
+    }, [isOpen]);
 
-    // Timer logic: Only tick when video is actually playing
+    // Timer logic (Independent of Video End)
     useEffect(() => {
         let timer: any;
-        // Only count down if shown, video is playing, and time remains
         if (showYoutube && isPlaying && timeLeft > 0) {
             timer = setInterval(() => {
-                setTimeLeft(prev => prev - 1);
+                setTimeLeft(prev => {
+                    const next = prev - 1;
+                    timeLeftRef.current = next; // Sync Ref
+                    return next;
+                });
             }, 1000);
-        } else if (showYoutube && timeLeft === 0) {
+        } else if (showYoutube && timeLeft <= 0) {
             setCanClose(true);
         }
         return () => clearInterval(timer);
     }, [showYoutube, isPlaying, timeLeft]);
 
-    const runAdLogic = async () => {
+    const extractVideoId = (urlOrId: string): string | null => {
+        if (!urlOrId) return null;
+        const clean = urlOrId.trim();
+        if (clean.length === 0) return null;
+
+        // 1. Try Raw ID (11 chars)
+        if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
+            return clean;
+        }
+
+        // 2. Try Standard/Share/Embed Regex
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = clean.match(regExp);
+        if (match && match[2].length === 11) {
+            return match[2];
+        }
+
+        // 3. Try Shorts Regex
+        const shortsRegExp = /^.*(youtube.com\/shorts\/)([^#&?]*).*/;
+        const shortsMatch = clean.match(shortsRegExp);
+        if (shortsMatch && shortsMatch[2].length === 11) {
+            return shortsMatch[2];
+        }
+
+        return null;
+    };
+
+    const loadAdConfig = async () => {
         try {
-            const config = await dbSupabase.getAdConfig();
-            const source = config.interstitialSource || 'admob';
+            const cfg = await dbSupabase.getAdConfig();
+            setConfig(cfg);
+
+            // Determine Duration
+            let duration = 15; // Default
+            if (triggerType === 'unlock') duration = cfg.durationUnlock || 15;
+            else if (triggerType === 'point') duration = cfg.durationPoint || 15;
+            else if (triggerType === 'navigation') duration = cfg.durationNavigation || 5;
+
+            setTargetDuration(duration);
+            setTimeLeft(duration);
+            initialTimeRef.current = duration;
+            timeLeftRef.current = duration;
+
+            const source = cfg.interstitialSource || 'admob';
 
             if (source === 'youtube') {
-                const validUrls = config.youtubeUrls?.filter(u => u && u.trim().length > 0) || [];
-                const url = validUrls.length > 0 ? validUrls[Math.floor(Math.random() * validUrls.length)] : null;
+                const rawUrls = cfg.youtubeUrls || [];
+                // Extract IDs
+                const ids: string[] = [];
+                rawUrls.forEach((url: string) => {
+                    const extracted = extractVideoId(url);
+                    if (extracted) ids.push(extracted);
+                });
 
-                if (url) {
-                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
-                    const match = url.match(regExp);
-                    const vId = (match && match[2].length === 11) ? match[2] : null;
+                if (ids.length > 0) {
+                    // Start Playlist Logic
+                    const shuffled = [...ids].sort(() => Math.random() - 0.5);
+                    setPlaylistIds(shuffled);
+                    playlistIdsRef.current = shuffled;
 
-                    if (vId) {
-                        setVideoId(vId);
-                        setShowYoutube(true);
-                        setIsLoading(false);
-                        // Initialize player logic is handled by effect dependent on videoId
-                    } else {
-                        console.warn("YouTube ID extraction failed for URL:", url);
-                        handleAdMobFallback(config.testMode);
-                    }
+                    setShowYoutube(true);
+                    setIsLoading(false);
+                    // Player creation handled by useEffect[showYoutube]
                 } else {
-                    handleAdMobFallback(config.testMode);
+                    handleAdMobFallback(cfg.testMode);
                 }
             } else {
-                handleAdMobFallback(config.testMode);
+                handleAdMobFallback(cfg.testMode);
             }
         } catch (e) {
             console.error("Ad Decision Failed", e);
@@ -126,7 +183,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     // Load YouTube API and Initialize Player
     useEffect(() => {
-        if (!showYoutube || !videoId) return;
+        if (!showYoutube || playlistIds.length === 0) return;
 
         let safetyTimer: NodeJS.Timeout;
 
@@ -141,58 +198,68 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
 
                 window.onYouTubeIframeAPIReady = () => {
-                    createPlayer(videoId);
+                    createPlayer(playlistIds);
                 };
             } else {
-                createPlayer(videoId);
+                createPlayer(playlistIds);
             }
         };
 
-        const createPlayer = (id: string) => {
-            // Avoid duplicates
+        const createPlayer = (ids: string[]) => {
             if (playerRef.current) return;
 
-            // The API replaces the node with iframe, so we need a stable ref target
             playerRef.current = new window.YT.Player('youtube-player-container', {
                 height: '100%',
                 width: '100%',
-                videoId: id,
+                // loadPlaylist via playerVars logic or directly? 
+                // Best practice: init without videoId, then loadPlaylist.
+                // Or use loadPlaylist in onReady.
                 playerVars: {
-                    'autoplay': 1, // Auto play
-                    'controls': 0, // No controls
+                    'autoplay': 1,
+                    'controls': 0,
                     'disablekb': 1,
                     'fs': 0,
-                    'monitor': 0, // deprecate modestbranding?
                     'modestbranding': 1,
                     'playsinline': 1,
                     'rel': 0,
-                    'showinfo': 0,
+                    'showinfo': 0, // Deprecated but kept for older API compat
+                    'iv_load_policy': 3, // Hide annotations
                     'origin': window.location.origin
                 },
                 events: {
                     'onReady': (event: any) => {
-                        event.target.playVideo();
+                        // Load Playlist
+                        event.target.loadPlaylist({
+                            playlist: ids,
+                            index: 0,
+                            startSeconds: 0
+                        });
+                        event.target.setLoop(true); // Enable Infinite Loop
                     },
                     'onStateChange': (event: any) => {
-                        // YT.PlayerState.PLAYING = 1
+                        // PLAYING = 1
                         if (event.data === 1) {
                             setIsPlaying(true);
-                            // Clear safety timer if playing successfully
                             if (safetyTimer) clearTimeout(safetyTimer);
-                        } else {
-                            // Pause timer if buffering or paused
+                        }
+                        // ENDED = 0
+                        else if (event.data === 0) {
+                            // Video ended. 
+                            // Since setLoop(true) is on, it should auto-play next.
+                            // We do NOT need manual logic here.
+                            // Just check if we can close? 
+                            // Timer is independent, so no action needed here except maybe logging.
+                            console.log("Video Ended. Loop should continue.");
+                        }
+                        else {
+                            // Paused/Buffering
                             setIsPlaying(false);
-                            // Ended = 0
-                            if (event.data === 0) {
-                                setCanClose(true);
-                            }
                         }
                     },
                     'onError': (e: any) => {
                         console.error("YT Player Error", e);
-                        // Fallback logic if video fails to play?
-                        // Just allow close after safety timeout?
-                        setCanClose(true);
+                        // If one fails, try next?
+                        // playerRef.current.nextVideo();
                     }
                 }
             });
@@ -200,21 +267,15 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
         initPlayer();
 
-        // Safety timeout: if player API completely fails or blocked, enable close after duration + buffer
-        // Default buffer 10s
-        const safetyDuration = (adType === 'interstitial' ? 5 : 15) * 1000 + 10000;
-
+        // Safety timeout (Total Duration + 15s buffer)
+        const safetyDuration = (targetDuration * 1000) + 15000;
         safetyTimer = setTimeout(() => {
-            // Check ref or state? State is captured in closure, so check ref if needed or rely on cleanup
-            // Actually, if we clear safetyTimer in onStateChange, this callback won't run if playing.
-            // If it DOES run, it means we never started playing (stuck).
-            console.warn("Ad Safety Timer Triggered", videoId);
+            console.warn("Ad Safety Timer Triggered");
             setCanClose(true);
         }, safetyDuration);
 
         return () => clearTimeout(safetyTimer);
-    }, [showYoutube, videoId]);
-
+    }, [showYoutube, playlistIds]);
 
     if (!isOpen) return null;
 
@@ -265,8 +326,10 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 {/* Full Width Video Container */}
                 <div className="w-full h-full flex items-center justify-center relative">
                     <div ref={containerRef} className="w-full aspect-[9/16] bg-black relative overflow-hidden flex items-center justify-center">
-                        {/* The Player API will replace this div with the iframe */}
-                        <div id="youtube-player-container" className="w-full h-full absolute inset-0"></div>
+                        {/* Scaled Wrapper to Crop YouTube UI (Title, Branding) */}
+                        <div className="w-full h-full absolute inset-0 transform scale-[1.35] origin-center pointer-events-none">
+                            <div id="youtube-player-container" className="w-full h-full pointer-events-auto"></div>
+                        </div>
 
                         {!isPlaying && !canClose && (
                             <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">

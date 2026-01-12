@@ -62,9 +62,9 @@ jobs:
         run: |
           cd ios/App
           xcodebuild -workspace App.xcworkspace -scheme App clean archive -archivePath App.xcarchive -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM=2B62Z33T7Q \
+            DEVELOPMENT_TEAM=N5T3G2MFQ2 \
             CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="ShareToilet_App_Store" \
+            PROVISIONING_PROFILE_SPECIFIER="ShareToilet App Store" \
             CODE_SIGN_IDENTITY="iPhone Distribution"
 
       - name: Export IPA

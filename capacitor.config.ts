@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: '대똥단결',
   webDir: 'dist',
   ios: {
-    contentInset: 'always'
+    contentInset: 'always',
+    scheme: 'https'
   },
 
   // ========================================

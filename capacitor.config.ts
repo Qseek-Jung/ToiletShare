@@ -39,7 +39,7 @@ const config: CapacitorConfig = {
       clientId: "44PTd3BMDQvsMLU_oLVy",
       clientSecret: "4mMuTwBFw1",
       clientName: "대똥단결",
-      urlScheme: "naver44PTd3BMDQvsMLU_oLVy"
+      urlScheme: "toiletsharenaver"
     }
   }
 };

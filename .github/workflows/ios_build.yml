@@ -68,7 +68,8 @@ jobs:
             DEVELOPMENT_TEAM=N5T3G2MFQ2 \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="ShareToilet App Store" \
-            CODE_SIGN_IDENTITY="iPhone Distribution"
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            IPHONEOS_DEPLOYMENT_TARGET=13.0
 
       - name: Export IPA
         run: |

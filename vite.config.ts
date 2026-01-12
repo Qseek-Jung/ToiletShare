@@ -13,6 +13,14 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
     },
     base: './', // Essential for Capacitor to load assets from filesystem
+    define: {
+      // FORCE: Hard-replace these variables during build to bypass .env loading issues on CI
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
+      'import.meta.env.VITE_KAKAO_API_KEY': JSON.stringify(process.env.VITE_KAKAO_API_KEY || env.VITE_KAKAO_API_KEY),
+      'import.meta.env.VITE_NAVER_CLIENT_ID': JSON.stringify(process.env.VITE_NAVER_CLIENT_ID || env.VITE_NAVER_CLIENT_ID),
+      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY),
+    },
     plugins: [
       react(),
       {

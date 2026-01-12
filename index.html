@@ -13,76 +13,6 @@
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17808361481"></script>
 
-  <!-- DEBUG LOGGER: Remove this after fixing the white screen -->
-  <style>
-    #debug-console {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 300px;
-      overflow-y: scroll;
-      background: rgba(0, 0, 0, 0.85);
-      color: #0f0;
-      font-family: monospace;
-      font-size: 10px;
-      z-index: 99999;
-      padding: 10px;
-      pointer-events: none;
-      /* Let clicks pass through */
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-  </style>
-  <div id="debug-console" style="display:none;"></div>
-  <script>
-    (function () {
-      // ENABLE DEBUG LOGGING
-      var debugMode = true;
-
-      if (debugMode) {
-        var consoleDiv = document.getElementById('debug-console');
-        consoleDiv.style.display = 'block';
-
-        function logToScreen(msg, color) {
-          var p = document.createElement('div');
-          p.style.color = color || '#0f0';
-          p.style.marginBottom = '2px';
-          p.style.borderBottom = '1px solid #333';
-          p.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-          consoleDiv.prepend(p); // Newest on top
-        }
-
-        // Capture Errors
-        window.onerror = function (msg, url, line, col, error) {
-          var extra = error ? error.stack : '';
-          logToScreen("ERROR: " + msg + " (" + url + ":" + line + ")\n" + extra, '#f55');
-          return false;
-        };
-
-        window.addEventListener('unhandledrejection', function (e) {
-          logToScreen("PROMISE ERROR: " + e.reason, '#f55');
-        });
-
-        // Capture Console
-        var originalLog = console.log;
-        console.log = function () {
-          var args = Array.prototype.slice.call(arguments);
-          logToScreen("LOG: " + args.join(' '), '#fff');
-          originalLog.apply(console, arguments);
-        };
-
-        var originalError = console.error;
-        console.error = function () {
-          var args = Array.prototype.slice.call(arguments);
-          logToScreen("ERR-IO: " + args.join(' '), '#f55');
-          originalError.apply(console, arguments);
-        };
-
-        logToScreen("✅ Debug Logger Initialized. Waiting for App...");
-      }
-    })();
-  </script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
@@ -127,17 +57,6 @@
       scrollbar-width: none;
     }
   </style>
-  <script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
-  }
-}
-</script>
   <link rel="stylesheet" href="index.css">
   <script type="text/javascript"
     src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=d5a9498cedf6ffb73e6d6ca18ac82abf&libraries=services,clusterer&autoload=false"></script>

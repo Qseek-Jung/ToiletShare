@@ -5,11 +5,11 @@
 	<key>method</key>
 	<string>app-store</string>
 	<key>teamID</key>
-	<string>2B62Z33T7Q</string>
+	<string>N5T3G2MFQ2</string>
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.toilet.korea</key>
-		<string>ShareToilet_App_Store</string>
+		<string>ShareToilet App Store</string>
 	</dict>
 </dict>
 </plist>

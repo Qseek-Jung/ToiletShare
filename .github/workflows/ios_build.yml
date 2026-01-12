@@ -32,20 +32,27 @@ jobs:
           echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
           echo "Created .env file with secrets."
 
-      - name: Build Web Assets
+      - name: Build Web Assets (Hard-injecting secrets)
         run: |
+          echo "Building with explicit env injection..."
           npm run build
           # FORCE: Remove crossorigin for file:// compatibility (Vite base='./' handles paths correctly)
           sed -i '' 's|crossorigin||g' dist/index.html
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_KAKAO_API_KEY: ${{ secrets.VITE_KAKAO_API_KEY }}
+          VITE_NAVER_CLIENT_ID: ${{ secrets.VITE_NAVER_CLIENT_ID }}
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
 
-      - name: Verify Environment Injection (Safety Check)
+      - name: Verify Bundle Contents (No Leak Check)
         run: |
-          echo "Checking for Supabase URL in JS bundle..."
-          if grep -q "supabase.co" dist/assets/*.js; then
-            echo "✅ SUCCESS: Supabase URL found in bundle!"
-          else
-            echo "❌ CRITICAL ERROR: Supabase URL NOT found in bundle!"
-            # We don't exit to allow debugging, but this is a red flag.
+          echo "Verifying if Supabase URL was baked into the bundle..."
+          grep -o "https://[a-zA-Z0-9.-]*supabase.co" dist/assets/*.js | head -n 5 || echo "❌ URL NOT FOUND IN BUNDLE"
+          
+          echo "Checking for 'supabaseUrl is required' error string in bundle..."
+          if grep -q "supabaseUrl is required" dist/assets/*.js; then
+            echo "⚠️  Found error string (Expected if in library code, but dangerous if env missing)"
           fi
 
       - name: Sync Capacitor

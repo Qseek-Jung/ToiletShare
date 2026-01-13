@@ -13,8 +13,6 @@ def capacitor_pods
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCommunityAdmob', :path => '../../node_modules/@capacitor-community/admob'
   pod 'CapacitorCommunityHttp', :path => '../../node_modules/@capacitor-community/http'
-  pod 'CapacitorFirebaseApp', :path => '../../node_modules/@capacitor-firebase/app'
-  pod 'CapacitorFirebaseCrashlytics', :path => '../../node_modules/@capacitor-firebase/crashlytics'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
   pod 'CapacitorDevice', :path => '../../node_modules/@capacitor/device'
   pod 'CapacitorDialog', :path => '../../node_modules/@capacitor/dialog'
@@ -27,12 +25,16 @@ def capacitor_pods
   pod 'TeamLepisodeCapacitorNaverLogin', :path => '../../node_modules/@team-lepisode/capacitor-naver-login'
   pod 'TransistorsoftCapacitorBackgroundFetch', :path => '../../node_modules/@transistorsoft/capacitor-background-fetch'
   pod 'CapacitorKakaoLoginPlugin', :path => '../../node_modules/capacitor-kakao-login-plugin'
+  pod 'CapacitorFirebaseCrashlytics', :path => '../../node_modules/@capacitor-firebase/crashlytics'
+  pod 'CapacitorFirebaseApp', :path => '../../node_modules/@capacitor-firebase/app'
 end
 
 target 'App' do
   capacitor_pods
   # Add your Pods here
-  pod 'GoogleUserMessagingPlatform', '~> 2.1' # Fix: Pin UMP SDK to v2.x to avoid renaming breaking changes
+  pod 'GoogleUserMessagingPlatform', '~> 2.1'
+  pod 'Firebase/Crashlytics', '10.29.0' # Pin to v10 for iOS 13 support
+  pod 'Firebase/Analytics', '10.29.0'
 end
 
 post_install do |installer|

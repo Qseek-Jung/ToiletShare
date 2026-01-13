@@ -93,10 +93,17 @@ export default function App() {
 
     // Record Visit (Once per session)
     useEffect(() => {
-        const hasVisited = sessionStorage.getItem('has_visited_session');
-        if (!hasVisited) {
+        // Track visitor once per hour (not per session)
+        const lastVisitKey = 'last_visit_timestamp';
+        const lastVisit = localStorage.getItem(lastVisitKey);
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+
+        if (!lastVisit || (now - parseInt(lastVisit, 10)) > oneHour) {
+            // Detect device type
             const ua = navigator.userAgent.toLowerCase();
             let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+
             if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
                 deviceType = 'tablet';
             } else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
@@ -104,13 +111,12 @@ export default function App() {
             }
 
             db.recordVisit(deviceType).catch(console.error);
-            sessionStorage.setItem('has_visited_session', 'true');
-            console.log('📢 Visit Recorded:', deviceType);
+            localStorage.setItem(lastVisitKey, now.toString());
+            console.log('📢 Visit Recorded:', deviceType, 'at', new Date(now).toLocaleTimeString());
+        } else {
+            const remainingTime = Math.ceil((oneHour - (now - parseInt(lastVisit, 10))) / 60000);
+            console.log(`⏰ Visit already counted. Next count in ${remainingTime} minutes.`);
         }
-
-        // Initialize Notification Service (Create Channels, etc)
-        // Check permissions and create channels essentially
-        notificationService.initialize().catch(e => console.error("Notification Service Init Failed", e));
 
     }, []);
 

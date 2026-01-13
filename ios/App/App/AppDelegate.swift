@@ -12,12 +12,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         
-        // Initialize Firebase
-        FirebaseApp.configure()
-
-        // Initialize Kakao SDK
+        // Initialize Kakao SDK FIRST (before any other SDK)
         if let key = Bundle.main.infoDictionary?["KAKAO_APP_KEY"] as? String {
             KakaoSDK.initSDK(appKey: key)
+        }
+        
+        // Initialize Firebase AFTER Kakao (with error handling)
+        do {
+            FirebaseApp.configure()
+            print("✅ Firebase initialized successfully")
+        } catch {
+            print("⚠️ Firebase initialization failed: \(error)")
+            // Continue app execution even if Firebase fails
         }
         
         return true

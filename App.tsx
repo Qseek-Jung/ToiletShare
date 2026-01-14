@@ -9,6 +9,7 @@ import { dbSupabase as db } from './services/db_supabase';
 import { GOOGLE_CLIENT_ID, NAVER_CLIENT_ID, SUPERVISOR_EMAIL, KAKAO_JAVASCRIPT_KEY } from './config';
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
+import { FirebaseCrashlytics } from '@capacitor-firebase/crashlytics';
 
 import { PushNotifications } from '@capacitor/push-notifications';
 import { calculateDistance, compareVersions } from './utils';
@@ -53,6 +54,33 @@ declare global {
         naverLoginProcessing?: boolean;
     }
 }
+
+// Global Error Handler for Crashlytics
+const initCrashlytics = async () => {
+    if (Capacitor.isNativePlatform()) {
+        try {
+            await FirebaseCrashlytics.setEnabled({ enabled: true });
+
+            // Catch unhandled Promise rejections
+            window.addEventListener('unhandledrejection', async (event) => {
+                await FirebaseCrashlytics.recordException({
+                    message: `Unhandled Promise Rejection: ${event.reason}`
+                });
+            });
+
+            // Catch global errors
+            window.addEventListener('error', async (event) => {
+                await FirebaseCrashlytics.recordException({
+                    message: `Uncaught Exception: ${event.message}`
+                });
+            });
+
+            console.log('🔥 Firebase Crashlytics Initialized');
+        } catch (e) {
+            console.error('Failed to init Crashlytics', e);
+        }
+    }
+};
 
 export default function App() {
     const { t } = useTranslation();
@@ -259,6 +287,7 @@ export default function App() {
     useEffect(() => {
         if (Capacitor.getPlatform() !== 'web') {
             initializeNative();
+            initCrashlytics();
 
             // Push Listeners
             PushNotifications.addListener('registration', async (token) => {
@@ -1309,6 +1338,8 @@ export default function App() {
                 // Use Native Plugin instead of JavaScript SDK
                 const loginResult = await KakaoLoginPlugin.goLogin();
                 console.log('Kakao native login result:', loginResult);
+
+                FirebaseCrashlytics.addLogMessage({ message: `Kakao login clicked. Result: ${JSON.stringify(loginResult)}` });
 
                 // Get user info from native plugin
                 const userInfo = await KakaoLoginPlugin.getUserInfo();

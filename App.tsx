@@ -9,7 +9,6 @@ import { dbSupabase as db } from './services/db_supabase';
 import { GOOGLE_CLIENT_ID, NAVER_CLIENT_ID, SUPERVISOR_EMAIL, KAKAO_JAVASCRIPT_KEY } from './config';
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
-import { FirebaseCrashlytics } from '@capacitor-firebase/crashlytics';
 
 import { PushNotifications } from '@capacitor/push-notifications';
 import { calculateDistance, compareVersions } from './utils';
@@ -57,29 +56,7 @@ declare global {
 
 // Global Error Handler for Crashlytics
 const initCrashlytics = async () => {
-    if (Capacitor.isNativePlatform()) {
-        try {
-            await FirebaseCrashlytics.setEnabled({ enabled: true });
-
-            // Catch unhandled Promise rejections
-            window.addEventListener('unhandledrejection', async (event) => {
-                await FirebaseCrashlytics.recordException({
-                    message: `Unhandled Promise Rejection: ${event.reason}`
-                });
-            });
-
-            // Catch global errors
-            window.addEventListener('error', async (event) => {
-                await FirebaseCrashlytics.recordException({
-                    message: `Uncaught Exception: ${event.message}`
-                });
-            });
-
-            console.log('🔥 Firebase Crashlytics Initialized');
-        } catch (e) {
-            console.error('Failed to init Crashlytics', e);
-        }
-    }
+    // Native Crashlytics is handled by iOS SDK directly
 };
 
 export default function App() {

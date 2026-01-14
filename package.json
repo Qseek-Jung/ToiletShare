@@ -11,8 +11,6 @@
   "dependencies": {
     "@capacitor-community/admob": "^6.0.0",
     "@capacitor-community/http": "^1.4.1",
-    "@capacitor-firebase/app": "^8.0.1",
-    "@capacitor-firebase/crashlytics": "^8.0.1",
     "@capacitor/android": "^6.0.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor/cli": "^6.0.0",

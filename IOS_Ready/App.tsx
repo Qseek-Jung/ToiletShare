@@ -6,7 +6,10 @@ import { App as CapApp } from '@capacitor/app';
 import { User, Toilet, UserRole, Gender, UserStatus } from './types';
 import { INITIAL_USER } from './constants';
 import { dbSupabase as db } from './services/db_supabase';
-import { GOOGLE_CLIENT_ID, NAVER_CLIENT_ID, SUPERVISOR_EMAIL, KAKAO_JAVASCRIPT_KEY } from './config';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID || "";
+const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "";
+const KAKAO_JAVASCRIPT_KEY = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || "";
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 

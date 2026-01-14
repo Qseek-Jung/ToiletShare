@@ -2093,7 +2093,7 @@ export default function App() {
                         )}
 
                         {!isSubmitMapOpen && (
-                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[calc(env(safe-area-inset-bottom)+8px)]">
+                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[max(8px,env(safe-area-inset-bottom))]">
                                 <div className="w-full max-w-md flex justify-around items-center px-2">
                                     <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
                                     <button

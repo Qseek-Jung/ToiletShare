@@ -10,6 +10,7 @@ import { getToiletColor, getMarkerSvg, calculateDistance } from '../utils';
 import { ToiletTypeIcon } from '../components/Icons';
 import { LevelIcon } from '../components/LevelIcon';
 import PasswordPanel from '../components/PasswordPanel';
+import { Geolocation } from '@capacitor/geolocation';
 
 import { ABUSE_LIMITS, validateContent } from '../policies/AbuseProtection';
 import { adMobService } from '../services/admob';
@@ -202,21 +203,25 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                 overlay.setMap(map);
                 myMarkerRef.current = overlay;
 
-                if (navigator.geolocation) {
-                    watchIdRef.current = navigator.geolocation.watchPosition(
-                        (pos) => {
-                            const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                            if (myMarkerRef.current) myMarkerRef.current.setPosition(newPos);
-                        },
-                        (err) => console.log("Geolocation error suppressed"),
-                        { enableHighAccuracy: true, maximumAge: 0 }
-                    );
-                }
+                // Use Capacitor's Geolocation API for better permission handling
+                const watchId = await Geolocation.watchPosition({ enableHighAccuracy: true, maximumAge: 0 }, (position, err) => {
+                    if (position) {
+                        const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        if (myMarkerRef.current) myMarkerRef.current.setPosition(newPos);
+                    }
+                    if (err) {
+                        console.log("Geolocation error suppressed", err);
+                    }
+                });
+
+                watchIdRef.current = watchId as any;
             }
         }, 200);
 
         return () => {
-            if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+            if (watchIdRef.current !== null) {
+                Geolocation.clearWatch({ id: watchIdRef.current }).catch(err => console.log("Clear watch error:", err));
+            }
             clearTimeout(timer);
         };
     }, []);

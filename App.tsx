@@ -11,6 +11,7 @@ import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-log
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 
 import { PushNotifications } from '@capacitor/push-notifications';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { calculateDistance, compareVersions } from './utils';
 import { PoopIcon } from './components/Icons';
 import { AdManager } from './components/AdManager';
@@ -273,8 +274,8 @@ export default function App() {
 
                 // Sync with DB if user is logged in
                 const currentUser = await db.getCurrentUser();
-                if (currentUser) {
-                    await db.updateUserPushToken(currentUser.id, token.value);
+                if (currentUser && currentUser.id) {
+                    await db.savePushToken(currentUser.id, token.value);
                     console.log('✅ Token synced to DB for user:', currentUser.id);
                 }
             });
@@ -309,8 +310,23 @@ export default function App() {
                 }
             });
 
+            // Local Notifications Click Listener (for Review Reminders, etc.)
+            LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+                console.log('🔔 Local Notification Action:', action);
+                const data = action.notification.extra;
+                if (data?.toiletId) {
+                    console.log('👉 Navigating to toilet from local notification:', data.toiletId);
+                    window.location.hash = `#/toilet/${data.toiletId}`;
+                } else if (data?.type === 'smart_nightlife' || data?.type === 'fixed_nightlife') {
+                    window.location.hash = '#/'; // Go home for nightlife
+                } else {
+                    window.location.hash = '#/notifications';
+                }
+            });
+
             return () => {
                 PushNotifications.removeAllListeners();
+                LocalNotifications.removeAllListeners();
             };
         }
     }, []);
@@ -319,22 +335,26 @@ export default function App() {
     useEffect(() => {
         const syncToken = async () => {
             const token = localStorage.getItem('push_token');
+            // If user is logged in (not Guest) and we have a token in localstorage
             if (user.id && user.role !== UserRole.GUEST && token) {
-                // Simple optimization: only update if different? 
-                // Since we don't always have current DB token in 'user' object accurately without fetch, 
-                // we can just upsert or define logic in DB service.
-                // db.savePushToken does a simple update.
-                if (user.pushToken !== token) {
-                    console.log(`[App] Syncing push token for user ${user.id}...`);
-                    await db.savePushToken(user.id, token);
-                    console.log('✅ Push Token Sync Attempt Finished');
+                // If the user object doesn't have the token or it's different, sync it
+                if (!user.pushToken || user.pushToken !== token) {
+                    console.log(`[App] Syncing push token for user ${user.id}... (Local: ${token.substring(0, 10)}..., DB: ${user.pushToken?.substring(0, 10)}...)`);
+                    try {
+                        await db.savePushToken(user.id, token);
+                        // Update local user state so we don't sync again immediately
+                        setUser(prev => ({ ...prev, pushToken: token }));
+                        console.log('✅ Push Token Sync Finished and local state updated');
+                    } catch (e) {
+                        console.error('❌ Failed to sync push token:', e);
+                    }
                 } else {
-                    console.log('[App] Push token matches, skipping sync.');
+                    // console.log('[App] Push token already synced.');
                 }
             }
         };
         syncToken();
-    }, [user.id, user.pushToken]); // Depend on user.id and known token
+    }, [user.id, user.pushToken]); // Depend on user.id and pushToken
 
 
 

@@ -46,3 +46,22 @@ android/.gradle/
 android/local.properties
 android/captures/
 *.apk
+
+# iOS Build & Archive folders (SECURITY: Contains exposed keys)
+IPA/
+ios/App/build/
+*.ipa
+*.xcarchive
+
+# Sensitive configuration files
+config.ts
+IOS_Ready/config.ts
+
+# iOS generated files
+ios/App/Pods/
+ios/App/Podfile.lock
+DerivedData/
+
+# Google Services (API Keys)
+google-services.json
+GoogleService-Info.plist

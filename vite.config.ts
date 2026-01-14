@@ -7,6 +7,24 @@ import autoprefixer from 'autoprefixer';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+
+  // Platform-specific Google Maps API Key selection
+  const getPlatformApiKey = () => {
+    const platform = process.env.CAPACITOR_PLATFORM || process.env.PLATFORM;
+
+    if (platform === 'ios') {
+      // iOS build: use iOS-specific key
+      return process.env.VITE_GOOGLE_MAPS_API_KEY_IOS || env.VITE_GOOGLE_MAPS_API_KEY_IOS;
+    } else if (platform === 'android') {
+      // Android build: use Android-specific key
+      return process.env.VITE_GOOGLE_MAPS_API_KEY_ANDROID || env.VITE_GOOGLE_MAPS_API_KEY_ANDROID;
+    } else {
+      // Web/Localhost: use browser key
+      return process.env.VITE_GOOGLE_MAPS_API_KEY_WEB || env.VITE_GOOGLE_MAPS_API_KEY_WEB ||
+        process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY;
+    }
+  };
+
   return {
     server: {
       port: 3000,
@@ -19,7 +37,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
       'import.meta.env.VITE_KAKAO_API_KEY': JSON.stringify(process.env.VITE_KAKAO_API_KEY || env.VITE_KAKAO_API_KEY),
       'import.meta.env.VITE_NAVER_CLIENT_ID': JSON.stringify(process.env.VITE_NAVER_CLIENT_ID || env.VITE_NAVER_CLIENT_ID),
-      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY),
+      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(getPlatformApiKey()),
     },
     plugins: [
       react(),

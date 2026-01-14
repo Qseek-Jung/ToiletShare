@@ -1,1 +1,0 @@
-import{W as o}from"./index-BsQCTjw0.js";class n extends o{login(){throw new Error("Method not implemented.")}logout(e){throw e?new Error("Method not implemented."):new Error("Method not implemented.")}}export{n as CapacitorNaverLoginWeb};

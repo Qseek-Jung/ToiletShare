@@ -362,8 +362,8 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             </div>
 
             {/* Top Search Bar */}
-            <div className="absolute top-4 left-0 right-0 z-20 flex flex-col items-center px-4 pointer-events-none gap-[5px]">
-                <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 pointer-events-auto ${showList ? 'ring-2 ring-primary' : ''}`}>
+            <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] gap-[5px]">
+                <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 ${showList ? 'ring-2 ring-primary' : ''}`}>
                     <Search className="w-5 h-5 text-gray-400 shrink-0" />
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => onToggleList(true)} placeholder={t('search_placeholder', '화장실 검색')} className="flex-1 bg-transparent outline-none text-sm min-w-0 dark:text-white dark:placeholder-gray-400" />
                     <button onClick={() => onToggleList(!showList)} className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">{showList ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}</button>
@@ -373,7 +373,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 {!showList && filteredToilets.length > 0 && (
                     <div
                         onClick={() => handleToiletSelect(filteredToilets[0])}
-                        className="w-full max-w-md bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border-2 border-red-500 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all animate-in slide-in-from-top-2 pointer-events-auto"
+                        className="w-full max-w-md bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border-2 border-red-500 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all animate-in slide-in-from-top-2"
                     >
                         <div className="w-14 h-14 shrink-0">
                             <img
@@ -404,7 +404,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
             {/* Search Here Button (Overlay) */}
             {showSearchButton && !showList && (
-                <div className="absolute bottom-56 left-1/2 transform -translate-x-1/2 z-20 pointer-events-auto">
+                <div className="absolute bottom-56 left-1/2 transform -translate-x-1/2 z-20">
                     <button
                         onClick={() => {
                             if (!mapInstance.current || !onFetchNewArea) return;
@@ -548,7 +548,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             )}
 
             {/* Current Location Button */}
-            <div className="absolute bottom-56 right-4 z-20 pointer-events-auto">
+            <div className="absolute bottom-56 right-4 z-20">
                 <button
                     onClick={async () => {
                         if (onRefreshLocation) {

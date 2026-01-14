@@ -338,8 +338,8 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 map: mapInstance.current,
                 icon: {
                     url: markerIcon,
-                    scaledSize: new window.google.maps.Size(46, 46),
-                    anchor: new window.google.maps.Point(23, 46) // Correct anchor for pin tip
+                    scaledSize: new window.google.maps.Size(40, 58), // Increased size (Build 54 refinement)
+                    anchor: new window.google.maps.Point(20, 58) // Tip of the pin
                 },
                 optimized: true,
                 zIndex: isNearest ? 100 : 10

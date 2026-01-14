@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>52</string>
+	<string>55</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -44,7 +44,7 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>KAKAO_APP_KEY</key>
-	<string>954f8caae336cb83506cad28e1de2e19</string>
+	<string>KAKAO_APP_KEY_PLACEHOLDER</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>CFBundleURLTypes</key>
@@ -54,7 +54,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>kakao954f8caae336cb83506cad28e1de2e19</string>
+				<string>kakaoKAKAO_APP_KEY_PLACEHOLDER</string>
 				<string>kakaokompassauth</string>
 			</array>
 		</dict>
@@ -104,7 +104,7 @@
 		<string>remote-notification</string>
 	</array>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~3347511713</string>
+	<string>ADMOB_APP_ID_PLACEHOLDER</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

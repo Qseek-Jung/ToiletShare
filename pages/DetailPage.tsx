@@ -10,6 +10,7 @@ import { getToiletColor, getMarkerSvg, calculateDistance } from '../utils';
 import { ToiletTypeIcon } from '../components/Icons';
 import { LevelIcon } from '../components/LevelIcon';
 import PasswordPanel from '../components/PasswordPanel';
+import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 
 import { ABUSE_LIMITS, validateContent } from '../policies/AbuseProtection';
@@ -108,8 +109,8 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                     map: map,
                     icon: {
                         url: pinIconUrl,
-                        scaledSize: new window.google.maps.Size(40, 52),
-                        anchor: new window.google.maps.Point(20, 52)
+                        scaledSize: new window.google.maps.Size(40, 58), // Match Build 54 refinement
+                        anchor: new window.google.maps.Point(20, 58)
                     },
                     title: toilet.name,
                     zIndex: 2
@@ -296,7 +297,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                         </button>
                     </div>
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 pb-4 pb-safe bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center">
+                    <div className={`absolute bottom-0 left-0 right-0 p-4 ${Capacitor.getPlatform() === 'android' ? 'pb-24' : 'pb-4 pb-safe'} bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center`}>
                         <div className="flex gap-4 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
                             {isKorean ? (
                                 <>
@@ -956,7 +957,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                                     className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 dark:text-primary-400 transition-colors"
                                 >
                                     <MapIcon className="w-6 h-6" />
-                                    <span className="text-[10px] font-bold">{t('view_map', '지도보기')}</span>
+                                    <span className="text-[10px] font-bold whitespace-nowrap min-w-fit">{t('view_map', '지도보기')}</span>
                                 </button>
                             </div>
 

@@ -12,12 +12,10 @@ export default defineConfig(({ mode }) => {
   const getPlatformApiKey = () => {
     const platform = process.env.CAPACITOR_PLATFORM || process.env.PLATFORM;
 
-    if (platform === 'ios') {
-      // iOS build: use iOS-specific key
-      return process.env.VITE_GOOGLE_MAPS_API_KEY_IOS || env.VITE_GOOGLE_MAPS_API_KEY_IOS;
-    } else if (platform === 'android') {
-      // Android build: use Android-specific key
-      return process.env.VITE_GOOGLE_MAPS_API_KEY_ANDROID || env.VITE_GOOGLE_MAPS_API_KEY_ANDROID;
+    if (platform === 'ios' || platform === 'android') {
+      // iOS/Android Capacitor webview: use unrestricted WebView key
+      // Native SDK keys (iOS/Android) don't work in webviews due to file:// protocol
+      return process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY;
     } else {
       // Web/Localhost: use browser key
       return process.env.VITE_GOOGLE_MAPS_API_KEY_WEB || env.VITE_GOOGLE_MAPS_API_KEY_WEB ||

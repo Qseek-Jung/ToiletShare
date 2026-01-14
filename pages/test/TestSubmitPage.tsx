@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock, Globe, ArrowLeft } from 'lucide-react';
 import { Toilet, User, UserRole, Gender } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
-import { MAPS_API_KEY } from '../config';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 import { getMarkerSvg, mapGoogleTypeToInternalType } from '../utils';
 import { PageLayout } from '../components/PageLayout';
 import { CreditModal } from '../components/CreditModal';

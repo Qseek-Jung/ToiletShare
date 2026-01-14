@@ -8,6 +8,15 @@ const config: CapacitorConfig = {
     contentInset: 'always',
     scheme: 'https'
   },
+  server: {
+    allowNavigation: [
+      "*.youtube.com",
+      "*.ytimg.com",
+      "www.youtube.com",
+      "*.google.com",
+      "*.googleapis.com"
+    ]
+  },
 
   // ========================================
   // ROLLBACK: Uncomment below to switch back to remote web app mode

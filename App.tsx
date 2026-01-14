@@ -268,16 +268,10 @@ export default function App() {
             initCrashlytics();
 
             // Push Listeners
-            PushNotifications.addListener('registration', async (token) => {
-                console.log('Push Token:', token.value);
+            PushNotifications.addListener('registration', (token) => {
+                console.log('Push Registration Success. Token:', token.value.substring(0, 10), '...');
+                localStorage.setItem('pending_push_token', token.value);
                 localStorage.setItem('push_token', token.value);
-
-                // Sync with DB if user is logged in
-                const currentUser = await db.getCurrentUser();
-                if (currentUser && currentUser.id) {
-                    await db.savePushToken(currentUser.id, token.value);
-                    console.log('✅ Token synced to DB for user:', currentUser.id);
-                }
             });
 
             PushNotifications.addListener('registrationError', (error) => {
@@ -331,33 +325,29 @@ export default function App() {
         }
     }, []);
 
-    // Sync Push Token
+    // Token Sync Effect: Handles token registration even if permission was granted before login
     useEffect(() => {
         const syncToken = async () => {
-            const token = localStorage.getItem('push_token');
-            // If user is logged in (not Guest) and we have a token in localstorage
-            if (user.id && user.role !== UserRole.GUEST && token) {
-                // If the user object doesn't have the token or it's different, sync it
-                if (!user.pushToken || user.pushToken !== token) {
-                    console.log(`[App] Syncing push token for user ${user.id}... (Local: ${token.substring(0, 10)}..., DB: ${user.pushToken?.substring(0, 10)}...)`);
+            const storedToken = localStorage.getItem('pending_push_token') || localStorage.getItem('push_token');
+            const isLoggedIn = user.id && user.id !== 'guest' && user.role !== UserRole.GUEST;
+
+            if (isLoggedIn && storedToken) {
+                // If user doesn't have a token or it's different, sync it
+                if (!user.pushToken || user.pushToken !== storedToken) {
+                    console.log(`[App] Syncing pending push token for user ${user.id}...`);
                     try {
-                        await db.savePushToken(user.id, token);
-                        // Update local user state so we don't sync again immediately
-                        setUser(prev => ({ ...prev, pushToken: token }));
-                        console.log('✅ Push Token Sync Finished and local state updated');
+                        await db.savePushToken(user.id, storedToken);
+                        setUser(prev => ({ ...prev, pushToken: storedToken }));
+                        // We don't necessarily clear pending_push_token yet to ensure retries, 
+                        // but the check above (user.pushToken !== storedToken) prevents infinite loops.
                     } catch (e) {
-                        console.error('❌ Failed to sync push token:', e);
+                        console.error('❌ Failed to sync token on login:', e);
                     }
-                } else {
-                    // console.log('[App] Push token already synced.');
                 }
             }
         };
         syncToken();
-    }, [user.id, user.pushToken]); // Depend on user.id and pushToken
-
-
-
+    }, [user.id, user.role]);
 
 
     // Restore session from localStorage on mount & Sync with Supabase

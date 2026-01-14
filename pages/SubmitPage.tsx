@@ -360,10 +360,11 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 <div className="flex-1 w-full relative">
                     <div ref={pickerMapRef} className="w-full h-full" />
 
-                    {/* Top Right Close Button */}
+                    {/* Top Right Close Button - Enlarged touch area for iOS */}
                     <button
                         onClick={() => setStep('details')}
-                        className="absolute top-4 right-4 z-20 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
+                        className="absolute top-4 right-4 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
+                        style={{ touchAction: 'manipulation' }}
                     >
                         <X className="w-6 h-6" />
                     </button>

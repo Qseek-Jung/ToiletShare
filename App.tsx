@@ -233,18 +233,27 @@ export default function App() {
         if (Capacitor.getPlatform() === 'web') return;
 
         try {
-            console.log('[NativeInit] 1. Requesting Location Permission...');
-            await Geolocation.requestPermissions();
+            console.log('[NativeInit] 1. Requesting Push Permission...');
+            const currentPerm = await PushNotifications.checkPermissions();
+            console.log('[NativeInit] Current Push Permission:', currentPerm.receive);
 
-            console.log('[NativeInit] Waiting 1s before Push Permission...');
-            await new Promise(r => setTimeout(r, 1000)); // Delay between prompts
-
-            console.log('[NativeInit] 2. Requesting Push Permission...');
-            const pushPerm = await PushNotifications.requestPermissions();
-            if (pushPerm.receive === 'granted') {
-                console.log('[NativeInit] Push Granted. Registering...');
+            if (currentPerm.receive !== 'granted') {
+                const pushPerm = await PushNotifications.requestPermissions();
+                console.log('[NativeInit] Push Permission Request Result:', pushPerm.receive);
+                if (pushPerm.receive === 'granted') {
+                    console.log('[NativeInit] Push Granted. Registering...');
+                    await PushNotifications.register();
+                }
+            } else {
+                console.log('[NativeInit] Push already granted. Registering...');
                 await PushNotifications.register();
             }
+
+            console.log('[NativeInit] Waiting 1s before Location Permission...');
+            await new Promise(r => setTimeout(r, 1000)); // Delay between prompts
+
+            console.log('[NativeInit] 2. Requesting Location Permission...');
+            await Geolocation.requestPermissions();
 
             console.log('[NativeInit] 3. Starting Private Service Init...');
             await notificationService.initialize();
@@ -268,10 +277,20 @@ export default function App() {
             initCrashlytics();
 
             // Push Listeners
-            PushNotifications.addListener('registration', (token) => {
+            PushNotifications.addListener('registration', async (token) => {
                 console.log('Push Registration Success. Token:', token.value.substring(0, 10), '...');
                 localStorage.setItem('pending_push_token', token.value);
                 localStorage.setItem('push_token', token.value);
+
+                // CRITICAL: Save token to DB for FCM delivery
+                const currentUser = localStorage.getItem('currentUser');
+                if (currentUser) {
+                    const user = JSON.parse(currentUser);
+                    if (user.id) {
+                        await db.updateUserPushToken(user.id, token.value);
+                        console.log('✅ Push token saved to DB for user:', user.id);
+                    }
+                }
             });
 
             PushNotifications.addListener('registrationError', (error) => {
@@ -2095,9 +2114,9 @@ export default function App() {
                     <>
                         {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
                         {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
-                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+78px)]'}`}>
+                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
                                 <div className="pointer-events-auto w-full max-w-md overflow-hidden">
-                                    <AdBanner position="bottom" maxHeight={74} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
+                                    <AdBanner position="bottom" maxHeight={100} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
                                 </div>
                             </div>
                         )}

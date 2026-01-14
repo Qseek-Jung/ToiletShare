@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Delete, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 interface DoorlockModalProps {
     initialValue: string;
@@ -64,26 +65,35 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
         '#': 1600
     };
 
-    const handlePress = (key: string) => {
+    const handlePress = async (key: string) => {
         if (input.length >= 10) return;
 
-        // Short, sharp vibration for "premium" feel (iPhone-like haptic)
-        // Note: iOS Safari only vibrates on specific elements (e.g., input, button) and often requires user interaction.
-        // Android Chrome generally supports navigator.vibrate more broadly.
-        if (navigator.vibrate) navigator.vibrate(5);
-        if (toneMap[key]) playTone(toneMap[key]);
+        // Reliable haptic feedback using Capacitor
+        try {
+            await Haptics.impact({ style: ImpactStyle.Light });
+        } catch (e) {
+            if (navigator.vibrate) navigator.vibrate(5);
+        }
 
+        if (toneMap[key]) playTone(toneMap[key]);
         setInput(prev => prev + key);
     };
 
-    const handleDelete = () => {
-        if (navigator.vibrate) navigator.vibrate(8);
+    const handleDelete = async () => {
+        try {
+            await Haptics.impact({ style: ImpactStyle.Medium });
+        } catch (e) {
+            if (navigator.vibrate) navigator.vibrate(8);
+        }
         playTone(300, 'square', 0.1); // Low buzz for delete
         setInput(prev => prev.slice(0, -1));
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (input.length === 0) {
+            try {
+                await Haptics.vibrate({ duration: 200 });
+            } catch (e) { }
             playTone(200, 'sawtooth', 0.2); // Error buzz
             onClose();
             return;
@@ -92,8 +102,15 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
         // Simulate Doorlock Opening Sequence
         setIsOpening(true);
         setDisplayMessage("OPEN");
+
         // "Mechanical" unlock feel: Tick - Wait - Tick
-        if (navigator.vibrate) navigator.vibrate([15, 60, 15]);
+        try {
+            // Using Haptics.notification for a "success" feel
+            await Haptics.notification({ type: ImpactStyle.Heavy as any });
+        } catch (e) {
+            if (navigator.vibrate) navigator.vibrate([15, 60, 15]);
+        }
+
         playSuccessSound();
 
         setTimeout(() => {
@@ -134,7 +151,6 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
                                 <span>{input.slice(0, -1)}</span>
 
                                 {/* Active Character Slot with Underline Cursor */}
-                                {/* Using inline-flex justify-center ensures strict horizontal centering */}
                                 <span className="relative inline-flex justify-center w-[0.8em] ml-[0.1em]">
                                     {input.slice(-1) || "\u00A0"}
                                     {/* The Cursor (Underline) */}

@@ -38,16 +38,16 @@ const config: CapacitorConfig = {
   plugins: {
     GoogleAuth: {
       scopes: ["profile", "email"],
-      serverClientId: "889382704312-kqfbm68u4c55f06lfn3sasc2aiiv3ceb.apps.googleusercontent.com",
-      iosClientId: "889382704312-kqfbm68u4c55f06lfn3sasc2aiiv3ceb.apps.googleusercontent.com",
+      serverClientId: "GOOGLE_SERVER_CLIENT_ID_PLACEHOLDER",
+      iosClientId: "GOOGLE_IOS_CLIENT_ID_PLACEHOLDER",
       forceCodeForRefreshToken: true
     },
     KakaoLogin: {
-      kakaoAppKey: "954f8caae336cb83506cad28e1de2e19"
+      kakaoAppKey: "KAKAO_APP_KEY_PLACEHOLDER"
     },
     CapacitorNaverLogin: {
-      clientId: "44PTd3BMDQvsMLU_oLVy",
-      clientSecret: "4mMuTwBFw1",
+      clientId: "NAVER_CLIENT_ID_PLACEHOLDER",
+      clientSecret: "NAVER_CLIENT_SECRET_PLACEHOLDER",
       clientName: "대똥단결",
       urlScheme: "toiletsharenaver"
     }

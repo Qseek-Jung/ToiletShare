@@ -90,7 +90,22 @@ class AdMobService {
     }
 
     async showBottomBanner() {
-        return this.showBanner(BannerAdPosition.BOTTOM_CENTER, { margin: 0 });
+        try {
+            const { id, isTest } = await this.getAdId('banner');
+            if (!id) return;
+
+            await this.initialize(isTest);
+            await AdMob.showBanner({
+                adId: id,
+                adSize: BannerAdSize.LARGE_BANNER, // Increased size for better visibility
+                position: BannerAdPosition.BOTTOM_CENTER,
+                margin: 0, // No gap - attach directly to bottom nav
+                isTesting: isTest,
+                npa: true
+            });
+        } catch (e) {
+            console.error('Show Bottom Banner failed', e);
+        }
     }
 
     async hideBanner() {

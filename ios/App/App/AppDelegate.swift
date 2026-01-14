@@ -1,6 +1,7 @@
 import UIKit
 import Capacitor
 import Firebase
+import GoogleMaps
 import KakaoSDKCommon
 import KakaoSDKAuth
 
@@ -19,6 +20,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // Initialize Firebase
         FirebaseApp.configure()
+        
+        // Initialize Google Maps SDK (iOS specific key)
+        GMSServices.provideAPIKey("GOOGLE_MAPS_IOS_KEY_PLACEHOLDER")
         
         return true
     }

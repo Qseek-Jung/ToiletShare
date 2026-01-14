@@ -225,7 +225,6 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     'rel': 0,
                     'showinfo': 0, // Deprecated but kept for older API compat
                     'iv_load_policy': 3, // Hide annotations
-                    'origin': window.location.origin
                 },
                 events: {
                     'onReady': (event: any) => {
@@ -266,8 +265,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     },
                     'onError': (e: any) => {
                         console.error("YT Player Error", e);
-                        // If one fails, try next?
-                        // playerRef.current.nextVideo();
+                        // Fallback to AdMob if YouTube fails
+                        handleAdMobFallback(config?.testMode);
                     }
                 }
             });
@@ -333,11 +332,9 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
                 {/* Full Width Video Container */}
                 <div className="w-full h-full flex items-center justify-center relative">
-                    <div ref={containerRef} className="w-full aspect-[9/16] bg-black relative overflow-hidden flex items-center justify-center">
-                        {/* Scaled Wrapper to Crop YouTube UI (Title, Branding) */}
-                        <div className="w-full h-full absolute inset-0 transform scale-[1.35] origin-center pointer-events-none">
-                            <div id="youtube-player-container" className="w-full h-full pointer-events-auto"></div>
-                        </div>
+                    <div ref={containerRef} className="w-full h-full bg-black relative flex items-center justify-center">
+                        {/* YouTube Player: Fit-to-Width (contained) */}
+                        <div id="youtube-player-container" className="w-full aspect-video pointer-events-auto"></div>
 
                         {!isPlaying && !canClose && (
                             <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">

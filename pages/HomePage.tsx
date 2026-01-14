@@ -245,7 +245,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 // Force resize
                 setTimeout(() => {
                     window.google.maps.event.trigger(map, 'resize');
-                    updateMarkers();
+                    updateMarkers(displayToilets);
                 }, 200);
 
             } catch (e) {
@@ -302,53 +302,59 @@ const HomePage: React.FC<HomePageProps> = (props) => {
         }
     };
 
-    // Update Markers Effect
+    // Marker Update Effect
     useEffect(() => {
-        updateMarkers();
-    }, [displayToilets, user.role]); // Now displayToilets is stable!
+        updateMarkers(displayToilets);
+    }, [displayToilets, user.role]);
 
-    // Optimize Marker Updates: minimize clearing
-    const prevMarkersStringRef = useRef("");
-
-    function updateMarkers() {
+    // --- Optimized Marker Update (Diffing) ---
+    const updateMarkers = (newToilets: Toilet[]) => {
         if (!mapInstance.current) return;
 
-        // Check if data or user state actually changed to avoid flickering
-        const newMarkersString = JSON.stringify({
-            toiletIds: displayToilets.map(t => t.id),
-            userRole: user.role,
-            userId: user.id,
-            userGender: user.gender
+        // 1. Identify which markers to remove
+        const newToiletIds = new Set(newToilets.map(t => t.id));
+        const markersToKeep: any[] = [];
+
+        markersRef.current.forEach(marker => {
+            const toiletId = (marker as any).toiletId;
+            if (newToiletIds.has(toiletId)) {
+                markersToKeep.push(marker);
+            } else {
+                marker.setMap(null);
+            }
         });
-        if (prevMarkersStringRef.current === newMarkersString) return;
-        prevMarkersStringRef.current = newMarkersString;
 
-        // Clear existing
-        markersRef.current.forEach(m => m.setMap(null));
-        markersRef.current = [];
+        // 2. Identify which toilets need new markers
+        const existingToiletIds = new Set(markersRef.current.map(m => (m as any).toiletId));
+        const toiletsToAdd = newToilets.filter(t => !existingToiletIds.has(t.id));
 
-        displayToilets.forEach((t, index) => {
-            const isNearest = index === 0 && sortBy === 'distance'; // Only highlight nearest if sorted by distance
-            const imageUrl = getMarkerImage(t, user.role, isNearest);
+        // 3. Create new markers
+        toiletsToAdd.forEach(t => {
+            const isNearest = filteredToilets.length > 0 && t.id === filteredToilets[0].id;
+            const markerIcon = getMarkerImage(t, user.role, isNearest);
 
             const marker = new window.google.maps.Marker({
                 position: { lat: t.lat, lng: t.lng },
                 map: mapInstance.current,
-                title: t.name,
                 icon: {
-                    url: imageUrl,
-                    scaledSize: new window.google.maps.Size(40, 52),
-                    anchor: new window.google.maps.Point(20, 52)
+                    url: markerIcon,
+                    scaledSize: new window.google.maps.Size(46, 46),
+                    anchor: new window.google.maps.Point(23, 46) // Correct anchor for pin tip
                 },
-                zIndex: isNearest ? 100 : 1,
-                optimized: true // Explicitly enable optimization
+                optimized: true,
+                zIndex: isNearest ? 100 : 10
             });
 
+            (marker as any).toiletId = t.id;
+
             marker.addListener('click', () => {
-                handleToiletSelect(t);
+                onToiletClick(t);
             });
-            markersRef.current.push(marker);
+
+            markersToKeep.push(marker);
         });
+
+        markersRef.current = markersToKeep;
     }
 
     return (
@@ -362,7 +368,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             </div>
 
             {/* Top Search Bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-4 pt-[max(1rem,env(safe-area-inset-top))] gap-[5px]">
+            <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-4 pt-[max(2px,env(safe-area-inset-top))] gap-[5px]">
                 <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 ${showList ? 'ring-2 ring-primary' : ''}`}>
                     <Search className="w-5 h-5 text-gray-400 shrink-0" />
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => onToggleList(true)} placeholder={t('search_placeholder', '화장실 검색')} className="flex-1 bg-transparent outline-none text-sm min-w-0 dark:text-white dark:placeholder-gray-400" />

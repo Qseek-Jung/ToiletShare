@@ -77,7 +77,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
             });
         };
 
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
             if (!mapRef.current || !window.google?.maps) {
                 if (window.google?.maps && mapRef.current) {
                     // Retry logic if needed, but for now just proceed
@@ -204,17 +204,21 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                 myMarkerRef.current = overlay;
 
                 // Use Capacitor's Geolocation API for better permission handling
-                const watchId = await Geolocation.watchPosition({ enableHighAccuracy: true, maximumAge: 0 }, (position, err) => {
-                    if (position) {
-                        const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
-                        if (myMarkerRef.current) myMarkerRef.current.setPosition(newPos);
-                    }
-                    if (err) {
-                        console.log("Geolocation error suppressed", err);
-                    }
-                });
+                try {
+                    const watchId = await Geolocation.watchPosition({ enableHighAccuracy: true, maximumAge: 0 }, (position, err) => {
+                        if (position) {
+                            const newPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                            if (myMarkerRef.current) myMarkerRef.current.setPosition(newPos);
+                        }
+                        if (err) {
+                            console.log("Geolocation error suppressed", err);
+                        }
+                    });
 
-                watchIdRef.current = watchId as any;
+                    watchIdRef.current = watchId as any;
+                } catch (err) {
+                    console.log("Geolocation watch failed:", err);
+                }
             }
         }, 200);
 

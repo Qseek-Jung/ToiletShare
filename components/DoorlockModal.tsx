@@ -112,8 +112,8 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-[320px] bg-gray-900 rounded-3xl p-4 shadow-2xl border-4 border-gray-700 relative scale-100 transition-transform duration-200 mb-[15vh]">
 
-                {/* Close Button */}
-                <button onClick={onClose} className="absolute -top-10 right-0 text-white/80 p-2 hover:bg-white/10 rounded-full">
+                {/* Close Button - Enlarged touch area for iOS */}
+                <button onClick={onClose} className="absolute -top-12 right-0 text-white/80 p-3 hover:bg-white/10 rounded-full min-w-[48px] min-h-[48px] flex items-center justify-center" style={{ touchAction: 'manipulation' }}>
                     <X className="w-6 h-6" />
                 </button>
 
@@ -145,26 +145,28 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
                     </div>
                 </div>
 
-                {/* Keypad Grid */}
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
+                {/* Keypad Grid - Enlarged buttons for iOS touch accuracy */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
                     {keys.map((key) => (
                         <button
                             key={key}
                             onClick={() => handlePress(key)}
                             disabled={isOpening}
-                            className="bg-gray-800 active:bg-gray-700 active:scale-95 transition-all h-10 rounded-lg flex items-center justify-center border-b-[3px] border-gray-950 text-white font-bold text-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="bg-gray-800 active:bg-gray-700 active:scale-95 transition-all h-12 rounded-lg flex items-center justify-center border-b-[3px] border-gray-950 text-white font-bold text-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ touchAction: 'manipulation' }}
                         >
                             {key}
                         </button>
                     ))}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-1.5">
+                {/* Action Buttons - Enlarged for iOS touch accuracy */}
+                <div className="grid grid-cols-2 gap-2">
                     <button
                         onClick={handleDelete}
                         disabled={isOpening}
-                        className="bg-gray-700 active:bg-gray-600 h-10 rounded-lg flex items-center justify-center text-red-400 font-bold border-b-[3px] border-gray-950 active:scale-95 transition-all"
+                        className="bg-gray-700 active:bg-gray-600 h-12 rounded-lg flex items-center justify-center text-red-400 font-bold border-b-[3px] border-gray-950 active:scale-95 transition-all"
+                        style={{ touchAction: 'manipulation' }}
                     >
                         <Delete className="w-4 h-4 mr-1" />
                         <span className="text-xs">{t('doorlock_delete', '지움')}</span>
@@ -172,7 +174,8 @@ const DoorlockModal: React.FC<DoorlockModalProps> = ({ initialValue, onClose, on
                     <button
                         onClick={handleConfirm}
                         disabled={isOpening}
-                        className={`h-10 rounded-lg flex items-center justify-center font-bold active:scale-95 transition-all text-white shadow-lg ${input.length > 0 ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/50' : 'bg-gray-700 text-gray-400'}`}
+                        className={`h-12 rounded-lg flex items-center justify-center font-bold active:scale-95 transition-all text-white shadow-lg ${input.length > 0 ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/50' : 'bg-gray-700 text-gray-400'}`}
+                        style={{ touchAction: 'manipulation' }}
                     >
                         {isOpening ? <CheckCircle className="w-4 h-4 animate-ping" /> : <span className="text-xs">{t('doorlock_enter', '입력완료')}</span>}
                     </button>

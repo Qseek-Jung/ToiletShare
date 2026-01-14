@@ -216,6 +216,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 // Or use loadPlaylist in onReady.
                 playerVars: {
                     'autoplay': 1,
+                    'mute': 1, // Required for iOS autoplay
                     'controls': 0,
                     'disablekb': 1,
                     'fs': 0,
@@ -235,6 +236,13 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                             startSeconds: 0
                         });
                         event.target.setLoop(true); // Enable Infinite Loop
+                        // Unmute after playback starts (for better UX on iOS)
+                        setTimeout(() => {
+                            try {
+                                event.target.unMute();
+                                event.target.setVolume(100);
+                            } catch (e) { /* iOS may block this */ }
+                        }, 500);
                     },
                     'onStateChange': (event: any) => {
                         // PLAYING = 1

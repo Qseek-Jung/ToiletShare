@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { HelpCircle, X, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { User } from '../types';
 import emailjs from '@emailjs/browser';
-import { EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY } from '../config';
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || "";
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || "";
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || "";
 import { useTranslation } from 'react-i18next';
 
 interface ContactModalProps {

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, Navigation, MapPin, ExternalLink } from 'lucide-react';
 import { Toilet } from '../types';
 import { formatDistance, getMarkerImage, calculateDistance } from '../utils';
-import { MAPS_API_KEY } from '../config';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 interface NavigationModalProps {
     toilet: Toilet;

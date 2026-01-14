@@ -3,7 +3,8 @@ import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock
 import { useTranslation } from 'react-i18next';
 import { Toilet, User, UserRole, Gender } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
-import { MAPS_API_KEY, KAKAO_JAVASCRIPT_KEY } from '../config';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const KAKAO_JAVASCRIPT_KEY = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || "";
 import { getMarkerSvg } from '../utils';
 import { PageLayout } from '../components/PageLayout';
 import { AdBanner } from '../components/AdBanner';

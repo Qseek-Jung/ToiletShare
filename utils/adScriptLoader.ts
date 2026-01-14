@@ -1,4 +1,4 @@
-import { ADSENSE_PUB_ID } from '../config';
+const ADSENSE_PUB_ID = import.meta.env.VITE_ADSENSE_PUB_ID || "";
 
 let isScriptLoaded = false;
 let isScriptLoading = false;

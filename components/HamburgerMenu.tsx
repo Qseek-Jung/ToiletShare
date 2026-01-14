@@ -3,7 +3,7 @@ import { Share2, Info, MessageSquare, AlertTriangle, LogOut, ChevronRight, Gift,
 import { Capacitor } from '@capacitor/core';
 import { useTranslation } from 'react-i18next';
 import { User, UserRole } from '../types';
-import { SUPERVISOR_EMAIL } from '../config';
+const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail.com";
 import { shareService } from '../services/shareService';
 import { APP_VERSION } from '../constants/version';
 

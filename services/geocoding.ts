@@ -1,5 +1,5 @@
 // Google Maps Geocoding API Service
-import { MAPS_API_KEY } from '../config';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 interface GoogleGeocodingResponse {
     results: Array<{

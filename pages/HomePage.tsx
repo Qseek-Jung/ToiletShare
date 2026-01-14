@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X, List, Check, ScrollText, Waves, Star, Crosshair, MapPin } from 'lucide-react';
 import { Toilet, User, UserRole } from '../types';
-import { MAPS_API_KEY } from '../config';
+const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 import { getToiletColor, getMarkerSvg, formatDistance, getMarkerImage, calculateDistance } from '../utils';
 import { AdBanner } from '../components/AdBanner';
 import { dbSupabase } from '../services/db_supabase';

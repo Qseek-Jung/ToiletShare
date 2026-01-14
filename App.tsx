@@ -1316,8 +1316,6 @@ export default function App() {
                 const loginResult = await KakaoLoginPlugin.goLogin();
                 console.log('Kakao native login result:', loginResult);
 
-                FirebaseCrashlytics.addLogMessage({ message: `Kakao login clicked. Result: ${JSON.stringify(loginResult)}` });
-
                 // Get user info from native plugin
                 const userInfo = await KakaoLoginPlugin.getUserInfo();
                 console.log('Kakao user info:', userInfo);

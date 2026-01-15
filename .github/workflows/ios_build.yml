@@ -33,6 +33,7 @@ jobs:
           echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
           echo "VITE_GOOGLE_MAPS_API_KEY_IOS=${{ secrets.VITE_GOOGLE_MAPS_API_KEY_IOS }}" >> .env
           echo "VITE_ADSENSE_PUB_ID=${{ secrets.VITE_ADSENSE_PUB_ID }}" >> .env
+          echo "VITE_ADMOB_APP_ID_IOS=${{ secrets.VITE_ADMOB_APP_ID_IOS }}" >> .env
           echo "Created .env file with secrets."
 
       - name: Build Web Assets (Hard-injecting secrets)
@@ -61,12 +62,6 @@ jobs:
             echo "⚠️  Found error string (Expected if in library code, but dangerous if env missing)"
           fi
 
-      - name: Patch iOS Native Code (Info.plist, AppDelegate)
-        run: node scripts/patch-ios.js
-
-      - name: Sync Capacitor
-        run: npx cap sync ios
-
       - name: Inject GoogleService-Info.plist
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
@@ -79,6 +74,12 @@ jobs:
           fi
           echo "✅ GoogleService-Info.plist injected successfully"
 
+      - name: Patch iOS Native Code (Info.plist, AppDelegate)
+        run: node scripts/patch-ios.js
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
       - name: Register GoogleService-Info.plist in Xcode
         run: |
           gem install xcodeproj
@@ -88,7 +89,7 @@ jobs:
         run: |
           cd ios/App
           agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 56
+          agvtool new-version -all 67
 
       - name: Install Apple Certificate and Provisioning Profile
         env:

@@ -24,7 +24,7 @@ const Config = {
             androidKey: env.VITE_GOOGLE_MAPS_API_KEY_ANDROID || '',
         },
         admob: {
-            appId: env.VITE_ADSENSE_PUB_ID || '',
+            appId: env.VITE_ADMOB_APP_ID_ANDROID || env.VITE_ADSENSE_PUB_ID || '',
         }
     }
 };
@@ -56,7 +56,22 @@ try {
     console.error('❌ Failed to patch strings.xml:', e.message);
 }
 
-// 2. Patch capacitor.config.ts
+// 2. Patch AndroidManifest.xml
+const manifestPath = path.resolve(__dirname, '../android/app/src/main/AndroidManifest.xml');
+try {
+    let content = readFile(manifestPath);
+    const result = replaceContent(content, replacements);
+    if (result.count > 0) {
+        writeFile(manifestPath, result.content);
+        console.log(`✅ AndroidManifest.xml patched (${result.count} replacements)`);
+    } else {
+        console.log('ℹ️ AndroidManifest.xml already patched or no placeholders found.');
+    }
+} catch (e) {
+    console.error('❌ Failed to patch AndroidManifest.xml:', e.message);
+}
+
+// 3. Patch capacitor.config.ts
 const capConfigPath = path.resolve(__dirname, '../capacitor.config.ts');
 try {
     let content = readFile(capConfigPath);

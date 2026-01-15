@@ -85,11 +85,7 @@ jobs:
           gem install xcodeproj
           ruby scripts/add-google-service.rb
 
-      - name: Update Version to Match Package.json
-        run: |
-          cd ios/App
-          agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 67
+
 
       - name: Install Apple Certificate and Provisioning Profile
         env:

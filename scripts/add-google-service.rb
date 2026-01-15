@@ -14,9 +14,9 @@ project = Xcodeproj::Project.open(project_path)
 # Find the main target
 target = project.targets.find { |t| t.name == 'App' }
 
-if target
   # Get the 'App' group (where source files are)
-  app_group = project.main_group.find_sub_group('App')
+  # 'find_sub_group' is not available, using hash-like access or find
+  app_group = project.main_group['App']
   
   # check if file reference already exists
   file_ref = app_group.find_file_by_path(file_name)

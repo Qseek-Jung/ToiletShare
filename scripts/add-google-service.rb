@@ -14,34 +14,39 @@ project = Xcodeproj::Project.open(project_path)
 # Find the main target
 target = project.targets.find { |t| t.name == 'App' }
 
-  # Get the 'App' group (where source files are)
-  # 'find_sub_group' is not available, using hash-like access or find
-  app_group = project.main_group['App']
-  
-  # check if file reference already exists
-  file_ref = app_group.find_file_by_path(file_name)
-  
-  if file_ref
-    puts "ℹ️  File reference already exists in project."
-  else
-    # Create file reference
-    file_ref = app_group.new_reference(file_name)
-    puts "✅ Created file reference for #{file_name}."
-  end
-
-  # Check if it's in the Copy Bundle Resources phase
-  resources_phase = target.resources_build_phase
-  if resources_phase.files_references.include?(file_ref)
-    puts "ℹ️  File is already in 'Copy Bundle Resources' phase."
-  else
-    resources_phase.add_file_reference(file_ref)
-    puts "✅ Added #{file_name} to 'Copy Bundle Resources' phase."
-  end
-
-  # Save the project
-  project.save
-  puts "🎉 Project saved successfully!"
-else
+if target.nil?
   puts "❌ Error: Target 'App' not found!"
   exit 1
 end
+
+# Get the 'App' group (where source files are)
+app_group = project.main_group['App']
+
+if app_group.nil?
+  puts "❌ Error: 'App' group not found in project!"
+  exit 1
+end
+
+# check if file reference already exists
+file_ref = app_group.files.find { |f| f.path == file_name }
+
+if file_ref
+  puts "ℹ️  File reference already exists in project."
+else
+  # Create file reference
+  file_ref = app_group.new_reference(file_name)
+  puts "✅ Created file reference for #{file_name}."
+end
+
+# Check if it's in the Copy Bundle Resources phase
+resources_phase = target.resources_build_phase
+if resources_phase.files_references.include?(file_ref)
+  puts "ℹ️  File is already in 'Copy Bundle Resources' phase."
+else
+  resources_phase.add_file_reference(file_ref)
+  puts "✅ Added #{file_name} to 'Copy Bundle Resources' phase."
+end
+
+# Save the project
+project.save
+puts "🎉 Project saved successfully!"

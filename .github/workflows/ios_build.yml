@@ -82,6 +82,9 @@ jobs:
       - name: Patch iOS Native Code (Info.plist, AppDelegate)
         run: node scripts/patch-ios.js
 
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
       - name: Update Version to Match Package.json
         run: |
           cd ios/App

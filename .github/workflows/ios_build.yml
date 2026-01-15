@@ -74,16 +74,16 @@ jobs:
           fi
           echo "✅ GoogleService-Info.plist injected successfully"
 
-      - name: Register GoogleService-Info.plist in Xcode
-        run: |
-          gem install xcodeproj
-          ruby scripts/add-google-service.rb
-
       - name: Patch iOS Native Code (Info.plist, AppDelegate)
         run: node scripts/patch-ios.js
 
       - name: Sync Capacitor
         run: npx cap sync ios
+
+      - name: Register GoogleService-Info.plist in Xcode
+        run: |
+          gem install xcodeproj
+          ruby scripts/add-google-service.rb
 
       - name: Update Version to Match Package.json
         run: |

@@ -18,8 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         
         // Initialize Firebase
-        // TEMPORARILY DISABLED FOR CRASH DEBUGGING
-        // FirebaseApp.configure()
+        FirebaseApp.configure()
         
         return true
     }

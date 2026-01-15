@@ -68,29 +68,28 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync ios
 
-      # TEMPORARILY DISABLED FOR CRASH DEBUGGING
-      # - name: Inject GoogleService-Info.plist
-      #   env:
-      #     GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
-      #   run: |
-      #     mkdir -p ios/App/App
-      #     echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
-      #     if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
-      #       echo "❌ GoogleService-Info.plist injection FAILED"
-      #       exit 1
-      #     fi
-      #     echo "✅ GoogleService-Info.plist injected successfully"
+      - name: Inject GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          mkdir -p ios/App/App
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
+          if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
+            echo "❌ GoogleService-Info.plist injection FAILED"
+            exit 1
+          fi
+          echo "✅ GoogleService-Info.plist injected successfully"
 
-      # - name: Register GoogleService-Info.plist in Xcode
-      #   run: |
-      #     gem install xcodeproj
-      #     ruby scripts/add-google-service.rb
+      - name: Register GoogleService-Info.plist in Xcode
+        run: |
+          gem install xcodeproj
+          ruby scripts/add-google-service.rb
 
       - name: Update Version to Match Package.json
         run: |
           cd ios/App
           agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 62
+          agvtool new-version -all 63
 
       - name: Install Apple Certificate and Provisioning Profile
         env:
@@ -144,3 +143,23 @@ jobs:
         with:
           name: ios-app
           path: ios/App/App.ipa
+
+      - name: Upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: |
+          # Create AuthKey file
+          mkdir -p ~/private_keys
+          echo "$APP_STORE_CONNECT_API_KEY_CONTENT" > ~/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8
+          
+          # Upload to TestFlight using xcrun altool
+          xcrun altool --upload-app \
+            --type ios \
+            --file ios/App/App.ipa \
+            --apiKey $APP_STORE_CONNECT_API_KEY_ID \
+            --apiIssuer $APP_STORE_CONNECT_ISSUER_ID \
+            --verbose
+          
+          echo "✅ Successfully uploaded to TestFlight!"

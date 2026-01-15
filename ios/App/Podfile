@@ -31,8 +31,6 @@ end
 target 'App' do
   capacitor_pods
   # Add your Pods here
-  pod 'GoogleMaps', '~> 9.2.0'
-  pod 'Google-Maps-iOS-Utils', '~> 6.1.1'
   pod 'GoogleUserMessagingPlatform', '~> 2.1'
   pod 'Firebase/Crashlytics', '10.29.0' # Pin to v10 for iOS 13 support
   pod 'Firebase/Analytics', '10.29.0'

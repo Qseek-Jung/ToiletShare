@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   ios: {
     contentInset: 'always',
-    scheme: 'https'
+    scheme: 'capacitor'
   },
   server: {
     allowNavigation: [

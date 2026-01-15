@@ -1951,6 +1951,7 @@ export default function App() {
         return (
             <>
                 <HomePage
+                    key={user.id || 'guest'}
                     user={user}
                     myLocation={myLocation}
                     filteredToilets={filteredToilets}

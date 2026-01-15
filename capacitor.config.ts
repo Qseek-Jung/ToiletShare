@@ -18,36 +18,19 @@ const config: CapacitorConfig = {
     ]
   },
 
-  // ========================================
-  // ROLLBACK: Uncomment below to switch back to remote web app mode
-  // ========================================
-  // server: {
-  //   url: 'https://toiletshare.pages.dev',
-  //   cleartext: true,
-  //   androidScheme: 'https',
-  //   allowNavigation: [
-  //     "*.google.com",
-  //     "*.googleapis.com",
-  //     "*.naver.com",
-  //     "*.kakao.com",
-  //     "*.kakao.co.kr",
-  //     "accounts.google.com"
-  //   ]
-  // },
-
   plugins: {
     GoogleAuth: {
       scopes: ["profile", "email"],
-      serverClientId: "GOOGLE_SERVER_CLIENT_ID_PLACEHOLDER",
-      iosClientId: "GOOGLE_IOS_CLIENT_ID_PLACEHOLDER",
+      serverClientId: "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",
+      iosClientId: "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",
       forceCodeForRefreshToken: true
     },
     KakaoLogin: {
-      kakaoAppKey: "KAKAO_APP_KEY_PLACEHOLDER"
+      kakaoAppKey: "d5a9498cedf6ffb73e6d6ca18ac82abf"
     },
     CapacitorNaverLogin: {
-      clientId: "NAVER_CLIENT_ID_PLACEHOLDER",
-      clientSecret: "NAVER_CLIENT_SECRET_PLACEHOLDER",
+      clientId: "44PTd3BMDQvsMLU_oLVy",
+      clientSecret: "4mMuTwBFw1",
       clientName: "대똥단결",
       urlScheme: "toiletsharenaver"
     }

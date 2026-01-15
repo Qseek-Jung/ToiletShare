@@ -1,13 +1,14 @@
 {
   "name": "대똥단결",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:ios": "cross-env CAPACITOR_PLATFORM=ios vite build && npx cap sync ios",
-    "build:android": "cross-env CAPACITOR_PLATFORM=android vite build && npx cap sync android",
+    "apply-secrets": "echo 'Use npm run build:android or npm run build:ios instead'",
+    "build:ios": "node scripts/patch-ios.js && cross-env CAPACITOR_PLATFORM=ios vite build && npx cap sync ios",
+    "build:android": "node scripts/patch-android.js && cross-env CAPACITOR_PLATFORM=android vite build && npx cap sync android",
     "preview": "vite preview"
   },
   "dependencies": {

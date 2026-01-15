@@ -6,20 +6,42 @@ import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  // Manual .env loading to ensure stability
+  const envManual = {};
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    content.split('\n').forEach(line => {
+      const cleanLine = line.split('#')[0].trim();
+      if (!cleanLine) return;
+      const parts = cleanLine.split('=');
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        let value = parts.slice(1).join('=').trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        envManual[key] = value;
+      }
+    });
+  }
+
+  const envLoad = loadEnv(mode, process.cwd(), '');
+  const env = { ...envManual, ...envLoad }; // Merge, preferring loadEnv if it works, but manual as backup
+
+  console.log(`[Vite] Manual Env Loaded: ${Object.keys(envManual).length} keys`);
+  console.log(`[Vite] Supabase URL: ${env.VITE_SUPABASE_URL ? 'FOUND' : 'MISSING'}`);
 
   // Platform-specific Google Maps API Key selection
   const getPlatformApiKey = () => {
     const platform = process.env.CAPACITOR_PLATFORM || process.env.PLATFORM;
 
     if (platform === 'ios' || platform === 'android') {
-      // iOS/Android Capacitor webview: use unrestricted WebView key
-      // Native SDK keys (iOS/Android) don't work in webviews due to file:// protocol
-      return process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY;
+      // iOS/Android Capacitor webview: use Production/WebView key (OPQI)
+      return process.env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW || env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW;
     } else {
-      // Web/Localhost: use browser key
-      return process.env.VITE_GOOGLE_MAPS_API_KEY_WEB || env.VITE_GOOGLE_MAPS_API_KEY_WEB ||
-        process.env.VITE_GOOGLE_MAPS_API_KEY || env.VITE_GOOGLE_MAPS_API_KEY;
+      // Web/Localhost: use Local Test key (GKOm4)
+      return process.env.VITE_GOOGLE_MAPS_API_KEY_LOCAL_TEST || env.VITE_GOOGLE_MAPS_API_KEY_LOCAL_TEST;
     }
   };
 
@@ -35,7 +57,12 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
       'import.meta.env.VITE_KAKAO_API_KEY': JSON.stringify(process.env.VITE_KAKAO_API_KEY || env.VITE_KAKAO_API_KEY),
       'import.meta.env.VITE_NAVER_CLIENT_ID': JSON.stringify(process.env.VITE_NAVER_CLIENT_ID || env.VITE_NAVER_CLIENT_ID),
+      // Inject both just in case, but code should prefer getPlatformApiKey()
+      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY_LOCAL_TEST': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY_LOCAL_TEST || env.VITE_GOOGLE_MAPS_API_KEY_LOCAL_TEST),
+      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW || env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW),
+      // Standardize usage via this key
       'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(getPlatformApiKey()),
+      'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(process.env.VITE_GOOGLE_CLIENT_ID || env.VITE_GOOGLE_CLIENT_ID),
     },
     plugins: [
       react(),

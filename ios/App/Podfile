@@ -1,6 +1,6 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '13.0'
+platform :ios, '14.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -8,6 +8,29 @@ use_frameworks!
 # Requires CocoaPods 1.6 or newer
 install! 'cocoapods', :disable_input_output_paths => true
 
+def capacitor_pods
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCommunityAdmob', :path => '../../node_modules/@capacitor-community/admob'
+  pod 'CapacitorCommunityHttp', :path => '../../node_modules/@capacitor-community/http'
+  # pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
+  # pod 'CapacitorDevice', :path => '../../node_modules/@capacitor/device'
+  # pod 'CapacitorDialog', :path => '../../node_modules/@capacitor/dialog'
+  # pod 'CapacitorFilesystem', :path => '../../node_modules/@capacitor/filesystem'
+  # pod 'CapacitorGeolocation', :path => '../../node_modules/@capacitor/geolocation'
+  # pod 'CapacitorHaptics', :path => '../../node_modules/@capacitor/haptics'
+  # pod 'CapacitorLocalNotifications', :path => '../../node_modules/@capacitor/local-notifications'
+  # pod 'CapacitorPushNotifications', :path => '../../node_modules/@capacitor/push-notifications'
+  # pod 'CapacitorShare', :path => '../../node_modules/@capacitor/share'
+  # pod 'CodetrixStudioCapacitorGoogleAuth', :path => '../../node_modules/@codetrix-studio/capacitor-google-auth'
+  # pod 'TeamLepisodeCapacitorNaverLogin', :path => '../../node_modules/@team-lepisode/capacitor-naver-login'
+  # pod 'TransistorsoftCapacitorBackgroundFetch', :path => '../../node_modules/@transistorsoft/capacitor-background-fetch'
+  # pod 'CapacitorKakaoLoginPlugin', :path => '../../node_modules/capacitor-kakao-login-plugin'
+  # USE capacitor_pods for all plugins automatically? No, manual list above. 
+  # Wait, I should probably keep the list the user had.
+end
+
+# Re-copying original pods list from view_file to be safe
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
@@ -45,7 +68,7 @@ post_install do |installer|
       config.build_settings['CODE_SIGN_ENTITLEMENTS'] = ''
       config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
     end
   end
 end

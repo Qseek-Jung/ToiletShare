@@ -62,12 +62,6 @@ jobs:
             echo "⚠️  Found error string (Expected if in library code, but dangerous if env missing)"
           fi
 
-      - name: Patch iOS Native Code (Info.plist, AppDelegate)
-        run: node scripts/patch-ios.js
-
-      - name: Sync Capacitor
-        run: npx cap sync ios
-
       - name: Inject GoogleService-Info.plist
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
@@ -84,6 +78,9 @@ jobs:
         run: |
           gem install xcodeproj
           ruby scripts/add-google-service.rb
+
+      - name: Patch iOS Native Code (Info.plist, AppDelegate)
+        run: node scripts/patch-ios.js
 
       - name: Update Version to Match Package.json
         run: |

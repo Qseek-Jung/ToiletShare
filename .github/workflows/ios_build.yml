@@ -68,28 +68,29 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync ios
 
-      - name: Inject GoogleService-Info.plist
-        env:
-          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
-        run: |
-          mkdir -p ios/App/App
-          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
-          if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
-            echo "❌ GoogleService-Info.plist injection FAILED"
-            exit 1
-          fi
-          echo "✅ GoogleService-Info.plist injected successfully"
+      # TEMPORARILY DISABLED FOR CRASH DEBUGGING
+      # - name: Inject GoogleService-Info.plist
+      #   env:
+      #     GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+      #   run: |
+      #     mkdir -p ios/App/App
+      #     echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
+      #     if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
+      #       echo "❌ GoogleService-Info.plist injection FAILED"
+      #       exit 1
+      #     fi
+      #     echo "✅ GoogleService-Info.plist injected successfully"
 
-      - name: Register GoogleService-Info.plist in Xcode
-        run: |
-          gem install xcodeproj
-          ruby scripts/add-google-service.rb
+      # - name: Register GoogleService-Info.plist in Xcode
+      #   run: |
+      #     gem install xcodeproj
+      #     ruby scripts/add-google-service.rb
 
       - name: Update Version to Match Package.json
         run: |
           cd ios/App
           agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 61
+          agvtool new-version -all 62
 
       - name: Install Apple Certificate and Provisioning Profile
         env:

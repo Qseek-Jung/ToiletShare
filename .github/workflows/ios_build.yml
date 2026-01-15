@@ -89,7 +89,7 @@ jobs:
         run: |
           cd ios/App
           agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 64
+          agvtool new-version -all 67
 
       - name: Install Apple Certificate and Provisioning Profile
         env:

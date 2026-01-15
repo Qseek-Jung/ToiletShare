@@ -32,8 +32,9 @@ target 'App' do
   capacitor_pods
   # Add your Pods here
   pod 'GoogleUserMessagingPlatform', '~> 2.1'
-  pod 'Firebase/Crashlytics', '10.29.0' # Pin to v10 for iOS 13 support
-  pod 'Firebase/Analytics', '10.29.0'
+  pod 'Firebase/Crashlytics', '10.4.0' # Pin for Xcode 14.2 compatibility
+  pod 'Firebase/Analytics', '10.4.0'
+  pod 'Alamofire', '5.6.4' # Pin for Xcode 14.2 compatibility
 end
 
 post_install do |installer|

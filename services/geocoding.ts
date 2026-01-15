@@ -1,5 +1,7 @@
+import { Platform } from '../platform';
+
 // Google Maps Geocoding API Service
-const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 
 interface GoogleGeocodingResponse {
     results: Array<{

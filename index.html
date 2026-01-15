@@ -37,9 +37,17 @@
   <script>
     (function () {
       // ENABLE DEBUG LOGGING
-      var debugMode = false;
+      var debugMode = false; // FORCE ENABLE
 
       if (debugMode) {
+        // Safe alert wrapper to prevent flood
+        var alertShown = false;
+        function safeAlert(msg) {
+          if (!alertShown) {
+            alert("CRITICAL ERROR:\n" + msg);
+            alertShown = true;
+          }
+        }
         var consoleDiv = document.getElementById('debug-console');
         consoleDiv.style.display = 'block';
 
@@ -56,12 +64,17 @@
 
         window.onerror = function (msg, url, line, col, error) {
           var extra = error && error.stack ? error.stack : '';
-          logToScreen("ERROR: " + msg + " (" + (url || '').split('/').pop() + ":" + line + ")\n" + extra, '#f55');
+          var fullMsg = "ERROR: " + msg + "\n" + (url || '').split('/').pop() + ":" + line + "\n" + extra;
+          logToScreen(fullMsg, '#f55');
+          safeAlert(fullMsg);
           return false;
         };
 
         window.addEventListener('unhandledrejection', function (e) {
-          logToScreen("PROMISE ERROR: " + (e.reason ? (e.reason.message || e.reason) : 'Unknown'), '#f55');
+          var reason = e.reason ? (e.reason.message || e.reason) : 'Unknown';
+          var fullMsg = "PROMISE ERROR: " + reason;
+          logToScreen(fullMsg, '#f55');
+          safeAlert(fullMsg);
         });
 
         // Capture Console

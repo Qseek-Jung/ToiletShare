@@ -30,6 +30,9 @@ jobs:
           echo "VITE_KAKAO_API_KEY=${{ secrets.VITE_KAKAO_API_KEY }}" >> .env
           echo "VITE_NAVER_CLIENT_ID=${{ secrets.VITE_NAVER_CLIENT_ID }}" >> .env
           echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
+          echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
+          echo "VITE_GOOGLE_MAPS_API_KEY_IOS=${{ secrets.VITE_GOOGLE_MAPS_API_KEY_IOS }}" >> .env
+          echo "VITE_ADSENSE_PUB_ID=${{ secrets.VITE_ADSENSE_PUB_ID }}" >> .env
           echo "Created .env file with secrets."
 
       - name: Build Web Assets (Hard-injecting secrets)
@@ -44,6 +47,9 @@ jobs:
           VITE_KAKAO_API_KEY: ${{ secrets.VITE_KAKAO_API_KEY }}
           VITE_NAVER_CLIENT_ID: ${{ secrets.VITE_NAVER_CLIENT_ID }}
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY_IOS }}
+          VITE_ADSENSE_PUB_ID: ${{ secrets.VITE_ADSENSE_PUB_ID }}
 
       - name: Verify Bundle Contents (No Leak Check)
         run: |
@@ -55,8 +61,23 @@ jobs:
             echo "⚠️  Found error string (Expected if in library code, but dangerous if env missing)"
           fi
 
+      - name: Patch iOS Native Code (Info.plist, AppDelegate)
+        run: node scripts/patch-ios.js
+
       - name: Sync Capacitor
         run: npx cap sync ios
+
+      - name: Inject GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
+
+      - name: Update Version to Match Package.json
+        run: |
+          cd ios/App
+          agvtool new-marketing-version 1.0.7
+          agvtool new-version -all 53
 
       - name: Install Apple Certificate and Provisioning Profile
         env:

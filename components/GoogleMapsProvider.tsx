@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from '../platform';
+const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 
 interface GoogleMapsContextType {
     isLoaded: boolean;

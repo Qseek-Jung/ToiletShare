@@ -20,7 +20,7 @@ const Config = {
             iosKey: env.VITE_GOOGLE_MAPS_API_KEY_IOS || '',
         },
         admob: {
-            appId: env.VITE_ADSENSE_PUB_ID || '',
+            appId: env.VITE_ADMOB_APP_ID_IOS || env.VITE_ADSENSE_PUB_ID || '',
         }
     }
 };

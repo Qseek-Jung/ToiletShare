@@ -71,13 +71,19 @@ jobs:
         env:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: |
+          mkdir -p ios/App/App
           echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
+          if [ ! -f "ios/App/App/GoogleService-Info.plist" ]; then
+            echo "❌ GoogleService-Info.plist injection FAILED"
+            exit 1
+          fi
+          echo "✅ GoogleService-Info.plist injected successfully"
 
       - name: Update Version to Match Package.json
         run: |
           cd ios/App
           agvtool new-marketing-version 1.0.7
-          agvtool new-version -all 53
+          agvtool new-version -all 55
 
       - name: Install Apple Certificate and Provisioning Profile
         env:
@@ -111,17 +117,20 @@ jobs:
       - name: Build iOS App (xcodebuild)
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App clean archive -archivePath App.xcarchive -allowProvisioningUpdates \
+          xcodebuild -workspace App.xcworkspace -scheme App clean archive -archivePath App.xcarchive \
+            -destination "generic/platform=iOS" \
             DEVELOPMENT_TEAM=N5T3G2MFQ2 \
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="ShareToilet App Store" \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
-            IPHONEOS_DEPLOYMENT_TARGET=14.0
+            IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+            ONLY_ACTIVE_ARCH=NO \
+            ENABLE_BITCODE=NO
 
       - name: Export IPA
         run: |
           cd ios/App
-          xcodebuild -exportArchive -archivePath App.xcarchive -exportOptionsPlist App/ExportOptions.plist -exportPath . -allowProvisioningUpdates
+          xcodebuild -exportArchive -archivePath App.xcarchive -exportOptionsPlist App/ExportOptions.plist -exportPath .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

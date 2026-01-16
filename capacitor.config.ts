@@ -26,7 +26,7 @@ const config: CapacitorConfig = {
       forceCodeForRefreshToken: true
     },
     KakaoLogin: {
-      kakaoAppKey: "d5a9498cedf6ffb73e6d6ca18ac82abf"
+      kakaoAppKey: "954f8caae336cb83506cad28e1de2e19"
     },
     CapacitorNaverLogin: {
       clientId: "44PTd3BMDQvsMLU_oLVy",

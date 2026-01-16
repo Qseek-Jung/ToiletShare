@@ -35,21 +35,45 @@ const getReversedClientId = (clientId) => {
 const googleServicePath = path.resolve(__dirname, '../ios/App/App/GoogleService-Info.plist');
 if (fs.existsSync(googleServicePath)) {
     try {
-        const plistContent = readFile(googleServicePath);
+        let plistContent = readFile(googleServicePath);
         // Simple regex to extract <key>CLIENT_ID</key><string>VALUE</string>
         const match = plistContent.match(/<key>CLIENT_ID<\/key>\s*<string>([^<]+)<\/string>/);
+
         if (match && match[1]) {
             console.log(`ℹ️  Found Client ID in GoogleService-Info.plist: ${match[1]}`);
+
             // Only override if not already set via Env (User Request to prioritize VITE_GOOGLE_CLIENT_ID)
             if (!Config.auth.google.clientId) {
                 Config.auth.google.clientId = match[1];
                 console.log('   -> Using ID from plist');
             } else {
                 console.log('   -> Keeping ID from .env (VITE_GOOGLE_CLIENT_ID)');
+
+                // CRITICAL: Ensure plist matches the Env ID (prevent crash due to mismatch)
+                if (match[1] !== Config.auth.google.clientId) {
+                    console.log(`⚠️  Mismatch detected! Updating GoogleService-Info.plist to match Env ID...`);
+                    // Replace the OLD ID with NEW ID safely
+                    const newContent = plistContent.replace(
+                        `<key>CLIENT_ID</key>\n\t<string>${match[1]}</string>`, // Try standard formatting 
+                        `<key>CLIENT_ID</key>\n\t<string>${Config.auth.google.clientId}</string>`
+                    ).replace(
+                        `<key>CLIENT_ID</key><string>${match[1]}</string>`, // Try compact formatting
+                        `<key>CLIENT_ID</key><string>${Config.auth.google.clientId}</string>`
+                    );
+
+                    // Fallback regex replace if string match failed due to whitespace
+                    const finalContent = newContent.replace(
+                        new RegExp(`<key>CLIENT_ID</key>\\s*<string>${match[1]}<\/string>`),
+                        `<key>CLIENT_ID</key>\n\t<string>${Config.auth.google.clientId}</string>`
+                    );
+
+                    writeFile(googleServicePath, finalContent);
+                    console.log('✅ GoogleService-Info.plist updated.');
+                }
             }
         }
     } catch (e) {
-        console.warn('⚠️ Could not read GoogleService-Info.plist:', e.message);
+        console.warn('⚠️ Could not read/patch GoogleService-Info.plist:', e.message);
     }
 }
 

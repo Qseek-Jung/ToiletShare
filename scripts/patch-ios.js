@@ -48,26 +48,14 @@ if (fs.existsSync(googleServicePath)) {
 
 console.log('🍎 iOS Patcher Started...');
 
-// Validate AdMob App ID
-if (Config.auth.admob.appId) {
-    if (!Config.auth.admob.appId.startsWith('ca-app-pub-')) {
-        console.error('❌ CRITICAL ERROR: Invalid iOS AdMob App ID detected!');
-        console.error(`   Current value: "${Config.auth.admob.appId}"`);
-        console.error('   The App ID MUST start with "ca-app-pub-".');
-        console.error('   Please check your .env file or GitHub Secrets for VITE_ADMOB_APP_ID_IOS.');
-        process.exit(1);
-    }
-} else {
-    console.warn('⚠️ WARNING: VITE_ADMOB_APP_ID_IOS is missing. AdMob may not function correctly.');
-}
+console.log('🍎 iOS Patcher Started...');
 
 const replacements = {
     'KAKAO_APP_KEY_PLACEHOLDER': Config.auth.kakao.apiKey,
     'kakaoKAKAO_APP_KEY_PLACEHOLDER': `kakao${Config.auth.kakao.apiKey}`,
     'GOOGLE_IOS_CLIENT_ID_PLACEHOLDER': Config.auth.google.clientId,
     'GOOGLE_REVERSED_CLIENT_ID_PLACEHOLDER': getReversedClientId(Config.auth.google.clientId),
-    'GOOGLE_MAPS_IOS_KEY_PLACEHOLDER': Config.auth.google.iosKey,
-    'ADMOB_APP_ID_PLACEHOLDER': Config.auth.admob.appId,
+    'GOOGLE_MAPS_IOS_KEY_PLACEHOLDER': Config.auth.google.iosKey
 };
 
 // 1. Patch Info.plist

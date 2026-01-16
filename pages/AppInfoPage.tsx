@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { ArrowRight, Info, Building2, MapPin, Mail, MessageSquare } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { APP_VERSION, LAST_UPDATE_DATE, UPDATE_NOTES, COMPANY_INFO } from '../constants/version';
@@ -42,7 +42,7 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return (
-        <PageLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
+        <TextLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
             {/* Header */}
             <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center gap-4 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-700 shadow-sm">
                 <button
@@ -123,6 +123,6 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                     © {new Date().getFullYear()} {COMPANY_INFO.name}. All rights reserved.
                 </div>
             </div>
-        </PageLayout>
+        </TextLayout>
     );
 };

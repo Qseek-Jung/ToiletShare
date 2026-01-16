@@ -10,7 +10,7 @@ import emailjs from '@emailjs/browser';
 import { INITIAL_USER } from '../constants';
 import { dbSupabase as db } from '../services/db_supabase';
 import { Capacitor } from '@capacitor/core';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { LevelIcon } from '../components/LevelIcon';
 import { getDisplayName } from '../utils'; // Import helper
 import { WithdrawalModal } from '../components/WithdrawalModal';
@@ -205,7 +205,7 @@ const MyPage: React.FC<MyPageProps> = ({
     };
 
     return (
-        <PageLayout className="p-0 pb-48 relative">
+        <TextLayout className="p-0 pb-48 relative">
             {/* ... existing header and body ... */}
 
             {/* Nickname Success Modal */}
@@ -586,7 +586,7 @@ const MyPage: React.FC<MyPageProps> = ({
                     />
                 )}
             </div>
-        </PageLayout >
+        </TextLayout >
     );
 };
 

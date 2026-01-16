@@ -5,7 +5,7 @@ import { dbSupabase as db } from '../services/db_supabase';
 import { Platform } from '../../platform';
 const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 import { getMarkerSvg, mapGoogleTypeToInternalType } from '../utils';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { CreditModal } from '../components/CreditModal';
 import { calculateDistance } from '../utils';
 import DoorlockModal from '../components/DoorlockModal';
@@ -327,13 +327,13 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
 
     if (user.role === UserRole.GUEST) {
         return (
-            <PageLayout>
+            <TextLayout>
                 <div className="h-full flex flex-col items-center justify-center p-8 bg-surface dark:bg-surface-dark">
                     <div className="w-20 h-20 bg-primary-50 dark:bg-primary-900/10 rounded-full flex items-center justify-center mb-6"><Plus className="w-10 h-10 text-primary-500" /></div>
                     <h2 className="text-xl font-bold mb-2 text-text-main dark:text-text-light">화장실을 등록하려면<br />로그인이 필요해요</h2>
                     <button onClick={onShowLogin} className="mt-8 w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/30">로그인하기</button>
                 </div>
-            </PageLayout>
+            </TextLayout>
         )
     }
 
@@ -688,7 +688,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     }
 
     return (
-        <PageLayout className="pb-24 p-4">
+        <TextLayout className="pb-24 p-4">
             <div className="flex items-center gap-3 mb-6">
                 <button onClick={handleBack} className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                     <ArrowLeft className="w-6 h-6 text-text-main dark:text-text-light" />
@@ -955,7 +955,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                     if (callback) callback();
                 }}
             />
-        </PageLayout>
+        </TextLayout>
     );
 };
 

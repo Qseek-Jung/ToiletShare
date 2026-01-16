@@ -1,5 +1,5 @@
 import React from 'react';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, Moon, Sun, Bell } from 'lucide-react';
 import { notificationService } from '../services/notification_service';
@@ -40,7 +40,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack, darkMode, on
     };
 
     return (
-        <PageLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
+        <TextLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
             {/* Header */}
             <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center gap-4 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-700">
                 <button onClick={onBack} className="p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
@@ -96,7 +96,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack, darkMode, on
                     </div>
                 </section>
             </div>
-        </PageLayout>
+        </TextLayout>
     );
 };
 

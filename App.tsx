@@ -2058,7 +2058,7 @@ export default function App() {
 
     return (
         <GoogleMapsProvider>
-            <div className={`w-full h-[100dvh] overflow-hidden flex flex-col font-sans relative ${darkMode && !currentHash.startsWith('#/admin') ? 'dark bg-gray-900' : 'bg-white'}`}>
+            <div className={`w-full h-full overflow-hidden flex flex-col font-sans relative ${darkMode && !currentHash.startsWith('#/admin') ? 'dark bg-gray-900' : 'bg-white'}`}>
                 {/* EXIT CONFIRMATION MODAL */}
                 {showExitModal && (
                     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
@@ -2114,7 +2114,7 @@ export default function App() {
                     </div>
                 )}
 
-                <div className="flex-1 w-full relative h-full">{!showSplash && CurrentPage}</div>
+                <div className="flex-1 w-full relative">{!showSplash && CurrentPage}</div>
 
 
                 {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && !isNoticeModalOpen && (

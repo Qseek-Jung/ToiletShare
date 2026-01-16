@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adMobService } from '../services/admob';
 import { dbSupabase } from '../services/db_supabase';
-import { BannerAdPosition } from '@capacitor-community/admob';
+import { BannerAdPosition } from '../services/admob';
 import { CustomBannerType } from '../types';
 
 interface AdBannerProps {

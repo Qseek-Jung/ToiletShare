@@ -39,7 +39,13 @@ if (fs.existsSync(googleServicePath)) {
         const match = plistContent.match(/<key>CLIENT_ID<\/key>\s*<string>([^<]+)<\/string>/);
         if (match && match[1]) {
             console.log(`ℹ️  Found Client ID in GoogleService-Info.plist: ${match[1]}`);
-            Config.auth.google.clientId = match[1]; // Override with iOS specific ID
+            // Only override if not already set via Env (User Request to prioritize VITE_GOOGLE_CLIENT_ID)
+            if (!Config.auth.google.clientId) {
+                Config.auth.google.clientId = match[1];
+                console.log('   -> Using ID from plist');
+            } else {
+                console.log('   -> Keeping ID from .env (VITE_GOOGLE_CLIENT_ID)');
+            }
         }
     } catch (e) {
         console.warn('⚠️ Could not read GoogleService-Info.plist:', e.message);

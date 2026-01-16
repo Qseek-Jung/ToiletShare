@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>83</string>
+	<string>84</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -52,28 +52,28 @@
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>kakaod5a9498cedf6ffb73e6d6ca18ac82abf</string>
-				<string>kakaokompassauth</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>toiletsharenaver</string>
-			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3</string>
-			</array>
-		</dict>
+			                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>kakao954f8caae336cb83506cad28e1de2e19</string>
+                                <string>kakaokompassauth</string>
+                        </array>
+                </dict>
+                <dict>
+                        <key>CFBundleTypeRole</key>
+                        <string>Editor</string>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>toiletsharenaver</string>
+                        </array>
+                </dict>
+                <dict>
+                        <key>CFBundleTypeRole</key>
+                        <string>Editor</string>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>com.googleusercontent.apps.889382704312-kqfbm68u4c55f06lfn3sasc2aiiv3ceb</string>
+                        </array>
+                </dict>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
@@ -103,5 +103,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+
+    <key>NSCameraUsageDescription</key>
+    <string>화장실 제보를 위해 카메라 접근 권한이 필요합니다.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>화장실 사진 등록을 위해 앨범 접근 권한이 필요합니다.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>이미지 저장을 위해 앨범 접근 권한이 필요합니다.</string>
 </dict>
 </plist>

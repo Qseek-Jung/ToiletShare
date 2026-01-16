@@ -19,10 +19,7 @@ if (typeof window !== 'undefined') {
         if (logText.includes('AdMob mock')) return;
         if (logText.includes('[App] Checking notices')) return; // Filter notice checks
 
-        let color = '#0f0';
-        if (logText.includes('🔑')) color = '#ffff00'; // Yellow for Keys
-
-        const entry = `[LOG] ${logText}|${color}`;
+        const entry = `[LOG] ${logText}|#0f0`;
         logs.unshift(entry);
         if (logs.length > 50) logs.pop();
         if (notifyUpdate) notifyUpdate();
@@ -32,11 +29,7 @@ if (typeof window !== 'undefined') {
         originalError(...args);
         const logText = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
 
-        // Filter some benign errors if needed, but usually keep errors
-        let color = '#ff5555';
-        if (logText.includes('🔑')) color = '#ffff00';
-
-        const entry = `[ERR] ${logText}|${color}`;
+        const entry = `[ERR] ${logText}|#ff5555`;
         logs.unshift(entry);
         if (logs.length > 50) logs.pop();
         if (notifyUpdate) notifyUpdate();
@@ -51,14 +44,14 @@ if (typeof window !== 'undefined') {
 
 const DebugConsole: React.FC = () => {
     const [_, forceUpdate] = useState(0);
-    const [isVisible, setIsVisible] = useState(true);
+    const [isVisible, setIsVisible] = useState(false); // Default Hidden
 
     useEffect(() => {
         notifyUpdate = () => forceUpdate(n => n + 1);
         return () => { notifyUpdate = null; };
     }, []);
 
-    if (!isVisible) return <button onClick={() => setIsVisible(true)} style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 9999 }}>Show Debug</button>;
+    if (!isVisible) return <button onClick={() => setIsVisible(true)} style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 9999, opacity: 0.3, fontSize: '10px' }}>Debug</button>;
 
     return (
         <div style={{

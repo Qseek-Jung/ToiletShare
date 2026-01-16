@@ -167,6 +167,14 @@ try {
                 console.log('🔄 Enforced Google URL Scheme update via Regex');
             }
 
+            // Enforce KAKAO_APP_KEY (Key used for SDK Init)
+            const kakaoKeyRegex = /<key>KAKAO_APP_KEY<\/key>\s*<string>[^<]+<\/string>/g;
+            const newKakaoKey = `<key>KAKAO_APP_KEY</key>\n\t<string>${Config.auth.kakao.nativeKey}</string>`;
+            if (Config.auth.kakao.nativeKey) {
+                result.content = result.content.replace(kakaoKeyRegex, newKakaoKey);
+                console.log('🔄 Enforced KAKAO_APP_KEY update via Regex');
+            }
+
             const kakaoSchemeRegex = /<string>kakao[0-9a-f]{32}<\/string>/g;
             const newKakaoScheme = `<string>${replacements['kakaoKAKAO_APP_KEY_PLACEHOLDER']}</string>`;
 

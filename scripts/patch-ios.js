@@ -14,6 +14,7 @@ const Config = {
     auth: {
         kakao: {
             apiKey: env.VITE_KAKAO_API_KEY || '',
+            nativeKey: env.VITE_KAKAO_NATIVE_KEY || '', // Added Native Key support
         },
         google: {
             clientId: env.VITE_GOOGLE_CLIENT_ID || '',
@@ -57,8 +58,8 @@ console.log('🍎 iOS Patcher Started...');
 console.log('🍎 iOS Patcher Started...');
 
 const replacements = {
-    'KAKAO_APP_KEY_PLACEHOLDER': Config.auth.kakao.apiKey,
-    'kakaoKAKAO_APP_KEY_PLACEHOLDER': `kakao${Config.auth.kakao.apiKey}`,
+    'KAKAO_APP_KEY_PLACEHOLDER': Config.auth.kakao.nativeKey || Config.auth.kakao.apiKey,
+    'kakaoKAKAO_APP_KEY_PLACEHOLDER': `kakao${Config.auth.kakao.nativeKey || Config.auth.kakao.apiKey}`,
     'GOOGLE_IOS_CLIENT_ID_PLACEHOLDER': Config.auth.google.clientId,
     'GOOGLE_REVERSED_CLIENT_ID_PLACEHOLDER': getReversedClientId(Config.auth.google.clientId),
     'GOOGLE_MAPS_IOS_KEY_PLACEHOLDER': Config.auth.google.iosKey

@@ -32,6 +32,7 @@ jobs:
           echo "VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" >> .env
           echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}" >> .env
           echo "VITE_GOOGLE_MAPS_API_KEY_IOS=${{ secrets.VITE_GOOGLE_MAPS_API_KEY_IOS }}" >> .env
+          echo "VITE_GOOGLE_MAPS_API_KEY_WEBVIEW=${{ secrets.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW }}" >> .env
           echo "VITE_ADSENSE_PUB_ID=${{ secrets.VITE_ADSENSE_PUB_ID }}" >> .env
           echo "VITE_ADMOB_APP_ID_IOS=${{ secrets.VITE_ADMOB_APP_ID_IOS }}" >> .env
           echo "Created .env file with secrets."
@@ -50,6 +51,7 @@ jobs:
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_MAPS_API_KEY_IOS: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY_IOS }}
+          VITE_GOOGLE_MAPS_API_KEY_WEBVIEW: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW }}
           VITE_ADSENSE_PUB_ID: ${{ secrets.VITE_ADSENSE_PUB_ID }}
 
       - name: Verify Bundle Contents (No Leak Check)

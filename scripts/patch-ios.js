@@ -158,8 +158,25 @@ try {
         }
 
         if (result.count > 0 || !content.includes('NSCameraUsageDescription')) {
+            // Robust Regex Replacement for URL Schemes (in case placeholders are gone)
+            const googleSchemeRegex = /<string>com\.googleusercontent\.apps\.[^<]+<\/string>/g;
+            const newGoogleScheme = `<string>${replacements['GOOGLE_REVERSED_CLIENT_ID_PLACEHOLDER']}</string>`;
+
+            if (replacements['GOOGLE_REVERSED_CLIENT_ID_PLACEHOLDER']) {
+                result.content = result.content.replace(googleSchemeRegex, newGoogleScheme);
+                console.log('🔄 Enforced Google URL Scheme update via Regex');
+            }
+
+            const kakaoSchemeRegex = /<string>kakao[0-9a-f]{32}<\/string>/g;
+            const newKakaoScheme = `<string>${replacements['kakaoKAKAO_APP_KEY_PLACEHOLDER']}</string>`;
+
+            if (replacements['kakaoKAKAO_APP_KEY_PLACEHOLDER']) {
+                result.content = result.content.replace(kakaoSchemeRegex, newKakaoScheme);
+                console.log('🔄 Enforced Kakao URL Scheme update via Regex');
+            }
+
             writeFile(plistPath, result.content);
-            console.log(`✅ Info.plist patched (${result.count} replacements)`);
+            console.log(`✅ Info.plist patched (${result.count} placeholder replacements + regex enforcement)`);
         } else {
             console.log('ℹ️ Info.plist already patched or no placeholders found.');
         }

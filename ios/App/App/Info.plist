@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>69</string>
+	<string>71</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -97,8 +97,7 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
-	<key>GADApplicationIdentifier</key>
-	<string>ca-pub-8142649369272916</string>
+
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

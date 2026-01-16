@@ -52,29 +52,50 @@ if (fs.existsSync(googleServicePath)) {
                 // CRITICAL: Ensure plist matches the Env ID (prevent crash due to mismatch)
                 if (match[1] !== Config.auth.google.clientId) {
                     console.log(`⚠️  Mismatch detected! Updating GoogleService-Info.plist to match Env ID...`);
-                    // Replace the OLD ID with NEW ID safely
-                    const newContent = plistContent.replace(
-                        `<key>CLIENT_ID</key>\n\t<string>${match[1]}</string>`, // Try standard formatting 
-                        `<key>CLIENT_ID</key>\n\t<string>${Config.auth.google.clientId}</string>`
-                    ).replace(
-                        `<key>CLIENT_ID</key><string>${match[1]}</string>`, // Try compact formatting
-                        `<key>CLIENT_ID</key><string>${Config.auth.google.clientId}</string>`
-                    );
 
-                    // Fallback regex replace if string match failed due to whitespace
-                    const finalContent = newContent.replace(
+                    // 1. Update CLIENT_ID
+                    let finalContent = plistContent.replace(
                         new RegExp(`<key>CLIENT_ID</key>\\s*<string>${match[1]}<\/string>`),
                         `<key>CLIENT_ID</key>\n\t<string>${Config.auth.google.clientId}</string>`
                     );
 
+                    // 2. Update REVERSED_CLIENT_ID
+                    const reversedOld = getReversedClientId(match[1]);
+                    const reversedNew = getReversedClientId(Config.auth.google.clientId);
+                    finalContent = finalContent.replace(
+                        new RegExp(`<key>REVERSED_CLIENT_ID</key>\\s*<string>${reversedOld}<\/string>`),
+                        `<key>REVERSED_CLIENT_ID</key>\n\t<string>${reversedNew}</string>`
+                    );
+
                     writeFile(googleServicePath, finalContent);
-                    console.log('✅ GoogleService-Info.plist updated.');
+                    console.log('✅ GoogleService-Info.plist updated (CLIENT_ID & REVERSED_CLIENT_ID).');
                 }
             }
         }
     } catch (e) {
         console.warn('⚠️ Could not read/patch GoogleService-Info.plist:', e.message);
     }
+}
+
+// 3. Patch capacitor.config.ts (Ensure sync)
+const capConfigPath = path.resolve(__dirname, '../capacitor.config.ts');
+try {
+    if (fs.existsSync(capConfigPath)) {
+        let capContent = readFile(capConfigPath);
+        if (Config.auth.google.clientId) {
+            // Regex to find iosClientId: "..." and replace it
+            const newCapContent = capContent.replace(
+                /iosClientId:\s*"[^"]*"/,
+                `iosClientId: "${Config.auth.google.clientId}"`
+            );
+            if (newCapContent !== capContent) {
+                writeFile(capConfigPath, newCapContent);
+                console.log(`✅ capacitor.config.ts updated with iosClientId: ${Config.auth.google.clientId}`);
+            }
+        }
+    }
+} catch (e) {
+    console.warn('⚠️ Failed to patch capacitor.config.ts:', e.message);
 }
 
 console.log('🍎 iOS Patcher Started...');

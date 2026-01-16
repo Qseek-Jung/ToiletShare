@@ -46,6 +46,8 @@ import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
 
 
+import DebugConsole from './components/DebugConsole';
+
 import { useTranslation } from 'react-i18next';
 
 // Declaration for Google Identity Services & Maps & Social Logins
@@ -2590,7 +2592,10 @@ export default function App() {
                         </div>
                     </div>
                 )}
+                {/* Debug Console Overlay */}
+                <DebugConsole />
             </div>
+
         </GoogleMapsProvider>
     );
 }

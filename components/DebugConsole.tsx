@@ -1,40 +1,61 @@
 import React, { useEffect, useState } from 'react';
 
+const logs: string[] = [];
+let notifyUpdate: (() => void) | null = null;
+
+// INSTALL HOOKS IMMEDIATELY (Module Scope)
+if (typeof window !== 'undefined') {
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    console.log = (...args: any[]) => {
+        originalLog(...args);
+        const logText = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+
+        // STRICT FILTERING
+        if (logText.includes('loadData Check')) return;
+        if (logText.includes('Valid cache found')) return;
+        if (logText.includes('Location cached')) return;
+        if (logText.includes('AdMob mock')) return;
+        if (logText.includes('[App] Checking notices')) return; // Filter notice checks
+
+        let color = '#0f0';
+        if (logText.includes('🔑')) color = '#ffff00'; // Yellow for Keys
+
+        const entry = `[LOG] ${logText}|${color}`;
+        logs.unshift(entry);
+        if (logs.length > 50) logs.pop();
+        if (notifyUpdate) notifyUpdate();
+    };
+
+    console.error = (...args: any[]) => {
+        originalError(...args);
+        const logText = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+
+        // Filter some benign errors if needed, but usually keep errors
+        let color = '#ff5555';
+        if (logText.includes('🔑')) color = '#ffff00';
+
+        const entry = `[ERR] ${logText}|${color}`;
+        logs.unshift(entry);
+        if (logs.length > 50) logs.pop();
+        if (notifyUpdate) notifyUpdate();
+    };
+
+    window.onerror = (message, source, lineno, colno, error) => {
+        const entry = `[window.onerror] ${message} at ${source}:${lineno}|#ff5555`;
+        logs.unshift(entry);
+        if (notifyUpdate) notifyUpdate();
+    };
+}
+
 const DebugConsole: React.FC = () => {
-    const [logs, setLogs] = useState<string[]>([]);
+    const [_, forceUpdate] = useState(0);
     const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
-        // Override console.log
-        const originalLog = console.log;
-        console.log = (...args) => {
-            originalLog(...args);
-            const logText = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-
-            // FILTERING RULES
-            if (logText.includes('loadData Check')) return; // Ignore noise
-            if (logText.includes('Valid cache found')) return;
-
-            setLogs(prev => [`[LOG] ${logText}`, ...prev].slice(0, 50));
-        };
-
-        // Override console.error
-        const originalError = console.error;
-        console.error = (...args) => {
-            originalError(...args);
-            const logText = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-            setLogs(prev => [`[ERR] ${logText}`, ...prev].slice(0, 50));
-        };
-
-        // Global error handler
-        window.onerror = (message, source, lineno, colno, error) => {
-            setLogs(prev => [`[window.onerror] ${message} at ${source}:${lineno}`, ...prev].slice(0, 50));
-        };
-
-        return () => {
-            console.log = originalLog;
-            console.error = originalError;
-        };
+        notifyUpdate = () => forceUpdate(n => n + 1);
+        return () => { notifyUpdate = null; };
     }, []);
 
     if (!isVisible) return <button onClick={() => setIsVisible(true)} style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 9999 }}>Show Debug</button>;
@@ -56,13 +77,16 @@ const DebugConsole: React.FC = () => {
         }}>
             <div style={{ pointerEvents: 'auto', marginBottom: '5px' }}>
                 <button onClick={() => setIsVisible(false)}>Hide</button>
-                <button onClick={() => setLogs([])}>Clear</button>
+                <button onClick={() => { logs.length = 0; forceUpdate(n => n + 1); }}>Clear</button>
             </div>
-            {logs.map((log, i) => (
-                <div key={i} style={{ borderBottom: '1px solid #333', padding: '2px' }}>
-                    {log}
-                </div>
-            ))}
+            {logs.map((log, i) => {
+                const [text, color] = log.split('|');
+                return (
+                    <div key={i} style={{ borderBottom: '1px solid #333', padding: '2px', color: color || '#0f0' }}>
+                        {text}
+                    </div>
+                );
+            })}
         </div>
     );
 };

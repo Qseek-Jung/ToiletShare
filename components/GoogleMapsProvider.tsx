@@ -46,6 +46,11 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
 
         // Load Script
         const script = document.createElement('script');
+
+        // DEBUG: Explicitly log the key being used
+        console.error("🔑 [DEBUG] Google Maps API Key Loaded:", MAPS_API_KEY ? MAPS_API_KEY.substring(0, 10) + "..." : "NULL/EMPTY");
+
+        // Add callback query param to ensure we know exactly when it's done
         // Add callback query param to ensure we know exactly when it's done
         script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&loading=async&libraries=${LIBRARIES.join(',')}&language=ko`;
         script.async = true;

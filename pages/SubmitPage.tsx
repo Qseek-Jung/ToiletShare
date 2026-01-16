@@ -415,7 +415,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     }
 
     return (
-        <TextLayout className="pb-64 p-4">
+        <TextLayout className="pb-64 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
             <h2 className="text-2xl font-black mb-6 dark:text-white">{editId ? t('submit_page_title_edit', "화장실 수정") : t('submit_page_title_new', "화장실 등록")}</h2>
             <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">

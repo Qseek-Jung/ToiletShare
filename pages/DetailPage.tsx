@@ -247,7 +247,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
     return (
         <div className="fixed inset-0 z-[2000] flex justify-center bg-black/10 backdrop-blur-[1px]">
             <div className="w-full h-full bg-surface dark:bg-surface-dark flex flex-col shadow-2xl animate-in slide-in-from-bottom-full duration-300 relative">
-                <div className="p-4 flex items-center justify-between border-b border-border dark:border-border-dark bg-surface dark:bg-surface-dark z-10 shadow-sm shrink-0">
+                <div className="px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] flex items-center justify-between border-b border-border dark:border-border-dark bg-surface dark:bg-surface-dark z-10 shadow-sm shrink-0">
                     <div>
                         <div className="text-xs text-text-muted font-bold mb-0.5">{t('destination', '목적지')}</div>
                         <h3 className="font-bold text-lg leading-none text-text-main dark:text-text-light">{toilet.name}</h3>
@@ -890,7 +890,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
     return (
         <div className="absolute inset-0 z-[50] flex justify-center bg-black/20 backdrop-blur-sm overflow-hidden">
             <div className="w-full max-w-md h-full bg-surface dark:bg-surface-dark overflow-y-auto no-scrollbar shadow-2xl relative pb-32" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <div className="bg-surface dark:bg-surface-dark px-4 py-3 flex items-center justify-between sticky top-0 z-20 border-b border-border dark:border-border-dark shadow-sm">
+                <div className="bg-surface dark:bg-surface-dark px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center justify-between sticky top-0 z-20 border-b border-border dark:border-border-dark shadow-sm">
                     <div className="flex items-center gap-4">
                         <button onClick={onBack} className="p-2 -ml-2 text-text-main dark:text-text-light"><ArrowRight className="w-6 h-6 rotate-180" /></button>
                         <div>

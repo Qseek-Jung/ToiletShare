@@ -71,7 +71,7 @@ const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
     return (
         <TextLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
             {/* Top Header */}
-            <div className="bg-white dark:bg-gray-900 sticky top-0 z-40 shadow-sm transition-all duration-300 border-b border-gray-100 dark:border-gray-800">
+            <div className="bg-white dark:bg-gray-900 sticky top-0 z-40 shadow-sm transition-all duration-300 border-b border-gray-100 dark:border-gray-800 pt-[env(safe-area-inset-top)]">
                 <div className="flex items-center px-4 h-14">
                     <button onClick={() => window.history.back()} className="p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
                         <ArrowLeft className="w-6 h-6" />

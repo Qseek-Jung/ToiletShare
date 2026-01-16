@@ -7,7 +7,8 @@ import { Platform } from '../platform';
 const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 const KAKAO_JAVASCRIPT_KEY = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || "";
 import { getMarkerSvg } from '../utils';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
+import { MapLayout } from '../components/MapLayout';
 import { AdBanner } from '../components/AdBanner';
 import DoorlockModal from '../components/DoorlockModal';
 import { AlertModal } from '../components/AlertModal';
@@ -177,13 +178,13 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     // NOW we can check GUEST status and return early if needed
     if (user.role === UserRole.GUEST) {
         return (
-            <PageLayout>
+            <TextLayout>
                 <div className="h-full flex flex-col items-center justify-center p-8 bg-white">
                     <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6"><Plus className="w-10 h-10 text-amber-500" /></div>
                     <h2 className="text-xl font-bold mb-2" dangerouslySetInnerHTML={{ __html: t('submit_login_required_title', '화장실을 등록하려면<br />로그인이 필요해요') }}></h2>
                     <button onClick={onShowLogin} className="mt-8 w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg">{t('submit_login_btn', '로그인하기')}</button>
                 </div>
-            </PageLayout>
+            </TextLayout>
         )
     }
 
@@ -372,47 +373,49 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
 
     if (step === 'location') {
         return (
-            <div className="h-full w-full relative bg-surface dark:bg-surface-dark flex flex-col">
-                <div className="flex-1 w-full relative">
-                    <div ref={pickerMapRef} className="w-full h-full" />
+            <MapLayout>
+                <div className="h-full w-full relative bg-surface dark:bg-surface-dark flex flex-col">
+                    <div className="flex-1 w-full relative">
+                        <div ref={pickerMapRef} className="w-full h-full" />
 
-                    {/* Top Right Close Button - Enlarged touch area for iOS */}
-                    <button
-                        onClick={() => setStep('details')}
-                        className="absolute top-4 right-4 z-20 w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all"
-                        style={{ touchAction: 'manipulation' }}
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-10 pointer-events-none drop-shadow-xl">
-                        <img src="/images/pins/uni_near_pin.png" width="40" height="40" alt="pin" />
-                    </div>
-                    <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-4 z-20">
-                        <button onClick={handlePickerCurrentLocation} className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200">
-                            {isPickerLocating ? <Loader2 className="animate-spin w-6 h-6 text-blue-500" /> : <Crosshair className="w-6 h-6" />}
+                        {/* Top Right Close Button - Enlarged touch area for iOS */}
+                        <button
+                            onClick={() => setStep('details')}
+                            className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 z-20 w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all"
+                            style={{ touchAction: 'manipulation' }}
+                        >
+                            <X className="w-6 h-6" />
                         </button>
-                    </div>
-                </div>
-                {/* Adjust padding for Ad Banner logic (120px + safe area to prevent overlap) */}
-                <div className="bg-surface dark:bg-surface-dark p-4 pb-[calc(110px+env(safe-area-inset-bottom))] rounded-t-2xl shadow-2xl space-y-3 z-20 flex justify-center border-t border-border dark:border-border-dark">
-                    <div className="w-full max-w-md space-y-3">
-                        <button onClick={handleSetLocation} className="w-full py-4 bg-primary text-white font-bold rounded-xl text-lg shadow-lg active:scale-95 transition-transform">{t('submit_set_location', '이 위치로 설정')}</button>
-                    </div>
-                </div>
 
-                <AlertModal
-                    isOpen={alertState.open}
-                    message={alertState.message}
-                    type={alertState.type}
-                    onClose={() => setAlertState(prev => ({ ...prev, open: false }))}
-                />
-            </div>
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-10 pointer-events-none drop-shadow-xl">
+                            <img src="/images/pins/uni_near_pin.png" width="40" height="40" alt="pin" />
+                        </div>
+                        <div className="absolute bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-4 z-20">
+                            <button onClick={handlePickerCurrentLocation} className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200">
+                                {isPickerLocating ? <Loader2 className="animate-spin w-6 h-6 text-blue-500" /> : <Crosshair className="w-6 h-6" />}
+                            </button>
+                        </div>
+                    </div>
+                    {/* Adjust padding for Ad Banner logic (120px + safe area to prevent overlap) */}
+                    <div className="bg-surface dark:bg-surface-dark p-4 pb-[calc(110px+env(safe-area-inset-bottom))] rounded-t-2xl shadow-2xl space-y-3 z-20 flex justify-center border-t border-border dark:border-border-dark">
+                        <div className="w-full max-w-md space-y-3">
+                            <button onClick={handleSetLocation} className="w-full py-4 bg-primary text-white font-bold rounded-xl text-lg shadow-lg active:scale-95 transition-transform">{t('submit_set_location', '이 위치로 설정')}</button>
+                        </div>
+                    </div>
+
+                    <AlertModal
+                        isOpen={alertState.open}
+                        message={alertState.message}
+                        type={alertState.type}
+                        onClose={() => setAlertState(prev => ({ ...prev, open: false }))}
+                    />
+                </div>
+            </MapLayout>
         )
     }
 
     return (
-        <PageLayout className="pb-64 p-4">
+        <TextLayout className="pb-64 p-4">
             <h2 className="text-2xl font-black mb-6 dark:text-white">{editId ? t('submit_page_title_edit', "화장실 수정") : t('submit_page_title_new', "화장실 등록")}</h2>
             <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
@@ -693,7 +696,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 type={alertState.type}
                 onClose={() => setAlertState(prev => ({ ...prev, open: false }))}
             />
-        </PageLayout>
+        </TextLayout>
     );
 };
 

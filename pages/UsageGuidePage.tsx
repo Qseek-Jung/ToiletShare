@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, MapPin, AlertTriangle, CheckCircle2, Crown, Coins, HelpCircle, Star, Heart, Shield } from 'lucide-react';
 import { LevelIcon } from '../components/LevelIcon';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { ContactModal } from '../components/ContactModal';
 
 import { dbSupabase as db } from '../services/db_supabase';
@@ -69,7 +69,7 @@ const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
     ];
 
     return (
-        <PageLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
+        <TextLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
             {/* Top Header */}
             <div className="bg-white dark:bg-gray-900 sticky top-0 z-40 shadow-sm transition-all duration-300 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center px-4 h-14">
@@ -329,7 +329,7 @@ const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
                     user={user}
                 />
             )}
-        </PageLayout>
+        </TextLayout>
     );
 };
 

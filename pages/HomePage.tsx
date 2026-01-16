@@ -5,6 +5,7 @@ import { Toilet, User, UserRole } from '../types';
 import { Platform } from '../platform';
 const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 import { getToiletColor, getMarkerSvg, formatDistance, getMarkerImage, calculateDistance } from '../utils';
+import { MapLayout } from '../components/MapLayout';
 import { AdBanner } from '../components/AdBanner';
 import { dbSupabase } from '../services/db_supabase';
 import { adMobService } from '../services/admob';
@@ -359,222 +360,223 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     }
 
     return (
-        <div className="w-full h-full relative bg-gray-100 dark:bg-gray-900 overflow-hidden">
-            <div ref={mapContainerRef} className="w-full h-full" />
+        <MapLayout>
+            <div className="w-full h-full relative overflow-hidden">
+                <div ref={mapContainerRef} className="w-full h-full" />
 
-            {/* Center Map Marker (Fixed Reference) */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[100%] z-10 pointer-events-none drop-shadow-md">
-                <MapPin className="w-10 h-10 text-gray-700 fill-white" strokeWidth={2.5} />
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-1 bg-black/30 rounded-full blur-[2px]"></div>
-            </div>
-
-            {/* Top Search Bar */}
-            <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-4 pt-[max(2px,env(safe-area-inset-top))] gap-[5px]">
-                <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 ${showList ? 'ring-2 ring-primary' : ''}`}>
-                    <Search className="w-5 h-5 text-gray-400 shrink-0" />
-                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => onToggleList(true)} placeholder={t('search_placeholder', '화장실 검색')} className="flex-1 bg-transparent outline-none text-sm min-w-0 dark:text-white dark:placeholder-gray-400" />
-                    <button onClick={() => onToggleList(!showList)} className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">{showList ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}</button>
+                {/* Center Map Marker (Fixed Reference) */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[100%] z-10 pointer-events-none drop-shadow-md">
+                    <MapPin className="w-10 h-10 text-gray-700 fill-white" strokeWidth={2.5} />
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-1 bg-black/30 rounded-full blur-[2px]"></div>
                 </div>
 
-                {/* Nearest Toilet Card (only when list is closed) */}
-                {!showList && filteredToilets.length > 0 && (
-                    <div
-                        onClick={() => handleToiletSelect(filteredToilets[0])}
-                        className="w-full max-w-md bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border-2 border-red-500 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all animate-in slide-in-from-top-2"
-                    >
-                        <div className="w-14 h-14 shrink-0">
-                            <img
-                                src={
-                                    filteredToilets[0].genderType === 'MALE' ? '/images/icons/Man_boxicon.png' :
-                                        filteredToilets[0].genderType === 'FEMALE' ? '/images/icons/Woman_boxicon.png' :
-                                            '/images/icons/uni_boxicon.png'
-                                }
-                                alt="toilet icon"
-                                className="w-full h-full object-contain"
-                            />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-xs text-red-500 font-bold mb-0.5">
-                                {calculateDistance(myLocation.lat, myLocation.lng, lastFetchRef.current.lat, lastFetchRef.current.lng) > 1.0
-                                    ? t('nearest_center', '지도 중앙에서 가장 가까운 화장실')
-                                    : t('nearest_user', '가장 가까운 화장실')}
+                {/* Top Search Bar */}
+                <div className="absolute top-0 left-0 right-0 z-20 flex flex-col items-center px-4 pt-[max(2px,env(safe-area-inset-top))] gap-[5px]">
+                    {/* ... (Existing Search Bar Content) ... */}
+                    <div className={`w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex items-center p-3 gap-3 ${showList ? 'ring-2 ring-primary' : ''}`}>
+                        <Search className="w-5 h-5 text-gray-400 shrink-0" />
+                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onFocus={() => onToggleList(true)} placeholder={t('search_placeholder', '화장실 검색')} className="flex-1 bg-transparent outline-none text-sm min-w-0 dark:text-white dark:placeholder-gray-400" />
+                        <button onClick={() => onToggleList(!showList)} className="p-1.5 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">{showList ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}</button>
+                    </div>
+
+                    {/* Nearest Toilet Card (only when list is closed) */}
+                    {!showList && filteredToilets.length > 0 && (
+                        <div
+                            onClick={() => handleToiletSelect(filteredToilets[0])}
+                            className="w-full max-w-md bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xl border-2 border-red-500 flex items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-all animate-in slide-in-from-top-2"
+                        >
+                            <div className="w-14 h-14 shrink-0">
+                                <img
+                                    src={
+                                        filteredToilets[0].genderType === 'MALE' ? '/images/icons/Man_boxicon.png' :
+                                            filteredToilets[0].genderType === 'FEMALE' ? '/images/icons/Woman_boxicon.png' :
+                                                '/images/icons/uni_boxicon.png'
+                                    }
+                                    alt="toilet icon"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
-                            <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{filteredToilets[0].name}</h3>
-                            <div className="text-xs text-gray-500 truncate">{filteredToilets[0].address}</div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs text-red-500 font-bold mb-0.5">
+                                    {calculateDistance(myLocation.lat, myLocation.lng, lastFetchRef.current.lat, lastFetchRef.current.lng) > 1.0
+                                        ? t('nearest_center', '지도 중앙에서 가장 가까운 화장실')
+                                        : t('nearest_user', '가장 가까운 화장실')}
+                                </div>
+                                <h3 className="font-bold text-gray-900 dark:text-white truncate text-lg">{filteredToilets[0].name}</h3>
+                                <div className="text-xs text-gray-500 truncate">{filteredToilets[0].address}</div>
+                            </div>
+                            <div className="text-base font-black text-red-500 shrink-0">
+                                {formatDistance(filteredToilets[0].distance || 0)}
+                            </div>
                         </div>
-                        <div className="text-base font-black text-red-500 shrink-0">
-                            {formatDistance(filteredToilets[0].distance || 0)}
-                        </div>
+                    )}
+                </div>
+
+                {/* Search Here Button (Overlay) */}
+                {showSearchButton && !showList && (
+                    <div className="absolute bottom-56 left-1/2 transform -translate-x-1/2 z-20">
+                        <button
+                            onClick={() => {
+                                if (!mapInstance.current || !onFetchNewArea) return;
+                                const center = mapInstance.current.getCenter();
+                                const zoom = mapInstance.current.getZoom();
+
+                                // Dynamic Radius based on Zoom
+                                let radius = 2;
+                                if (zoom <= 14) radius = 5;
+                                if (zoom <= 12) radius = 10;
+                                if (zoom <= 11) radius = 15;
+                                if (zoom <= 10) radius = 20;
+                                if (zoom <= 9) radius = 30;
+                                if (zoom <= 8) radius = 50;
+
+                                const lat = center.lat();
+                                const lng = center.lng();
+
+                                setShowSearchButton(false);
+                                lastFetchRef.current = { lat, lng, zoom };
+
+                                onFetchNewArea(lat, lng, radius);
+                            }}
+                            className="bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 animate-bounce-small hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <Search className="w-4 h-4" />
+                            {t('search_this_area', '이 지역 검색')}
+                        </button>
                     </div>
                 )}
-            </div>
 
-            {/* Search Here Button (Overlay) */}
-            {showSearchButton && !showList && (
-                <div className="absolute bottom-56 left-1/2 transform -translate-x-1/2 z-20">
-                    <button
-                        onClick={() => {
-                            if (!mapInstance.current || !onFetchNewArea) return;
-                            const center = mapInstance.current.getCenter();
-                            const zoom = mapInstance.current.getZoom();
+                {/* List View Modal (Overlay) */}
+                {showList && (
+                    <div className="absolute top-[72px] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
+                        <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-2xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
 
-                            // Dynamic Radius based on Zoom
-                            let radius = 2;
-                            if (zoom <= 14) radius = 5;
-                            if (zoom <= 12) radius = 10;
-                            if (zoom <= 11) radius = 15;
-                            if (zoom <= 10) radius = 20;
-                            if (zoom <= 9) radius = 30;
-                            if (zoom <= 8) radius = 50;
-
-                            const lat = center.lat();
-                            const lng = center.lng();
-
-                            setShowSearchButton(false);
-                            lastFetchRef.current = { lat, lng, zoom };
-
-                            onFetchNewArea(lat, lng, radius);
-                        }}
-                        className="bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 animate-bounce-small hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                        <Search className="w-4 h-4" />
-                        {t('search_this_area', '이 지역 검색')}
-                    </button>
-                </div>
-            )}
-
-            {/* List View Modal (Overlay) */}
-            {showList && (
-                <div className="absolute top-[72px] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
-                    <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-2xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
-
-                        {/* Fixed Native Ad Area (Top of List) */}
-                        <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden pt-2">
-                            <div className="w-full h-[80px] flex items-center justify-center relative px-4">
-                                <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full rounded-lg" type="NATIVE_LIST" />
-                                <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-300 font-bold -z-10 tracking-widest uppercase">Sponsored</span>
-                            </div>
-                        </div>
-
-                        {/* Scrollable Content */}
-                        <div className="flex-1 overflow-y-auto pb-24 relative">
-                            {/* Filter and Sort Section */}
-                            <div className="sticky top-0 bg-white dark:bg-gray-800 p-3 border-b dark:border-gray-700 z-10 shadow-sm">
-                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                    {/* Sort Dropdown (Simulated with button for compactness) */}
-                                    <button
-                                        onClick={() => setSortBy(sortBy === 'distance' ? 'rating' : 'distance')}
-                                        className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white flex items-center gap-1 whitespace-nowrap"
-                                    >
-                                        {sortBy === 'distance' ? t('sort_distance', '📍 거리순') : t('sort_rating', '⭐ 별점순')}
-                                    </button>
-                                    <div className="w-[1px] h-8 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
-
-                                    {/* Filters (Horizontal Scroll Chips) */}
-                                    <button
-                                        onClick={() => setFilters(prev => ({ ...prev, hasPaper: !prev.hasPaper }))}
-                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasPaper
-                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
-                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
-                                            }`}
-                                    >
-                                        <img src="/images/icons/tissue.png" width={16} height={16} alt="tissue" className={filters.hasPaper ? "" : "grayscale opacity-50"} />
-                                        {t('filter_paper', '화장지')}
-                                    </button>
-                                    <button
-                                        onClick={() => setFilters(prev => ({ ...prev, hasBidet: !prev.hasBidet }))}
-                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasBidet
-                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
-                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
-                                            }`}
-                                    >
-                                        <img src="/images/icons/bidet.png" width={16} height={16} alt="bidet" className={filters.hasBidet ? "" : "grayscale opacity-50"} />
-                                        {t('filter_bidet', '비데')}
-                                    </button>
-                                    <button
-                                        onClick={() => setFilters(prev => ({ ...prev, minRating: !prev.minRating }))}
-                                        className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.minRating
-                                            ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
-                                            : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
-                                            }`}
-                                    >
-                                        <Star className={`w-3.5 h-3.5 ${filters.minRating ? "fill-primary-700 text-primary-700" : "text-gray-400"}`} />
-                                        {t('filter_score_3plus', '3점+')}
-                                    </button>
+                            {/* Fixed Native Ad Area (Top of List) */}
+                            <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden pt-2">
+                                <div className="w-full h-[80px] flex items-center justify-center relative px-4">
+                                    <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full rounded-lg" type="NATIVE_LIST" />
+                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-300 font-bold -z-10 tracking-widest uppercase">Sponsored</span>
                                 </div>
                             </div>
 
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto pb-24 relative">
+                                {/* Filter and Sort Section */}
+                                <div className="sticky top-0 bg-white dark:bg-gray-800 p-3 border-b dark:border-gray-700 z-10 shadow-sm">
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                        {/* Sort Dropdown (Simulated with button for compactness) */}
+                                        <button
+                                            onClick={() => setSortBy(sortBy === 'distance' ? 'rating' : 'distance')}
+                                            className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white flex items-center gap-1 whitespace-nowrap"
+                                        >
+                                            {sortBy === 'distance' ? t('sort_distance', '📍 거리순') : t('sort_rating', '⭐ 별점순')}
+                                        </button>
+                                        <div className="w-[1px] h-8 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
 
-
-
-
-                            {/* List */}
-                            <div className="p-4 space-y-3">
-                                {displayToilets.length === 0 ? (
-                                    <div className="text-center py-10 text-gray-400">
-                                        {t('no_toilets_found', '조건에 맞는 화장실이 없습니다.')}
+                                        {/* Filters (Horizontal Scroll Chips) */}
+                                        <button
+                                            onClick={() => setFilters(prev => ({ ...prev, hasPaper: !prev.hasPaper }))}
+                                            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasPaper
+                                                ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                                : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                                }`}
+                                        >
+                                            <img src="/images/icons/tissue.png" width={16} height={16} alt="tissue" className={filters.hasPaper ? "" : "grayscale opacity-50"} />
+                                            {t('filter_paper', '화장지')}
+                                        </button>
+                                        <button
+                                            onClick={() => setFilters(prev => ({ ...prev, hasBidet: !prev.hasBidet }))}
+                                            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.hasBidet
+                                                ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                                : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                                }`}
+                                        >
+                                            <img src="/images/icons/bidet.png" width={16} height={16} alt="bidet" className={filters.hasBidet ? "" : "grayscale opacity-50"} />
+                                            {t('filter_bidet', '비데')}
+                                        </button>
+                                        <button
+                                            onClick={() => setFilters(prev => ({ ...prev, minRating: !prev.minRating }))}
+                                            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${filters.minRating
+                                                ? 'bg-primary-50 border-primary-100 text-primary-700 dark:bg-primary-900/40 dark:border-primary-800 dark:text-primary-300'
+                                                : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400'
+                                                }`}
+                                        >
+                                            <Star className={`w-3.5 h-3.5 ${filters.minRating ? "fill-primary-700 text-primary-700" : "text-gray-400"}`} />
+                                            {t('filter_score_3plus', '3점+')}
+                                        </button>
                                     </div>
-                                ) : (
-                                    displayToilets.map((toilet, i) => (
-                                        <React.Fragment key={toilet.id}>
-                                            {/* ... Toilet Item ... */}
-                                            <div
-                                                onClick={() => handleToiletSelect(toilet)}
-                                                className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                            >
-                                                {/* ... Content ... */}
-                                                <div className="shrink-0 self-center">
-                                                    <img
-                                                        src={getMarkerImage(toilet, user.role, i === 0 && sortBy === 'distance')}
-                                                        alt="pin"
-                                                        className="w-[65px] h-[65px] object-contain drop-shadow-sm"
-                                                    />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${toilet.type === 'public' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                                            {toilet.type === 'public' ? t('toilet_type_public', '공공') : toilet.type === 'commercial' ? t('toilet_type_commercial', '상가') : t('toilet_type_other', '기타')}
-                                                        </span>
-                                                        <h3 className="font-bold text-gray-900 dark:text-white">{toilet.name}</h3>
+                                </div>
+
+
+
+
+
+                                {/* List */}
+                                <div className="p-4 space-y-3">
+                                    {displayToilets.length === 0 ? (
+                                        <div className="text-center py-10 text-gray-400">
+                                            {t('no_toilets_found', '조건에 맞는 화장실이 없습니다.')}
+                                        </div>
+                                    ) : (
+                                        displayToilets.map((toilet, i) => (
+                                            <React.Fragment key={toilet.id}>
+                                                {/* ... Toilet Item ... */}
+                                                <div
+                                                    onClick={() => handleToiletSelect(toilet)}
+                                                    className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                                >
+                                                    {/* ... Content ... */}
+                                                    <div className="shrink-0 self-center">
+                                                        <img
+                                                            src={getMarkerImage(toilet, user.role, i === 0 && sortBy === 'distance')}
+                                                            alt="pin"
+                                                            className="w-[65px] h-[65px] object-contain drop-shadow-sm"
+                                                        />
                                                     </div>
-                                                    <div className="text-sm text-gray-500 mb-2">{toilet.address} {toilet.floor}층</div>
-                                                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                                                        <span className="flex items-center gap-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {toilet.ratingAvg ? toilet.ratingAvg.toFixed(1) : '0.0'} ({toilet.reviewCount})</span>
-                                                        <span>|</span>
-                                                        <span>{formatDistance(toilet.distance || 0)}</span>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`text-xs px-1.5 py-0.5 rounded font-bold ${toilet.type === 'public' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                                {toilet.type === 'public' ? t('toilet_type_public', '공공') : toilet.type === 'commercial' ? t('toilet_type_commercial', '상가') : t('toilet_type_other', '기타')}
+                                                            </span>
+                                                            <h3 className="font-bold text-gray-900 dark:text-white">{toilet.name}</h3>
+                                                        </div>
+                                                        <div className="text-sm text-gray-500 mb-2">{toilet.address} {toilet.floor}층</div>
+                                                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                            <span className="flex items-center gap-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {toilet.ratingAvg ? toilet.ratingAvg.toFixed(1) : '0.0'} ({toilet.reviewCount})</span>
+                                                            <span>|</span>
+                                                            <span>{formatDistance(toilet.distance || 0)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </React.Fragment>
-                                    ))
-                                )}
+                                            </React.Fragment>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Current Location Button */}
+                <div className="absolute bottom-56 right-4 z-20">
+                    <button
+                        onClick={async () => {
+                            if (onRefreshLocation) {
+                                await onRefreshLocation();
+                            }
+                            if (mapInstance.current && myLocation.lat !== 0) {
+                                mapInstance.current.panTo(myLocation);
+                                mapInstance.current.setZoom(17);
+                            }
+                        }}
+                        className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all active:scale-95"
+                    >
+                        <Crosshair className="w-6 h-6" />
+                    </button>
                 </div>
-            )}
 
-            {/* Current Location Button */}
-            <div className="absolute bottom-56 right-4 z-20">
-                <button
-                    onClick={async () => {
-                        if (onRefreshLocation) {
-                            await onRefreshLocation();
-                        }
-                        if (mapInstance.current && myLocation.lat !== 0) {
-                            mapInstance.current.panTo(myLocation);
-                            mapInstance.current.setZoom(17);
-                        }
-                    }}
-                    className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all active:scale-95"
-                >
-                    <Crosshair className="w-6 h-6" />
-                </button>
-            </div>
-
-
-
-        </div >
+            </div >
+        </MapLayout>
     );
 };
 

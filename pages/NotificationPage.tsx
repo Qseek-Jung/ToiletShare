@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Bell, Star, MessageSquareQuote, ShieldAlert, Award, Footprints, CheckCheck, Trash2, X, Megaphone, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
-import { PageLayout } from '../components/PageLayout';
+import { TextLayout } from '../components/TextLayout';
 import { User, PushNotification, NotificationType, AppNotice } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
 import { formatDistanceToNow } from '../utils';
@@ -218,7 +218,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
     const hasItems = (latestNotice !== null) || (olderNotices.length > 0) || (notifications.length > 0);
 
     return (
-        <PageLayout className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <TextLayout className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
             {/* Header */}
             <div className="fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 px-4 py-2.5 flex items-center justify-between transition-all duration-300">
                 <div className="flex items-center gap-1">
@@ -424,7 +424,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
                     onClose={() => setSelectedNotice(null)}
                 />
             )}
-        </PageLayout>
+        </TextLayout>
     );
 };
 

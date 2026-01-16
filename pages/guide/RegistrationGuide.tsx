@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, PenTool, MapPin, Camera } from 'lucide-react';
-import { PageLayout } from '../../components/PageLayout';
+import { TextLayout } from '../../components/TextLayout';
 
 export const RegistrationGuide: React.FC = () => {
     const { t } = useTranslation();
     return (
-        <PageLayout className="pb-24">
+        <TextLayout className="pb-24">
             <div className="fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
                 <button onClick={() => window.history.back()} className="p-2 -ml-2 text-gray-900 dark:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ArrowLeft className="w-6 h-6" />
@@ -53,7 +53,7 @@ export const RegistrationGuide: React.FC = () => {
                     {t('reg_guide_warning', '* 허위 사실을 기재하거나 장난으로 등록할 경우 이용이 제한될 수 있습니다.')}
                 </div>
             </div>
-        </PageLayout>
+        </TextLayout>
     );
 };
 

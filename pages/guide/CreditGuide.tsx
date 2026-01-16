@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Gift, PlayCircle, ThumbsUp } from 'lucide-react';
-import { PageLayout } from '../../components/PageLayout';
+import { TextLayout } from '../../components/TextLayout';
 
 export const CreditGuide: React.FC = () => {
     const { t } = useTranslation();
     return (
-        <PageLayout className="pb-24">
+        <TextLayout className="pb-24">
             <div className="fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
                 <button onClick={() => window.history.back()} className="p-2 -ml-2 text-gray-900 dark:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ArrowLeft className="w-6 h-6" />
@@ -55,6 +55,6 @@ export const CreditGuide: React.FC = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('credit_usage_desc', '잠긴 화장실 비밀번호 확인 화장실 상세화면에서 비밀번호가 잠겨있을 때, 크레딧을 사용하여 잠금을 해제할 수 있습니다.').replace('잠긴 화장실 비밀번호 확인', '🔒 <strong>잠긴 화장실 비밀번호 확인</strong><br />') }} />
                 </div>
             </div>
-        </PageLayout>
+        </TextLayout>
     );
 };

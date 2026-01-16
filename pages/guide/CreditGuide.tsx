@@ -7,14 +7,14 @@ export const CreditGuide: React.FC = () => {
     const { t } = useTranslation();
     return (
         <TextLayout className="pb-24">
-            <div className="fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center gap-3">
+            <div className="fixed top-0 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-3">
                 <button onClick={() => window.history.back()} className="p-2 -ml-2 text-gray-900 dark:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
                     <ArrowLeft className="w-6 h-6" />
                 </button>
                 <h1 className="font-bold text-lg text-gray-900 dark:text-white">{t('credit_guide_title', '크레딧 이용 안내')}</h1>
             </div>
 
-            <div className="pt-20 px-6 space-y-8">
+            <div className="pt-[calc(5rem+env(safe-area-inset-top))] px-6 space-y-8">
                 {/* Intro */}
                 <div className="text-center space-y-2">
                     <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">

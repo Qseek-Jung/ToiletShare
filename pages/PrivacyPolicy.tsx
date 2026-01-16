@@ -6,7 +6,7 @@ export default function PrivacyPolicy() {
     const { t } = useTranslation();
     return (
         <div className="absolute inset-0 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 pb-8 pt-[calc(2rem+env(safe-area-inset-top))]">
                 {/* Header */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
                     <button

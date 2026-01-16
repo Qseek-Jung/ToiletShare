@@ -268,6 +268,10 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     ? [...DARK_MAP_STYLE, { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
                     : [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
             });
+            // Force resize trigger in case layout shifted due to CSS changes
+            setTimeout(() => {
+                window.google.maps.event.trigger(mapInstance.current, 'resize');
+            }, 100);
         }
     }, [darkMode]);
 

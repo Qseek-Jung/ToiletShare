@@ -229,7 +229,7 @@ const MyPage: React.FC<MyPageProps> = ({
                 )
             }
             {/* Header - Redesigned */}
-            <div className="bg-surface dark:bg-surface-dark px-4 py-3 flex items-center justify-between sticky top-0 z-20 border-b border-border dark:border-border-dark shadow-sm">
+            <div className="bg-surface dark:bg-surface-dark px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center justify-between sticky top-0 z-20 border-b border-border dark:border-border-dark shadow-sm">
                 <div className="flex items-center gap-4">
                     <button onClick={() => window.location.hash = '#/'} className="p-2 -ml-2 text-text-main dark:text-text-light hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
                         <ArrowRight className="w-6 h-6 rotate-180" />

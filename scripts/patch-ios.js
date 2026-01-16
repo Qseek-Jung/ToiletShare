@@ -14,7 +14,7 @@ const Config = {
     auth: {
         kakao: {
             apiKey: env.VITE_KAKAO_API_KEY || '',
-            nativeKey: env.VITE_KAKAO_NATIVE_KEY || '', // Added Native Key support
+            nativeKey: env.VITE_KAKAO_NATIVE_KEY || '',
         },
         google: {
             clientId: env.VITE_GOOGLE_CLIENT_ID || '',
@@ -25,6 +25,25 @@ const Config = {
         }
     }
 };
+
+// Validation & Debugging
+console.log('🔍 Validating Cloud Configuration...');
+if (!Config.auth.google.clientId) {
+    throw new Error('❌ FATAL: VITE_GOOGLE_CLIENT_ID is missing! Check GitHub Secrets.');
+} else {
+    console.log(`✅ Loaded Google Client ID: ${Config.auth.google.clientId.substring(0, 15)}...`);
+}
+
+if (!env.VITE_GOOGLE_MAPS_API_KEY_WEBVIEW && !env.VITE_GOOGLE_MAPS_API_KEY) {
+    console.warn('⚠️ WARNING: Map Web Key is missing. Maps might not load.');
+} else {
+    console.log('✅ Loaded Map Web Key.');
+}
+if (!Config.auth.kakao.nativeKey) {
+    console.warn('⚠️ WARNING: VITE_KAKAO_NATIVE_KEY is missing. Kakao Login might fail.');
+} else {
+    console.log('✅ Loaded Kakao Native Key.');
+}
 
 const getReversedClientId = (clientId) => {
     if (!clientId) return '';

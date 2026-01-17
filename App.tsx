@@ -962,10 +962,14 @@ export default function App() {
         loadData();
     }, [myLocation, refreshTrigger, fetchToiletsInRadius]);
 
+    // Hash Change Listener (Route Navigation)
     useEffect(() => {
         const handleHashChange = () => {
-            const hash = window.location.hash || '#/';
-            setCurrentHash(hash);
+            setCurrentHash(window.location.hash || '#/');
+            // Force layout recalculation after navigation (prevents offset cache)
+            requestAnimationFrame(() => {
+                window.dispatchEvent(new Event('resize'));
+            });
         };
         handleHashChange();
         window.addEventListener('hashchange', handleHashChange);

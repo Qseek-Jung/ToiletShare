@@ -47,7 +47,7 @@ import SettingsPage from './pages/SettingsPage';
 
 
 import DebugConsole from './components/DebugConsole';
-import { LayoutDebugger } from './components/LayoutDebugger';
+import { AdDebugger } from './components/AdDebugger';
 
 import { useTranslation } from 'react-i18next';
 import { lockViewportHeight } from './utils/viewport';
@@ -2133,7 +2133,7 @@ export default function App() {
                     <>
                         {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
                         {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
-                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
+                            <div key={adKey} className={`fixed left-0 right-0 z-[40] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
                                 <div className="pointer-events-auto w-full max-w-md overflow-hidden">
                                     <AdBanner position="bottom" maxHeight={100} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
                                 </div>
@@ -2605,7 +2605,7 @@ export default function App() {
                     </div>
                 )}
                 {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
-                <LayoutDebugger />
+                <AdDebugger />
             </div>
 
         </GoogleMapsProvider>

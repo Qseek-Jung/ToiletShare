@@ -298,7 +298,13 @@ const MyPage: React.FC<MyPageProps> = ({
 
             <HamburgerMenu
                 isOpen={isMenuOpen}
-                onClose={() => setIsMenuOpen(false)}
+                onClose={() => {
+                    setIsMenuOpen(false);
+                    // Force layout recalculation (prevent whitespace bug like back button)
+                    requestAnimationFrame(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    });
+                }}
                 user={user}
                 onLogout={onLogout}
                 onOpenContact={handleOpenContactModal}

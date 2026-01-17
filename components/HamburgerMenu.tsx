@@ -43,7 +43,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
             />
 
             {/* Side Drawer */}
-            <div className="fixed top-0 right-0 bottom-0 w-[80%] max-w-[320px] bg-white dark:bg-gray-900 z-[9999] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="fixed top-0 right-0 bottom-0 w-[80%] max-w-[320px] bg-white dark:bg-gray-900 z-[9999] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
                 {/* Header */}
                 <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                     <div>

@@ -7,7 +7,7 @@ interface TextLayoutProps {
 
 export const TextLayout: React.FC<TextLayoutProps> = ({ children, className = '' }) => (
     <div className="w-full h-full bg-gray-50 dark:bg-gray-900 flex justify-center overflow-hidden">
-        <div className={`relative w-full max-w-md bg-white dark:bg-gray-800 h-full overflow-y-auto no-scrollbar shadow-2xl pb-[env(safe-area-inset-bottom)] ${className}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className={`w-full max-w-md bg-white dark:bg-gray-800 h-full overflow-y-auto no-scrollbar shadow-2xl ${className}`} style={{ WebkitOverflowScrolling: 'touch' }}>
             {children}
         </div>
     </div>

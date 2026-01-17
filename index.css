@@ -40,6 +40,13 @@ html.dark body {
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
+  /* FIX: Prevent overscroll bounce (white gap) on iOS */
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overscroll-behavior-y: none;
 }
 
 /* Custom animations for React transitions */
@@ -168,3 +175,15 @@ body {
     pointer-events: none !important;
   }
 }
+
+/* ============================================ */
+/* 🔴 TEMPORARY DEBUG - 흰색 영역 판별용 */
+/* ============================================ */
+html,
+body,
+#root,
+#root * {
+  background-color: rgba(255, 0, 0, 0.05) !important;
+}
+
+/* 확인 후 반드시 제거! */

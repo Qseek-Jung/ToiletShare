@@ -47,4 +47,20 @@ export const lockViewportHeight = () => {
     // Listen to both visualViewport and window resize
     window.visualViewport?.addEventListener('resize', onResize);
     window.addEventListener('resize', onResize);
+
+    // Initial scroll reset
+    window.scrollTo(0, 0);
 };
+
+/**
+ * Force scroll reset and layout recalculation for iOS stability
+ */
+export const resetViewport = () => {
+    window.scrollTo(0, 0);
+    // Force browser to recalculate fixed layouts
+    document.body.style.display = 'none';
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    document.body.offsetHeight; // trigger reflow
+    document.body.style.display = '';
+};
+

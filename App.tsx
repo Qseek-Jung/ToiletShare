@@ -46,11 +46,10 @@ import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
 
 
-import DebugConsole from './components/DebugConsole';
-import { AdDebugger } from './components/AdDebugger';
+import { LayoutSniffer } from './components/LayoutSniffer';
 
 import { useTranslation } from 'react-i18next';
-import { lockViewportHeight } from './utils/viewport';
+import { lockViewportHeight, resetViewport } from './utils/viewport';
 
 // Declaration for Google Identity Services & Maps & Social Logins
 declare global {
@@ -533,6 +532,7 @@ export default function App() {
 
             if (targetEl) {
                 try {
+                    resetViewport(); // BUILD 110: Force layout reset
                     const style = window.getComputedStyle(targetEl);
                     const bgColor = style.backgroundColor;
 
@@ -540,7 +540,7 @@ export default function App() {
                         document.documentElement.style.backgroundColor = bgColor;
                         document.body.style.backgroundColor = bgColor;
 
-                        console.log('🏗️ [Build 110] BG Sync:', {
+                        console.log('🏗️ [Build 111] BG Sync:', {
                             extracted: bgColor,
                             target: targetEl.id,
                             innerH: window.innerHeight,
@@ -549,7 +549,7 @@ export default function App() {
                         });
                     }
                 } catch (e) {
-                    console.error('[Build 110] Sync failed:', e);
+                    console.error('[Build 111] Sync failed:', e);
                 }
             }
         }, 200); // Slightly longer wait for layout stability
@@ -557,8 +557,29 @@ export default function App() {
 
     useEffect(() => {
         syncBackground();
-        window.addEventListener('hashchange', syncBackground);
-        return () => window.removeEventListener('hashchange', syncBackground);
+        const handleLayoutReset = () => {
+            syncBackground();
+            resetViewport();
+            // Force safe-area recalculation on iOS
+            setTimeout(resetViewport, 100);
+            setTimeout(resetViewport, 300);
+        };
+
+        window.addEventListener('hashchange', handleLayoutReset);
+        window.addEventListener('popstate', handleLayoutReset);
+
+        // BUILD 111: Global scroll reset when keyboard dismisses (approximated by focusout)
+        const handleFocusOut = () => {
+            // Wait for keyboard animation to finish
+            setTimeout(handleLayoutReset, 250);
+        };
+        window.addEventListener('focusout', handleFocusOut);
+
+        return () => {
+            window.removeEventListener('hashchange', handleLayoutReset);
+            window.removeEventListener('popstate', handleLayoutReset);
+            window.removeEventListener('focusout', handleFocusOut);
+        };
     }, [syncBackground, currentHash]);
 
     // Smart Ad Refresh State
@@ -2648,9 +2669,7 @@ export default function App() {
                         </div>
                     </div>
                 )}
-                {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
-                <DebugConsole />
-                <AdDebugger /></div>
+                <LayoutSniffer /></div>
 
         </GoogleMapsProvider>
     );

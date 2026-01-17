@@ -47,6 +47,7 @@ import SettingsPage from './pages/SettingsPage';
 
 
 import DebugConsole from './components/DebugConsole';
+import { LayoutDebugger } from './components/LayoutDebugger';
 
 import { useTranslation } from 'react-i18next';
 
@@ -2592,8 +2593,8 @@ export default function App() {
                         </div>
                     </div>
                 )}
-                {/* Debug Console Overlay */}
-                <DebugConsole />
+                {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
+                <LayoutDebugger />
             </div>
 
         </GoogleMapsProvider>

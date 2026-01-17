@@ -21,45 +21,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         FirebaseApp.configure()
         
         // FIX: Set window background to black (prevents white gap on iOS)
-        self.window?.backgroundColor = UIColor.black
-        
-        // Setup WebView background observer
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(setupWebViewBackground),
-            name: Notification.Name.capacitorViewDidLoad,
-            object: nil
-        )
+        // WebView background is handled by CSS (index.css sets #111827)
+        self.window?.backgroundColor = UIColor(red: 0x11/255.0, green: 0x18/255.0, blue: 0x27/255.0, alpha: 1.0)
         
         return true
-    }
-    
-    @objc func setupWebViewBackground() {
-        // Find the WebView and set its background
-        guard let window = self.window,
-              let rootVC = window.rootViewController else { return }
-        
-        // Traverse view hierarchy to find WKWebView
-        func findWebView(in view: UIView) -> UIView? {
-            if NSStringFromClass(type(of: view)).contains("WKWebView") {
-                return view
-            }
-            for subview in view.subviews {
-                if let found = findWebView(in: subview) {
-                    return found
-                }
-            }
-            return nil
-        }
-        
-        if let webView = findWebView(in: rootVC.view) {
-            webView.isOpaque = false
-            webView.backgroundColor = UIColor.black
-            // Also set scroll view if available
-            if let scrollView = webView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView {
-                scrollView.backgroundColor = UIColor.black
-            }
-        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

@@ -272,18 +272,45 @@ export interface AppNotice {
 }
 
 export interface AdConfig {
-  interstitialSource: 'admob' | 'youtube'; // Full screen ads (Nav, etc)
-  bannerSource: 'admob' | 'custom';        // Native/Banner ads (List, etc)
-  testMode: boolean;                       // Use Google's Test Ad IDs
-  bannersEnabled?: boolean;                // Global toggle for banners (screenshots etc)
-  youtubeUrls: string[];
+  interstitialSource: 'admob' | 'youtube';
+  bannerSource: 'admob' | 'custom';
+  testMode: boolean;
+  bannersEnabled?: boolean;
   customBanners: CustomBanner[];
-  adMobIds: AdMobIds; // Added IDs
+  adMobIds?: {
+    banner: string;
+    interstitial: string;
+    reward: string;
+    rewardInterstitial: string;
+    appOpen: string;
+    native: string;
+  };
 
-  // New: Duration Settings (seconds)
-  durationUnlock?: number;      // Default 15
-  durationPoint?: number;       // Default 15
-  durationNavigation?: number;  // Default 5
+  // ===== Platform-Specific Interstitial Ads =====
+
+  // 1.1 Android Settings (YouTube)
+  interstitialAndroid?: {
+    youtubeUrls: string[];          // YouTube video IDs or URLs
+    clickUrls?: string[];            // Click-through URLs (one per video, optional)
+    durationUnlock?: number;         // Password unlock duration (seconds)
+    durationPoint?: number;          // Credit charge duration (seconds)
+    durationNavigation?: number;     // Navigation exit duration (seconds)
+  };
+
+  // 1.2 iOS Settings (MP4)
+  interstitialIOS?: {
+    videoUrls: string[];            // MP4 video URLs (Cloudflare R2 / CDN)
+    clickUrls?: string[];           // Click-through URLs (one per video, optional)
+    durationUnlock?: number;
+    durationPoint?: number;
+    durationNavigation?: number;
+  };
+
+  // Legacy fields (for migration, will be removed later)
+  youtubeUrls?: string[];
+  durationUnlock?: number;
+  durationPoint?: number;
+  durationNavigation?: number;
 }
 
 export interface UploadHistory {

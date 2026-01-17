@@ -9,85 +9,94 @@ interface AdManagementProps {
     refreshTrigger: number;
 }
 
-const VideoRow: React.FC<{ url: string, index: number, onChange: (val: string) => void, onRemove: () => void }> = ({ url, index, onChange, onRemove }) => {
+// NEW: VideoRow with Click URL
+const VideoRowWithClickUrl: React.FC<{
+    url: string,
+    clickUrl: string,
+    index: number,
+    onChange: (val: string) => void,
+    onClickUrlChange: (val: string) => void,
+    onRemove: () => void,
+    platform: 'android' | 'ios'
+}> = ({ url, clickUrl, index, onChange, onClickUrlChange, onRemove, platform }) => {
     const [title, setTitle] = React.useState<string | null>(null);
 
-    // Helper to extract ID
+    // Helper to extract YouTube ID (Android only)
     const extractId = (u: string) => {
         if (!u) return null;
         const clean = u.trim();
         if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&?]*).*/;
         const match = clean.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
-    const videoId = React.useMemo(() => extractId(url), [url]);
+    const videoId = platform === 'android' ? React.useMemo(() => extractId(url), [url]) : null;
     const thumbnailUrl = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
 
     React.useEffect(() => {
-        if (!videoId) {
+        if (platform === 'android' && videoId) {
+            const fetchTitle = async () => {
+                try {
+                    const safeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+                    const res = await fetch(`https://noembed.com/embed?url=${safeUrl}`);
+                    const data = await res.json();
+                    if (data.title) setTitle(data.title);
+                } catch (e) { /* ignore */ }
+            };
+            fetchTitle();
+        } else {
             setTitle(null);
-            return;
         }
-
-        // Fetch Title via NoEmbed (CORS friendly)
-        const fetchTitle = async () => {
-            try {
-                // Construct standard URL for NoEmbed
-                const safeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-                const res = await fetch(`https://noembed.com/embed?url=${safeUrl}`);
-                const data = await res.json();
-                if (data.title) setTitle(data.title);
-            } catch (e) {
-                // ignore
-            }
-        };
-        fetchTitle();
-    }, [videoId]);
+    }, [videoId, platform]);
 
     return (
-        <div className="flex items-start gap-3 bg-white p-2 rounded-lg border border-red-100 shadow-sm group">
-            {/* Thumbnail Preview */}
-            <div className="w-20 h-14 bg-gray-100 rounded overflow-hidden shrink-0 flex items-center justify-center border border-gray-200 text-xs text-gray-400 relative">
-                {thumbnailUrl ? (
-                    <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                ) : (
-                    <span className="scale-75">No Img</span>
+        <div className="flex flex-col gap-2 bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <div className="flex items-start gap-3">
+                {/* Thumbnail Preview (Android only) */}
+                {platform === 'android' && (
+                    <div className="w-20 h-14 bg-gray-100 rounded overflow-hidden shrink-0 flex items-center justify-center border border-gray-200 text-xs text-gray-400">
+                        {thumbnailUrl ? (
+                            <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="scale-75">No Img</span>
+                        )}
+                    </div>
                 )}
-            </div>
 
-            <div className="flex-1 min-w-0 flex flex-col justify-center h-14">
-                {/* Title (if available) - Show ABOVE input or inside? 
-                    User said "영상 제목도 자동으로 바로 뜨게". 
-                    Let's put it above the input for clarity, or as a label.
-                */}
-                <div className="mb-1">
-                    {title ? (
-                        <div className="text-xs font-bold text-gray-800 truncate leading-tight" title={title}>
-                            {title}
-                        </div>
-                    ) : (
-                        <div className="text-[10px] text-gray-400 h-3"></div>
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                    {/* Title (Android only) */}
+                    {platform === 'android' && title && (
+                        <div className="text-xs font-bold text-gray-800 truncate" title={title}>{title}</div>
                     )}
+
+                    {/* Video URL */}
+                    <input
+                        type="text"
+                        placeholder={platform === 'android' ? "YouTube URL 또는 ID (예: 2S47kMBvbDg)" : "MP4 URL (예: https://cdn.example.com/ad01.mp4)"}
+                        className="w-full p-2 border rounded text-xs focus:border-blue-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                        value={url}
+                        onChange={(e) => onChange(e.target.value)}
+                    />
+
+                    {/* Click URL */}
+                    <input
+                        type="text"
+                        placeholder="클릭 시 이동할 URL (선택사항, 예: https://example.com)"
+                        className="w-full p-2 border rounded text-xs focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                        value={clickUrl}
+                        onChange={(e) => onClickUrlChange(e.target.value)}
+                    />
                 </div>
 
-                <input
-                    type="text"
-                    placeholder="URL 또는 ID (예: 2S47kMBvbDg)"
-                    className="w-full p-1.5 border rounded text-[11px] focus:border-red-500 outline-none bg-gray-50 focus:bg-white transition-colors"
-                    value={url}
-                    onChange={(e) => onChange(e.target.value)}
-                />
+                <button
+                    onClick={onRemove}
+                    className="self-start p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                    title="삭제"
+                >
+                    <X className="w-4 h-4" />
+                </button>
             </div>
-
-            <button
-                onClick={onRemove}
-                className="self-center p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                title="이 영상 삭제"
-            >
-                <X className="w-4 h-4" />
-            </button>
         </div>
     );
 };
@@ -405,82 +414,303 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                     onClick={() => saveConfig({ ...config, interstitialSource: 'youtube' })}
                                     className={`flex-1 py-4 rounded-xl border-2 font-bold transition-all flex flex-col items-center gap-1 ${config.interstitialSource === 'youtube' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
                                 >
-                                    <span>YouTube 영상</span>
-                                    <span className="text-xs font-normal opacity-70">정보 제공 / 홍보용</span>
+                                    <span>자체영상</span>
+                                    <span className="text-xs font-normal opacity-70">정보제공 / 홍보용</span>
                                 </button>
                             </div>
                         </div>
 
-                        {/* YouTube Settings */}
+                        {/* Platform-Specific Video Ad Settings */}
                         {config.interstitialSource === 'youtube' && (
-                            <div className="glass-panel p-4 rounded-xl bg-red-50/50 border border-red-100 animate-in slide-in-from-top-2">
-                                <h3 className="font-bold text-gray-900 mb-2 text-sm flex items-center gap-2">
-                                    YouTube 재생 목록
-                                    <span className="text-[10px] font-normal text-red-500 bg-red-100 px-2 py-0.5 rounded-full">자동 순차 재생 / 5초 후 닫기</span>
-                                </h3>
+                            <div className="space-y-6 animate-in slide-in-from-top-2">
+                                {/* 1.1 Android Settings (YouTube) */}
+                                <div className="glass-panel p-5 rounded-xl bg-red-50/50 border border-red-200 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                                            <span className="text-red-600">1.1</span> Android 설정 (YouTube)
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full">
+                                            Android 전용 · Playlist 순환
+                                        </span>
+                                    </div>
 
-                                <div className="space-y-3">
-                                    {config.youtubeUrls.map((url, index) => (
-                                        <VideoRow
-                                            key={index}
-                                            url={url}
-                                            index={index}
-                                            onChange={(val) => handleYoutubeUrlChange(index, val)}
-                                            onRemove={() => {
-                                                const newUrls = config.youtubeUrls.filter((_, i) => i !== index);
-                                                saveConfig({ ...config, youtubeUrls: newUrls });
+                                    <div className="text-xs text-gray-600 mb-4 bg-white/60 p-3 rounded-lg border border-red-100">
+                                        💡 Android는 여러 영상을 랜덤으로 순환 재생합니다. 클릭 시 설정한 URL로 이동합니다.
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {(config.interstitialAndroid?.youtubeUrls || []).map((url, index) => (
+                                            <VideoRowWithClickUrl
+                                                key={index}
+                                                url={url}
+                                                clickUrl={config.interstitialAndroid?.clickUrls?.[index] || ''}
+                                                index={index}
+                                                platform="android"
+                                                onChange={(val) => {
+                                                    const newUrls = [...(config.interstitialAndroid?.youtubeUrls || [])];
+                                                    newUrls[index] = val;
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialAndroid: {
+                                                            ...config.interstitialAndroid,
+                                                            youtubeUrls: newUrls,
+                                                            clickUrls: config.interstitialAndroid?.clickUrls || []
+                                                        }
+                                                    });
+                                                }}
+                                                onClickUrlChange={(val) => {
+                                                    const newClickUrls = [...(config.interstitialAndroid?.clickUrls || [])];
+                                                    newClickUrls[index] = val;
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialAndroid: {
+                                                            ...config.interstitialAndroid,
+                                                            youtubeUrls: config.interstitialAndroid?.youtubeUrls || [],
+                                                            clickUrls: newClickUrls
+                                                        }
+                                                    });
+                                                }}
+                                                onRemove={() => {
+                                                    const newUrls = (config.interstitialAndroid?.youtubeUrls || []).filter((_, i) => i !== index);
+                                                    const newClickUrls = (config.interstitialAndroid?.clickUrls || []).filter((_, i) => i !== index);
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialAndroid: {
+                                                            ...config.interstitialAndroid,
+                                                            youtubeUrls: newUrls,
+                                                            clickUrls: newClickUrls
+                                                        }
+                                                    });
+                                                }}
+                                            />
+                                        ))}
+
+                                        {/* Add Button */}
+                                        <button
+                                            onClick={() => {
+                                                saveConfig({
+                                                    ...config,
+                                                    interstitialAndroid: {
+                                                        ...config.interstitialAndroid,
+                                                        youtubeUrls: [...(config.interstitialAndroid?.youtubeUrls || []), ''],
+                                                        clickUrls: config.interstitialAndroid?.clickUrls || []
+                                                    }
+                                                });
                                             }}
-                                        />
-                                    ))}
+                                            className="w-full py-3 border-2 border-dashed border-red-300 text-red-500 font-bold rounded-lg hover:border-red-500 hover:text-red-600 hover:bg-red-50 transition-all text-sm flex items-center justify-center gap-2"
+                                        >
+                                            <span>+ YouTube 영상 추가</span>
+                                        </button>
 
-                                    {/* Add Button */}
-                                    <button
-                                        onClick={() => {
-                                            saveConfig({ ...config, youtubeUrls: [...config.youtubeUrls, ''] });
-                                        }}
-                                        className="w-full py-2 border-2 border-dashed border-red-200 text-red-400 font-bold rounded-lg hover:border-red-400 hover:text-red-500 hover:bg-red-50 transition-all text-sm flex items-center justify-center gap-1"
-                                    >
-                                        <span>+ 영상 추가하기</span>
-                                    </button>
+                                        {(!config.interstitialAndroid?.youtubeUrls || config.interstitialAndroid.youtubeUrls.length === 0) && (
+                                            <div className="text-center py-4 text-xs text-red-500 font-medium bg-white/60 rounded-lg">
+                                                등록된 YouTube 영상이 없습니다.
+                                            </div>
+                                        )}
+                                    </div>
 
-                                    {config.youtubeUrls.length === 0 && (
-                                        <div className="text-center py-4 text-xs text-red-400 font-medium">
-                                            등록된 영상이 없습니다. 영상을 추가해주세요.
+                                    {/* Android Duration Settings */}
+                                    <div className="mt-5 pt-4 border-t border-red-200 grid grid-cols-3 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">비밀번호 확인 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialAndroid?.durationUnlock || 15}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialAndroid: {
+                                                        ...config.interstitialAndroid,
+                                                        youtubeUrls: config.interstitialAndroid?.youtubeUrls || [],
+                                                        clickUrls: config.interstitialAndroid?.clickUrls || [],
+                                                        durationUnlock: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                                min="5"
+                                            />
                                         </div>
-                                    )}
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">포인트 충전 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialAndroid?.durationPoint || 15}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialAndroid: {
+                                                        ...config.interstitialAndroid,
+                                                        youtubeUrls: config.interstitialAndroid?.youtubeUrls || [],
+                                                        clickUrls: config.interstitialAndroid?.clickUrls || [],
+                                                        durationPoint: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                                min="5"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">길찾기 종료 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialAndroid?.durationNavigation || 5}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialAndroid: {
+                                                        ...config.interstitialAndroid,
+                                                        youtubeUrls: config.interstitialAndroid?.youtubeUrls || [],
+                                                        clickUrls: config.interstitialAndroid?.clickUrls || [],
+                                                        durationNavigation: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
+                                                min="3"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Duration Settings */}
-                                <div className="mt-4 pt-4 border-t border-red-100 grid grid-cols-3 gap-3">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-700">비밀번호 확인 (초)</label>
-                                        <input
-                                            type="number"
-                                            value={config.durationUnlock || 15}
-                                            onChange={(e) => saveConfig({ ...config, durationUnlock: Number(e.target.value) })}
-                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
-                                            min="5"
-                                        />
+                                {/* 1.2 iOS Settings (MP4) */}
+                                <div className="glass-panel p-5 rounded-xl bg-blue-50/50 border border-blue-200 shadow-sm">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
+                                            <span className="text-blue-600">1.2</span> iOS 설정 (MP4)
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+                                            iOS 전용 · 1개 랜덤 선택 후 반복
+                                        </span>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-700">포인트 충전 (초)</label>
-                                        <input
-                                            type="number"
-                                            value={config.durationPoint || 15}
-                                            onChange={(e) => saveConfig({ ...config, durationPoint: Number(e.target.value) })}
-                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
-                                            min="5"
-                                        />
+
+                                    <div className="text-xs text-gray-600 mb-4 bg-white/60 p-3 rounded-lg border border-blue-100">
+                                        💡 iOS는 YouTube 재생이 제한되므로 MP4 영상을 사용합니다.<br />
+                                        트래픽 절약을 위해 랜덤하게 1개를 선택한 후 동일 영상을 반복 재생합니다.
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-700">길찾기 종료 (초)</label>
-                                        <input
-                                            type="number"
-                                            value={config.durationNavigation || 5}
-                                            onChange={(e) => saveConfig({ ...config, durationNavigation: Number(e.target.value) })}
-                                            className="w-full p-2 border rounded text-sm focus:border-red-500 outline-none bg-white text-center font-bold text-red-600"
-                                            min="3"
-                                        />
+
+                                    <div className="space-y-3">
+                                        {(config.interstitialIOS?.videoUrls || []).map((url, index) => (
+                                            <VideoRowWithClickUrl
+                                                key={index}
+                                                url={url}
+                                                clickUrl={config.interstitialIOS?.clickUrls?.[index] || ''}
+                                                index={index}
+                                                platform="ios"
+                                                onChange={(val) => {
+                                                    const newUrls = [...(config.interstitialIOS?.videoUrls || [])];
+                                                    newUrls[index] = val;
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialIOS: {
+                                                            ...config.interstitialIOS,
+                                                            videoUrls: newUrls,
+                                                            clickUrls: config.interstitialIOS?.clickUrls || []
+                                                        }
+                                                    });
+                                                }}
+                                                onClickUrlChange={(val) => {
+                                                    const newClickUrls = [...(config.interstitialIOS?.clickUrls || [])];
+                                                    newClickUrls[index] = val;
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialIOS: {
+                                                            ...config.interstitialIOS,
+                                                            videoUrls: config.interstitialIOS?.videoUrls || [],
+                                                            clickUrls: newClickUrls
+                                                        }
+                                                    });
+                                                }}
+                                                onRemove={() => {
+                                                    const newUrls = (config.interstitialIOS?.videoUrls || []).filter((_, i) => i !== index);
+                                                    const newClickUrls = (config.interstitialIOS?.clickUrls || []).filter((_, i) => i !== index);
+                                                    saveConfig({
+                                                        ...config,
+                                                        interstitialIOS: {
+                                                            ...config.interstitialIOS,
+                                                            videoUrls: newUrls,
+                                                            clickUrls: newClickUrls
+                                                        }
+                                                    });
+                                                }}
+                                            />
+                                        ))}
+
+                                        {/* Add Button */}
+                                        <button
+                                            onClick={() => {
+                                                saveConfig({
+                                                    ...config,
+                                                    interstitialIOS: {
+                                                        ...config.interstitialIOS,
+                                                        videoUrls: [...(config.interstitialIOS?.videoUrls || []), ''],
+                                                        clickUrls: config.interstitialIOS?.clickUrls || []
+                                                    }
+                                                });
+                                            }}
+                                            className="w-full py-3 border-2 border-dashed border-blue-300 text-blue-500 font-bold rounded-lg hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all text-sm flex items-center justify-center gap-2"
+                                        >
+                                            <span>+ MP4 영상 추가</span>
+                                        </button>
+
+                                        {(!config.interstitialIOS?.videoUrls || config.interstitialIOS.videoUrls.length === 0) && (
+                                            <div className="text-center py-4 text-xs text-blue-500 font-medium bg-white/60 rounded-lg">
+                                                등록된 MP4 영상이 없습니다. Cloudflare R2 등 CDN에 업로드한 영상 URL을 입력하세요.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* iOS Duration Settings */}
+                                    <div className="mt-5 pt-4 border-t border-blue-200 grid grid-cols-3 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">비밀번호 확인 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialIOS?.durationUnlock || 15}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialIOS: {
+                                                        ...config.interstitialIOS,
+                                                        videoUrls: config.interstitialIOS?.videoUrls || [],
+                                                        clickUrls: config.interstitialIOS?.clickUrls || [],
+                                                        durationUnlock: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-blue-500 outline-none bg-white text-center font-bold text-blue-600"
+                                                min="5"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">포인트 충전 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialIOS?.durationPoint || 15}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialIOS: {
+                                                        ...config.interstitialIOS,
+                                                        videoUrls: config.interstitialIOS?.videoUrls || [],
+                                                        clickUrls: config.interstitialIOS?.clickUrls || [],
+                                                        durationPoint: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-blue-500 outline-none bg-white text-center font-bold text-blue-600"
+                                                min="5"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-bold text-gray-700">길찾기 종료 (초)</label>
+                                            <input
+                                                type="number"
+                                                value={config.interstitialIOS?.durationNavigation || 5}
+                                                onChange={(e) => saveConfig({
+                                                    ...config,
+                                                    interstitialIOS: {
+                                                        ...config.interstitialIOS,
+                                                        videoUrls: config.interstitialIOS?.videoUrls || [],
+                                                        clickUrls: config.interstitialIOS?.clickUrls || [],
+                                                        durationNavigation: Number(e.target.value)
+                                                    }
+                                                })}
+                                                className="w-full p-2 border rounded text-sm focus:border-blue-500 outline-none bg-white text-center font-bold text-blue-600"
+                                                min="3"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

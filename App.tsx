@@ -2101,7 +2101,9 @@ export default function App() {
 
                 {/* SPLASH SCREEN */}
                 {showSplash && (
-                    <div className="fixed inset-0 z-[100] bg-sky-400 dark:bg-gray-900 flex flex-col items-center justify-center text-white pb-[env(safe-area-inset-bottom)]">
+                    <div className="fixed inset-0 z-[100] bg-sky-400 flex flex-col items-center justify-center text-white" style={{
+                        paddingBottom: 'env(safe-area-inset-bottom)'
+                    }}>
                         <div className="flex flex-col items-center animate-bounce-slow mb-6">
                             {!splashImgError ? (
                                 <img
@@ -2139,7 +2141,7 @@ export default function App() {
                         )}
 
                         {!isSubmitMapOpen && (
-                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
+                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface-dark border-t border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
                                 <div className="w-full max-w-md flex justify-around items-center px-2">
                                     <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
                                     <button

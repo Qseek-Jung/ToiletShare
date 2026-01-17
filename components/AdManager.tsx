@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { adMobService } from '../services/admob';
 import { X } from 'lucide-react';
 import { dbSupabase } from '../services/db_supabase';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 // Helper for YouTube API
 declare global {
@@ -22,6 +24,7 @@ interface AdManagerProps {
 export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward', triggerType = 'unlock' }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [showYoutube, setShowYoutube] = useState(false);
+    const [showMP4, setShowMP4] = useState(false); // NEW: iOS MP4 player
     const [canClose, setCanClose] = useState(false);
 
     // Duration Logic
@@ -33,6 +36,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     // Playlist State
     const [playlistIds, setPlaylistIds] = useState<string[]>([]);
+    const [clickUrls, setClickUrls] = useState<string[]>([]); // NEW: Click-through URLs
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0); // NEW: Current video in playlist
 
     // Config State
     const [config, setConfig] = useState<any>(null);
@@ -40,6 +45,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     const initialTimeRef = useRef(15);
     const timeLeftRef = useRef(15);
     const playerRef = useRef<any>(null);
+    const videoRef = useRef<HTMLVideoElement>(null); // NEW: MP4 video element
     const containerRef = useRef<HTMLDivElement>(null);
     const playlistIdsRef = useRef<string[]>([]);
 
@@ -48,13 +54,20 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         if (isOpen) {
             setIsLoading(true);
             setShowYoutube(false);
+            setShowMP4(false);
             setCanClose(false);
             setIsPlaying(false);
             setPlaylistIds([]);
+            setClickUrls([]);
+            setCurrentVideoIndex(0);
 
             // Refs RESET
             playlistIdsRef.current = [];
-            playerRef.current = null; // Ensure new player is created for cleaner state
+            playerRef.current = null;
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.src = '';
+            }
 
             // Load Config & Start
             loadAdConfig();
@@ -118,38 +131,74 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             const cfg = await dbSupabase.getAdConfig();
             setConfig(cfg);
 
-            // Determine Duration
-            let duration = 15; // Default
-            if (triggerType === 'unlock') duration = cfg.durationUnlock || 15;
-            else if (triggerType === 'point') duration = cfg.durationPoint || 15;
-            else if (triggerType === 'navigation') duration = cfg.durationNavigation || 5;
-
-            setTargetDuration(duration);
-            setTimeLeft(duration);
-            initialTimeRef.current = duration;
-            timeLeftRef.current = duration;
-
+            const platform = Capacitor.getPlatform(); // 'ios' | 'android' | 'web'
             const source = cfg.interstitialSource || 'admob';
 
+            // Determine platform-specific config
+            let platformConfig: { urls: string[], clicks: string[], duration: number } | null = null;
+
             if (source === 'youtube') {
-                const rawUrls = cfg.youtubeUrls || [];
-                // Extract IDs
-                const ids: string[] = [];
-                rawUrls.forEach((url: string) => {
-                    const extracted = extractVideoId(url);
-                    if (extracted) ids.push(extracted);
-                });
-
-                if (ids.length > 0) {
-                    // Start Playlist Logic
-                    const shuffled = [...ids].sort(() => Math.random() - 0.5);
-                    setPlaylistIds(shuffled);
-                    playlistIdsRef.current = shuffled;
-
-                    setShowYoutube(true);
-                    setIsLoading(false);
-                    // Player creation handled by useEffect[showYoutube]
+                if (platform === 'ios') {
+                    // iOS: Use MP4 videos
+                    const ios = cfg.interstitialIOS || { videoUrls: [], clickUrls: [], durationUnlock: 15, durationPoint: 15, durationNavigation: 5 };
+                    const duration = triggerType === 'unlock' ? (ios.durationUnlock || 15) :
+                        triggerType === 'point' ? (ios.durationPoint || 15) :
+                            (ios.durationNavigation || 5);
+                    platformConfig = {
+                        urls: ios.videoUrls || [],
+                        clicks: ios.clickUrls || [],
+                        duration
+                    };
                 } else {
+                    // Android/Web: Use YouTube
+                    const android = cfg.interstitialAndroid || { youtubeUrls: cfg.youtubeUrls || [], clickUrls: [], durationUnlock: 15, durationPoint: 15, durationNavigation: 5 };
+                    const duration = triggerType === 'unlock' ? (android.durationUnlock || cfg.durationUnlock || 15) :
+                        triggerType === 'point' ? (android.durationPoint || cfg.durationPoint || 15) :
+                            (android.durationNavigation || cfg.durationNavigation || 5);
+
+                    // Extract YouTube IDs
+                    const ids: string[] = [];
+                    (android.youtubeUrls || []).forEach((url: string) => {
+                        const extracted = extractVideoId(url);
+                        if (extracted) ids.push(extracted);
+                    });
+
+                    platformConfig = {
+                        urls: ids,
+                        clicks: android.clickUrls || [],
+                        duration
+                    };
+                }
+
+                if (platformConfig && platformConfig.urls.length > 0) {
+                    if (platform === 'ios') {
+                        // iOS: Select only 1 random video (to minimize R2 traffic - cached once, looped)
+                        const randomIndex = Math.floor(Math.random() * platformConfig.urls.length);
+                        setPlaylistIds([platformConfig.urls[randomIndex]]); // Single video
+                        setClickUrls([platformConfig.clicks[randomIndex] || '']);
+                        playlistIdsRef.current = [platformConfig.urls[randomIndex]];
+                        setCurrentVideoIndex(0);
+                    } else {
+                        // Android: Shuffle entire playlist (cycle through multiple videos)
+                        const shuffled = [...platformConfig.urls].sort(() => Math.random() - 0.5);
+                        setPlaylistIds(shuffled);
+                        setClickUrls(platformConfig.clicks);
+                        playlistIdsRef.current = shuffled;
+                    }
+
+                    setTargetDuration(platformConfig.duration);
+                    setTimeLeft(platformConfig.duration);
+                    initialTimeRef.current = platformConfig.duration;
+                    timeLeftRef.current = platformConfig.duration;
+
+                    if (platform === 'ios') {
+                        setShowMP4(true);
+                    } else {
+                        setShowYoutube(true);
+                    }
+                    setIsLoading(false);
+                } else {
+                    // No videos configured - fallback to AdMob
                     handleAdMobFallback(cfg.testMode);
                 }
             } else {
@@ -179,6 +228,25 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     const handleYoutubeClose = () => {
         if (onReward) onReward();
         onClose();
+    };
+
+    // NEW: Handle video click (YouTube or MP4)
+    const handleVideoClick = () => {
+        const clickUrl = clickUrls[currentVideoIndex];
+        if (clickUrl && clickUrl.trim()) {
+            Browser.open({ url: clickUrl }).catch(e => console.error('Failed to open URL:', e));
+        }
+    };
+
+    // NOTE: Handle MP4 video ended - NOT USED (iOS uses loop={true})
+    const handleMP4VideoEnded = () => {
+        // iOS: loop={true} handles automatic replay, this is not called
+    };
+
+    // NEW: Handle MP4 error
+    const handleMP4Error = () => {
+        console.error('MP4 Playback Error');
+        handleAdMobFallback(config?.testMode || true);
     };
 
     // Load YouTube API and Initialize Player
@@ -352,11 +420,100 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                             </div>
                         )}
 
-                        {/* Overlay to block clicks on video (optional, but good for Ad feel) */}
-                        <div className="absolute inset-0 z-10 bg-transparent" />
+                        {/* Click Overlay (for click-through URL) */}
+                        <div
+                            className="absolute inset-0 z-10 bg-transparent cursor-pointer"
+                            onClick={handleVideoClick}
+                        />
                     </div>
                 </div>
             </div>
         </div>
     );
+
+    // ===== iOS MP4 PLAYER =====
+    if (showMP4) {
+        return (
+            <div className="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center font-sans">
+                <div className="w-full h-full max-w-md bg-black relative flex flex-col items-center justify-center overflow-hidden">
+
+                    {/* Header: Action & Status */}
+                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-[60]">
+                        <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                            <span className="text-white/90 text-[11px] font-bold tracking-tight uppercase">Sponsored</span>
+                        </div>
+
+                        {canClose ? (
+                            <button
+                                onClick={() => { if (onReward) onReward(); onClose(); }}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300"
+                            >
+                                <span className="text-sm font-black">{adType === 'reward' ? '리워드 지급됨' : '닫기'}</span>
+                                <div className="w-px h-3 bg-white/30 mx-1" />
+                                <X className="w-5 h-5" />
+                            </button>
+                        ) : (
+                            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
+                                <span className="text-white text-sm font-black tabular-nums">{timeLeft}</span>
+                                <div className="w-px h-3 bg-white/20" />
+                                <span className="text-white/70 text-xs font-medium">
+                                    {!isPlaying ? "로딩/대기 중..." : "광고 중..."}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Full Screen Video Container */}
+                    <div className="w-full h-full flex items-center justify-center relative">
+                        {/* MP4 Video Player (Cloudflare R2 / CDN) */}
+                        <video
+                            ref={videoRef}
+                            src={playlistIds[0]} // iOS: Single video only (loop=true)
+                            autoPlay
+                            muted
+                            playsInline
+                            loop={true} // iOS: Loop same video to minimize R2 traffic
+                            preload="auto"
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onError={handleMP4Error}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                background: 'black'
+                            }}
+                            className="ad-video"
+                        />
+
+                        {/* Loading Spinner */}
+                        {!isPlaying && !canClose && (
+                            <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
+                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            </div>
+                        )}
+
+                        {/* Progress Bar (Bottom) */}
+                        {!canClose && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
+                                <div
+                                    className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                    style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Click Overlay (for click-through URL) */}
+                        <div
+                            className="absolute inset-0 z-10 bg-transparent cursor-pointer"
+                            onClick={handleVideoClick}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
 };

@@ -516,43 +516,45 @@ export default function App() {
     const [showAd, setShowAd] = useState(false);
     const [adRewardType, setAdRewardType] = useState<'credit' | 'unlock'>('credit');
 
-    // BUILD 110: Dynamic Background Sync for iOS White Gap
+    // BUILD 111: Dynamic Background Sync for iOS White Gap
     const syncBackground = useCallback(() => {
         const isNative = Capacitor.isNativePlatform();
         if (!isNative) return;
 
         setTimeout(() => {
-            let targetEl: HTMLElement | null = null;
+            let bgColor = '';
+            let targetId = '';
 
             if (showSplash) {
-                targetEl = document.getElementById('splash-screen');
+                // FIXED: Always use Brand Blue for Splash regardless of mode
+                bgColor = '#38bdf8';
+                targetId = 'splash-screen-forced';
             } else if (!isSubmitMapOpen) {
-                targetEl = document.getElementById('bottom-nav');
-            }
-
-            if (targetEl) {
-                try {
-                    resetViewport(); // BUILD 110: Force layout reset
+                const targetEl = document.getElementById('bottom-nav');
+                if (targetEl) {
                     const style = window.getComputedStyle(targetEl);
-                    const bgColor = style.backgroundColor;
-
-                    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
-                        document.documentElement.style.backgroundColor = bgColor;
-                        document.body.style.backgroundColor = bgColor;
-
-                        console.log('🏗️ [Build 111] BG Sync:', {
-                            extracted: bgColor,
-                            target: targetEl.id,
-                            innerH: window.innerHeight,
-                            rootH: document.getElementById('root')?.offsetHeight,
-                            safeB: style.getPropertyValue('padding-bottom')
-                        });
-                    }
-                } catch (e) {
-                    console.error('[Build 111] Sync failed:', e);
+                    bgColor = style.backgroundColor;
+                    targetId = 'bottom-nav';
                 }
             }
-        }, 200); // Slightly longer wait for layout stability
+
+            if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                try {
+                    // Force the background with !important to override html.dark CSS
+                    document.documentElement.style.setProperty('background-color', bgColor, 'important');
+                    document.body.style.setProperty('background-color', bgColor, 'important');
+
+                    console.log('🏗️ [Build 112] BG Sync:', {
+                        extracted: bgColor,
+                        target: targetId,
+                        innerH: window.innerHeight,
+                        rootH: document.getElementById('root')?.offsetHeight
+                    });
+                } catch (e) {
+                    console.error('[Build 112] Sync failed:', e);
+                }
+            }
+        }, 200);
     }, [showSplash, isSubmitMapOpen]);
 
     useEffect(() => {
@@ -561,23 +563,31 @@ export default function App() {
             syncBackground();
             resetViewport();
             // Force safe-area recalculation on iOS
-            setTimeout(resetViewport, 100);
-            setTimeout(resetViewport, 300);
+            setTimeout(resetViewport, 50);
+            setTimeout(resetViewport, 200);
+            setTimeout(resetViewport, 500); // Final check for late shifts
         };
 
         window.addEventListener('hashchange', handleLayoutReset);
         window.addEventListener('popstate', handleLayoutReset);
 
-        // BUILD 111: Global scroll reset when keyboard dismisses (approximated by focusout)
+        // BUILD 112: Global scroll reset when keyboard appears/dismisses
+        const handleFocusIn = () => {
+            resetViewport();
+            setTimeout(resetViewport, 50);
+        };
         const handleFocusOut = () => {
             // Wait for keyboard animation to finish
             setTimeout(handleLayoutReset, 250);
         };
+
+        window.addEventListener('focusin', handleFocusIn);
         window.addEventListener('focusout', handleFocusOut);
 
         return () => {
             window.removeEventListener('hashchange', handleLayoutReset);
             window.removeEventListener('popstate', handleLayoutReset);
+            window.removeEventListener('focusin', handleFocusIn);
             window.removeEventListener('focusout', handleFocusOut);
         };
     }, [syncBackground, currentHash]);
@@ -2164,9 +2174,9 @@ export default function App() {
                     </div>
                 )}
 
-                {/* SPLASH SCREEN */}
+                {/* SPLASH SCREEN - Always sky-400 regardless of dark mode */}
                 {showSplash && (
-                    <div id="splash-screen" className="fixed inset-0 z-[100] bg-sky-400 dark:bg-gray-900 flex flex-col items-center justify-center text-white" style={{
+                    <div id="splash-screen" className="fixed inset-0 z-[100] bg-sky-400 flex flex-col items-center justify-center text-white" style={{
                         paddingBottom: 'env(safe-area-inset-bottom)'
                     }}>
                         <div className="flex flex-col items-center animate-bounce-slow mb-6">

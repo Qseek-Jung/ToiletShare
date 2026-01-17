@@ -27,7 +27,7 @@ body {
 /* Dark mode: explicit background for safe-area coverage */
 html.dark,
 html.dark body {
-  background-color: #111827 !important;
+  background-color: #111827;
   /* gray-900 */
 }
 
@@ -36,6 +36,11 @@ html.dark body {
   height: var(--app-height, 100dvh);
   font-family: 'Noto Sans KR', sans-serif;
   @apply bg-background text-text-main transition-colors duration-300;
+
+  /* FIX: Ensure root stays anchored to the top of the visual viewport */
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
 
 /* Smooth scrolling */

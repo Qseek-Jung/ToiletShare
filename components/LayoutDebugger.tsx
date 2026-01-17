@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface LayoutMetrics {
     pageWrapper: {
@@ -31,19 +31,17 @@ interface LayoutMetrics {
 export const LayoutDebugger: React.FC = () => {
     const [metrics, setMetrics] = useState<LayoutMetrics | null>(null);
     const [isVisible, setIsVisible] = useState(true);
+    const [position, setPosition] = useState({ x: 10, y: 100 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const panelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const updateMetrics = () => {
-            // App Root
             const appRoot = document.querySelector<HTMLElement>('[class*="h-full"][class*="flex-col"]');
-
-            // Page Wrapper (flex-1)
             const pageWrapper = document.querySelector<HTMLElement>('[class*="flex-1"][class*="w-full"]');
-
-            // TextLayout (scroll container)
             const textLayout = document.querySelector<HTMLElement>('[class*="overflow-y-auto"][class*="max-w-md"]');
 
-            // Get computed safe area
             const computedStyle = window.getComputedStyle(document.documentElement);
             const safeTop = computedStyle.getPropertyValue('--safe-area-inset-top') ||
                 getComputedStyle(document.body).getPropertyValue('env(safe-area-inset-top)') || '0px';
@@ -97,59 +95,117 @@ export const LayoutDebugger: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Drag handlers
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y,
+        });
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        const touch = e.touches[0];
+        setIsDragging(true);
+        setDragOffset({
+            x: touch.clientX - position.x,
+            y: touch.clientY - position.y,
+        });
+    };
+
+    useEffect(() => {
+        const handleMove = (clientX: number, clientY: number) => {
+            if (isDragging) {
+                setPosition({
+                    x: clientX - dragOffset.x,
+                    y: clientY - dragOffset.y,
+                });
+            }
+        };
+
+        const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+        const handleTouchMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            handleMove(touch.clientX, touch.clientY);
+        };
+
+        const handleEnd = () => setIsDragging(false);
+
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleEnd);
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleEnd);
+        };
+    }, [isDragging, dragOffset]);
+
     if (!isVisible || !metrics) return null;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-black/95 text-white text-[10px] font-mono p-2 max-h-[200px] overflow-y-auto">
-            <div className="flex justify-between items-center mb-2 border-b border-white/20 pb-1">
-                <div className="font-bold text-yellow-400">📐 LAYOUT DEBUG</div>
+        <div
+            ref={panelRef}
+            style={{
+                position: 'fixed',
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                zIndex: 9999,
+                touchAction: 'none',
+            }}
+            className="bg-black/95 text-white text-[9px] font-mono rounded-lg shadow-2xl border border-white/20"
+        >
+            {/* Draggable Header */}
+            <div
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                className="flex justify-between items-center px-2 py-1 border-b border-white/20 cursor-move bg-white/5 rounded-t-lg"
+            >
+                <div className="font-bold text-yellow-400 text-[10px]">📐 LAYOUT</div>
                 <button
                     onClick={() => setIsVisible(false)}
-                    className="text-red-400 hover:text-red-300 px-2 py-1 rounded bg-white/10"
+                    className="text-red-400 hover:text-red-300 px-2 py-0.5 rounded bg-red-900/30 text-[10px]"
                 >
                     ✕
                 </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            {/* Content - Compact 2x2 Grid */}
+            <div className="p-2 grid grid-cols-2 gap-1.5" style={{ width: '280px' }}>
                 {/* Safe Area */}
                 <div className="bg-purple-900/30 p-1 rounded">
-                    <div className="text-purple-300 font-bold mb-1">SAFE AREA</div>
-                    <div>Top: <span className="text-green-400">{metrics.safeAreaInsets.top}</span></div>
-                    <div>Bottom: <span className="text-green-400">{metrics.safeAreaInsets.bottom}</span></div>
+                    <div className="text-purple-300 font-bold mb-0.5 text-[8px]">SAFE AREA</div>
+                    <div className="text-[8px]">T: <span className="text-green-400">{metrics.safeAreaInsets.top}</span></div>
+                    <div className="text-[8px]">B: <span className="text-green-400">{metrics.safeAreaInsets.bottom}</span></div>
                 </div>
 
                 {/* App Root */}
                 <div className="bg-blue-900/30 p-1 rounded">
-                    <div className="text-blue-300 font-bold mb-1">APP ROOT</div>
-                    <div>Height: <span className="text-green-400">{metrics.appRoot.height}</span></div>
-                    <div>PT: <span className="text-yellow-400">{metrics.appRoot.paddingTop}</span></div>
-                    <div>PB: <span className="text-yellow-400">{metrics.appRoot.paddingBottom}</span></div>
+                    <div className="text-blue-300 font-bold mb-0.5 text-[8px]">APP ROOT</div>
+                    <div className="text-[8px]">H: <span className="text-green-400">{metrics.appRoot.height}</span></div>
+                    <div className="text-[8px]">PT: <span className="text-yellow-400">{metrics.appRoot.paddingTop}</span></div>
                 </div>
 
                 {/* Page Wrapper */}
                 <div className="bg-red-900/30 p-1 rounded">
-                    <div className="text-red-300 font-bold mb-1">PAGE WRAPPER</div>
-                    <div>Pos: <span className="text-cyan-400">{metrics.pageWrapper.position}</span></div>
-                    <div>H: <span className="text-green-400">{metrics.pageWrapper.height}</span></div>
-                    <div>PT: <span className="text-yellow-400">{metrics.pageWrapper.paddingTop}</span></div>
-                    <div>PB: <span className="text-yellow-400">{metrics.pageWrapper.paddingBottom}</span></div>
-                    <div>MT: <span className="text-orange-400">{metrics.pageWrapper.marginTop}</span></div>
-                    <div>MB: <span className="text-orange-400">{metrics.pageWrapper.marginBottom}</span></div>
+                    <div className="text-red-300 font-bold mb-0.5 text-[8px]">PAGE WRAP</div>
+                    <div className="text-[8px]">H: <span className="text-green-400">{metrics.pageWrapper.height}</span></div>
+                    <div className="text-[8px]">PT: <span className="text-yellow-400">{metrics.pageWrapper.paddingTop}</span></div>
+                    <div className="text-[8px]">MT: <span className="text-orange-400">{metrics.pageWrapper.marginTop}</span></div>
                 </div>
 
                 {/* TextLayout */}
                 <div className="bg-green-900/30 p-1 rounded">
-                    <div className="text-green-300 font-bold mb-1">TEXT LAYOUT</div>
-                    <div>H: <span className="text-green-400">{metrics.textLayout.height}</span></div>
-                    <div>PT: <span className="text-yellow-400">{metrics.textLayout.paddingTop}</span></div>
-                    <div>PB: <span className="text-yellow-400">{metrics.textLayout.paddingBottom}</span></div>
-                    <div>Scroll: <span className="text-pink-400">{metrics.textLayout.scrollTop}</span></div>
+                    <div className="text-green-300 font-bold mb-0.5 text-[8px]">TEXT LAYOUT</div>
+                    <div className="text-[8px]">H: <span className="text-green-400">{metrics.textLayout.height}</span></div>
+                    <div className="text-[8px]">PT: <span className="text-yellow-400">{metrics.textLayout.paddingTop}</span></div>
+                    <div className="text-[8px]">Scr: <span className="text-pink-400">{metrics.textLayout.scrollTop}</span></div>
                 </div>
-            </div>
-
-            <div className="mt-2 text-center text-[9px] text-gray-400">
-                PT=PaddingTop | PB=PaddingBottom | MT=MarginTop | MB=MarginBottom
             </div>
         </div>
     );

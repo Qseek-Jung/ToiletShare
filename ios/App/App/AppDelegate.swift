@@ -20,22 +20,46 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize Firebase
         FirebaseApp.configure()
         
-        // FIX: Set window and WebView background to black (prevents white gap on iOS)
+        // FIX: Set window background to black (prevents white gap on iOS)
         self.window?.backgroundColor = UIColor.black
         
-        // Get the WebView from Capacitor bridge and set background
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let bridge = CAPBridge.shared {
-                if let webView = bridge.webView {
-                    webView.isOpaque = false
-                    webView.backgroundColor = UIColor.black
-                    // Also set scroll view background
-                    webView.scrollView.backgroundColor = UIColor.black
-                }
-            }
-        }
+        // Setup WebView background observer
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(setupWebViewBackground),
+            name: Notification.Name.capacitorViewDidLoad,
+            object: nil
+        )
         
         return true
+    }
+    
+    @objc func setupWebViewBackground() {
+        // Find the WebView and set its background
+        guard let window = self.window,
+              let rootVC = window.rootViewController else { return }
+        
+        // Traverse view hierarchy to find WKWebView
+        func findWebView(in view: UIView) -> UIView? {
+            if NSStringFromClass(type(of: view)).contains("WKWebView") {
+                return view
+            }
+            for subview in view.subviews {
+                if let found = findWebView(in: subview) {
+                    return found
+                }
+            }
+            return nil
+        }
+        
+        if let webView = findWebView(in: rootVC.view) {
+            webView.isOpaque = false
+            webView.backgroundColor = UIColor.black
+            // Also set scroll view if available
+            if let scrollView = webView.subviews.first(where: { $0 is UIScrollView }) as? UIScrollView {
+                scrollView.backgroundColor = UIColor.black
+            }
+        }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

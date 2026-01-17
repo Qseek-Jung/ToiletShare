@@ -20,6 +20,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Initialize Firebase
         FirebaseApp.configure()
         
+        // FIX: Set window and WebView background to black (prevents white gap on iOS)
+        self.window?.backgroundColor = UIColor.black
+        
+        // Get the WebView from Capacitor bridge and set background
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let bridge = CAPBridge.shared {
+                if let webView = bridge.webView {
+                    webView.isOpaque = false
+                    webView.backgroundColor = UIColor.black
+                    // Also set scroll view background
+                    webView.scrollView.backgroundColor = UIColor.black
+                }
+            }
+        }
+        
         return true
     }
 

@@ -1829,8 +1829,32 @@ export class SupabaseDatabaseService {
 
         const { data } = await supabase.from('app_config').select('value').eq('key', 'ad_config').single();
         if (data && data.value) {
-            this.adConfigCache = data.value;
-            return data.value;
+            const config = data.value;
+
+            // **Migration**: Convert legacy youtubeUrls to platform-specific structure
+            if (config.youtubeUrls && config.youtubeUrls.length > 0 && !config.interstitialAndroid) {
+                config.interstitialAndroid = {
+                    youtubeUrls: config.youtubeUrls.filter((u: string) => u && u.trim()),
+                    clickUrls: [],
+                    durationUnlock: config.durationUnlock || 15,
+                    durationPoint: config.durationPoint || 15,
+                    durationNavigation: config.durationNavigation || 5
+                };
+            }
+
+            // Initialize iOS config if missing
+            if (!config.interstitialIOS) {
+                config.interstitialIOS = {
+                    videoUrls: [],
+                    clickUrls: [],
+                    durationUnlock: 15,
+                    durationPoint: 15,
+                    durationNavigation: 5
+                };
+            }
+
+            this.adConfigCache = config;
+            return config;
         }
 
         const defaultConfig: AdConfig = {
@@ -1838,7 +1862,6 @@ export class SupabaseDatabaseService {
             bannerSource: 'admob',
             testMode: true,
             bannersEnabled: true,
-            youtubeUrls: ['', '', '', '', ''],
             customBanners: [],
             adMobIds: {
                 banner: '',
@@ -1847,6 +1870,20 @@ export class SupabaseDatabaseService {
                 rewardInterstitial: '',
                 appOpen: '',
                 native: ''
+            },
+            interstitialAndroid: {
+                youtubeUrls: [],
+                clickUrls: [],
+                durationUnlock: 15,
+                durationPoint: 15,
+                durationNavigation: 5
+            },
+            interstitialIOS: {
+                videoUrls: [],
+                clickUrls: [],
+                durationUnlock: 15,
+                durationPoint: 15,
+                durationNavigation: 5
             }
         };
         this.adConfigCache = defaultConfig;

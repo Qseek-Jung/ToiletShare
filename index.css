@@ -47,6 +47,13 @@ html {
 
 body {
   overscroll-behavior-y: none;
+  /* FIX: WebView white gap - position fixed covers entire viewport including safe-area */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
 }
 
 /* Custom animations for React transitions */
@@ -175,15 +182,3 @@ body {
     pointer-events: none !important;
   }
 }
-
-/* ============================================ */
-/* 🔴 TEMPORARY DEBUG - 흰색 영역 판별용 */
-/* ============================================ */
-html,
-body,
-#root,
-#root * {
-  background-color: rgba(255, 0, 0, 0.05) !important;
-}
-
-/* 확인 후 반드시 제거! */

@@ -82,7 +82,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         }
     }, [isOpen]);
 
-    // Timer logic (Independent of Video End)
+    // Timer logic - YouTube
     useEffect(() => {
         let timer: any;
         if (showYoutube && isPlaying && timeLeft > 0) {
@@ -98,6 +98,23 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         }
         return () => clearInterval(timer);
     }, [showYoutube, isPlaying, timeLeft]);
+
+    // Timer logic - MP4 (iOS)
+    useEffect(() => {
+        let timer: any;
+        if (showMP4 && isPlaying && timeLeft > 0) {
+            timer = setInterval(() => {
+                setTimeLeft(prev => {
+                    const next = prev - 1;
+                    timeLeftRef.current = next;
+                    return next;
+                });
+            }, 1000);
+        } else if (showMP4 && timeLeft <= 0) {
+            setCanClose(true);
+        }
+        return () => clearInterval(timer);
+    }, [showMP4, isPlaying, timeLeft]);
 
     const extractVideoId = (urlOrId: string): string | null => {
         if (!urlOrId) return null;
@@ -365,7 +382,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         );
     }
 
-    if (!showYoutube) return null;
+    if (!showYoutube && !showMP4) return null;
 
     return (
         <div className="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center font-sans">

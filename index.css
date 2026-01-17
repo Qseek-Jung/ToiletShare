@@ -7,7 +7,7 @@
   box-sizing: border-box;
 }
 
-/* FIX: iOS safe-area background (NO dark: class - direct gray-900) */
+/* FIX: iOS safe-area background - light mode default, dark mode override */
 html,
 body,
 #root {
@@ -16,14 +16,25 @@ body,
   min-height: 100%;
   margin: 0;
   padding: 0;
-  background-color: #111827;
-  /* gray-900 - always set, no dark: needed */
+}
+
+html,
+body {
+  @apply bg-gray-50;
+}
+
+/* Dark mode: explicit background for safe-area coverage */
+html.dark,
+html.dark body {
+  background-color: #111827 !important;
+  /* gray-900 */
 }
 
 #root {
   /* Override height with CSS var for iOS viewport lock */
   height: var(--app-height, 100dvh);
   font-family: 'Noto Sans KR', sans-serif;
+  @apply bg-background text-text-main transition-colors duration-300;
 }
 
 /* Smooth scrolling */

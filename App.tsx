@@ -489,7 +489,7 @@ export default function App() {
 
         setUnlockedToilets(prev => {
             const updated = { ...prev, [toiletId]: expirationTime };
-            localStorage.setItem(`unlockedToilets_${user.id} `, JSON.stringify(updated));
+            localStorage.setItem(`unlockedToilets_${user.id}`, JSON.stringify(updated));
             return updated;
         });
 
@@ -516,6 +516,50 @@ export default function App() {
     // AdManager State
     const [showAd, setShowAd] = useState(false);
     const [adRewardType, setAdRewardType] = useState<'credit' | 'unlock'>('credit');
+
+    // BUILD 110: Dynamic Background Sync for iOS White Gap
+    const syncBackground = useCallback(() => {
+        const isNative = Capacitor.isNativePlatform();
+        if (!isNative) return;
+
+        setTimeout(() => {
+            let targetEl: HTMLElement | null = null;
+
+            if (showSplash) {
+                targetEl = document.getElementById('splash-screen');
+            } else if (!isSubmitMapOpen) {
+                targetEl = document.getElementById('bottom-nav');
+            }
+
+            if (targetEl) {
+                try {
+                    const style = window.getComputedStyle(targetEl);
+                    const bgColor = style.backgroundColor;
+
+                    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                        document.documentElement.style.backgroundColor = bgColor;
+                        document.body.style.backgroundColor = bgColor;
+
+                        console.log('🏗️ [Build 110] BG Sync:', {
+                            extracted: bgColor,
+                            target: targetEl.id,
+                            innerH: window.innerHeight,
+                            rootH: document.getElementById('root')?.offsetHeight,
+                            safeB: style.getPropertyValue('padding-bottom')
+                        });
+                    }
+                } catch (e) {
+                    console.error('[Build 110] Sync failed:', e);
+                }
+            }
+        }, 200); // Slightly longer wait for layout stability
+    }, [showSplash, isSubmitMapOpen]);
+
+    useEffect(() => {
+        syncBackground();
+        window.addEventListener('hashchange', syncBackground);
+        return () => window.removeEventListener('hashchange', syncBackground);
+    }, [syncBackground, currentHash]);
 
     // Smart Ad Refresh State
     const [adKey, setAdKey] = useState(0);
@@ -2101,7 +2145,7 @@ export default function App() {
 
                 {/* SPLASH SCREEN */}
                 {showSplash && (
-                    <div className="fixed inset-0 z-[100] bg-sky-400 dark:bg-gray-900 flex flex-col items-center justify-center text-white" style={{
+                    <div id="splash-screen" className="fixed inset-0 z-[100] bg-sky-400 dark:bg-gray-900 flex flex-col items-center justify-center text-white" style={{
                         paddingBottom: 'env(safe-area-inset-bottom)'
                     }}>
                         <div className="flex flex-col items-center animate-bounce-slow mb-6">
@@ -2141,7 +2185,7 @@ export default function App() {
                         )}
 
                         {!isSubmitMapOpen && (
-                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
+                            <nav id="bottom-nav" className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
                                 <div className="w-full max-w-md flex justify-around items-center px-2">
                                     <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
                                     <button
@@ -2605,8 +2649,8 @@ export default function App() {
                     </div>
                 )}
                 {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
-                <AdDebugger />
-            </div>
+                <DebugConsole />
+                <AdDebugger /></div>
 
         </GoogleMapsProvider>
     );

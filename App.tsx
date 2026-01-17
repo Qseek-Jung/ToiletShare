@@ -2101,509 +2101,510 @@ export default function App() {
 
                 {/* SPLASH SCREEN */}
                 {showSplash && (
-                    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-primary-400 to-primary-600 flex flex-col items-center justify-center text-white">
-                        <div className="absolute inset-0 z-[9999] flex items-center justify-center bg-sky-400 dark:bg-gray-900 min-h-screen pb-[env(safe-area-inset-bottom)]">
-                            <div className="text-center">
-                                {!splashImgError ? (
-                                    <img
-                                        src="/poop-emoji.png"
-                                        className="w-32 h-32 mx-auto mb-8 drop-shadow-2xl animate-bounce"
-                                        onError={() => setSplashImgError(true)}
-                                        alt="대똥단결"
-                                    />
-                                ) : (
-                                    <div className="w-32 h-32 mx-auto mb-8 bg-white/20 rounded-full flex items-center justify-center text-6xl">💩</div>
-                                )}
-                                <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-widest drop-shadow-md mb-3">대똥단결</h1>
-                                <p className="text-sm md:text-base text-white/90 font-semibold mb-10">{t('slogan', '긴급으로 대똥단결')}</p>
-                                <div className="flex items-center justify-center gap-2 text-white/70 text-xs md:text-sm">
-                                    <div className="w-2 h-2 bg-white/70 rounded-full animate-pulse"></div>
-                                    <p className="font-medium">Powered by Q</p>
+                    <div className="fixed inset-0 z-[100] bg-sky-400 dark:bg-gray-900 flex flex-col items-center justify-center text-white pb-[env(safe-area-inset-bottom)]">
+                        <div className="flex flex-col items-center animate-bounce-slow mb-6">
+                            {!splashImgError ? (
+                                <img
+                                    src="/images/app/ddong-icon.png"
+                                    alt="대똥단결"
+                                    className="w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 object-contain drop-shadow-xl"
+                                    onError={() => setSplashImgError(true)}
+                                />
+                            ) : (
+                                <div className="w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 flex items-center justify-center">
+                                    <PoopIcon className="w-24 h-24 md:w-36 md:h-36 lg:w-48 lg:h-48 text-primary-500" />
                                 </div>
+                            )}
+                        </div>
+                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-widest drop-shadow-md mb-3">대똥단결</h1>
+                        <p className="text-lg md:text-2xl font-bold opacity-90 tracking-tight">{t('splash_subtitle', '급똥으로 대동단결')}</p>
+                        <div className="absolute bottom-16 text-xs font-medium opacity-60">
+                            Powered by Q
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex-1 w-full relative">{!showSplash && CurrentPage}</div>
+
+
+                {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && !isNoticeModalOpen && (
+                    <>
+                        {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
+                        {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
+                            <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
+                                <div className="pointer-events-auto w-full max-w-md overflow-hidden">
+                                    <AdBanner position="bottom" maxHeight={100} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
+                                </div>
+                            </div>
+                        )}
+
+                        {!isSubmitMapOpen && (
+                            <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
+                                <div className="w-full max-w-md flex justify-around items-center px-2">
+                                    <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
+                                    <button
+                                        onClick={() => {
+                                            if (currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) return; // Disable if on submit page or contact modal open
+                                            if (user.role === UserRole.GUEST) {
+                                                setShowLoginModal(true);
+                                            } else {
+                                                window.location.hash = '#/submit';
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center p-2 -mt-8 relative ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'cursor-not-allowed' : 'cursor-pointer'
+                                            }`}
+                                    >
+                                        <div className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white ring-4 ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
+                                            ? 'bg-text-muted opacity-50'
+                                            : 'bg-urgency hover:bg-urgency-500 active:scale-95'
+                                            }`}>
+                                            <Plus className="w-8 h-8 drop-shadow-md" />
+                                        </div>
+                                        <span className={`text-[10px] font-bold mt-2 ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'text-text-muted' : 'text-urgency'
+                                            }`}>{t('nav_register', '등록')}</span>
+                                        {(user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) && (
+                                            <div className="absolute inset-0 bg-transparent" />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (user.role === UserRole.GUEST) {
+                                                setShowLoginModal(true);
+                                            } else {
+                                                window.location.hash = '#/my';
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center p-2 ${currentHash === '#/my' ? 'text-primary-500' : 'text-text-muted'}`}
+                                    >
+                                        <UserIcon className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_my_info', '내 정보')}</span>
+                                    </button>
+                                </div>
+                            </nav>
+                        )}
+                    </>
+                )}
+
+                {/* Reward Success Modal */}
+                {rewardSuccessModal.show && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform scale-100 animate-in zoom-in-95 duration-200 relative overflow-hidden">
+                            {/* Background Decoration */}
+                            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <circle cx="20" cy="20" r="5" fill="#FBBF24"></circle>
+                                    <circle cx="80" cy="30" r="7" fill="#3B82F6"></circle>
+                                    <rect x="40" y="60" width="8" height="8" fill="#EF4444" transform="rotate(45 44 64)"></rect>
+                                </svg>
+                            </div>
+
+                            <div className="relative z-10">
+                                {/* Icon */}
+                                <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-yellow-50 dark:ring-yellow-900/20">
+                                    <Gift className="w-10 h-10 text-yellow-600 dark:text-yellow-500 fill-yellow-500" />
+                                </div>
+
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
+                                    광고 시청 완료!<br />
+                                    크래딧이 지급되었습니다.
+                                </h3>
+
+                                <div className="my-6">
+                                    <span className="text-3xl font-black text-amber-500 flex items-center justify-center gap-1 drop-shadow-sm">
+                                        +{rewardSuccessModal.amount} <span className="text-xl text-gray-400 font-bold">Credits</span>
+                                    </span>
+                                </div>
+
+                                <button
+                                    onClick={() => setRewardSuccessModal({ show: false, amount: 0 })}
+                                    className="w-full bg-[#3B82F6] hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-95"
+                                >
+                                    확인
+                                </button>
                             </div>
                         </div>
-            )}
-                        <div className="flex-1 w-full relative">{!showSplash && CurrentPage}</div>
+                    </div>
+                )}
 
+                {/* AD MANAGER */}
+                <AdManager
+                    isOpen={showAd}
+                    onClose={() => setShowAd(false)}
+                    onReward={handleAdReward}
+                    triggerType={adRewardType === 'unlock' ? 'unlock' : 'point'}
+                />
 
-                        {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && !isNoticeModalOpen && (
-                            <>
-                                {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
-                                {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
-                                    <div key={adKey} className={`fixed left-0 right-0 z-[990] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
-                                        <div className="pointer-events-auto w-full max-w-md overflow-hidden">
-                                            <AdBanner position="bottom" maxHeight={100} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />
-                                        </div>
-                                    </div>
-                                )}
+                {/* WELCOME MODAL */}
+                <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
 
-                                {!isSubmitMapOpen && (
-                                    <nav className="fixed bottom-0 left-0 right-0 h-auto bg-surface dark:bg-surface-dark border-t border-border dark:border-border-dark z-[999] flex justify-center pb-[env(safe-area-inset-bottom)]">
-                                        <div className="w-full max-w-md flex justify-around items-center px-2">
-                                            <button onClick={() => window.location.hash = '#/'} className={`flex flex-col items-center p-2 ${currentHash === '#/' ? 'text-primary-500' : 'text-text-muted'}`}><MapPin className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_home', '홈')}</span></button>
-                                            <button
-                                                onClick={() => {
-                                                    if (currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) return; // Disable if on submit page or contact modal open
-                                                    if (user.role === UserRole.GUEST) {
-                                                        setShowLoginModal(true);
-                                                    } else {
-                                                        window.location.hash = '#/submit';
-                                                    }
-                                                }}
-                                                className={`flex flex-col items-center p-2 -mt-8 relative ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'cursor-not-allowed' : 'cursor-pointer'
-                                                    }`}
-                                            >
-                                                <div className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white ring-4 ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
-                                                    ? 'bg-text-muted opacity-50'
-                                                    : 'bg-urgency hover:bg-urgency-500 active:scale-95'
-                                                    }`}>
-                                                    <Plus className="w-8 h-8 drop-shadow-md" />
-                                                </div>
-                                                <span className={`text-[10px] font-bold mt-2 ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'text-text-muted' : 'text-urgency'
-                                                    }`}>{t('nav_register', '등록')}</span>
-                                                {(user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) && (
-                                                    <div className="absolute inset-0 bg-transparent" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (user.role === UserRole.GUEST) {
-                                                        setShowLoginModal(true);
-                                                    } else {
-                                                        window.location.hash = '#/my';
-                                                    }
-                                                }}
-                                                className={`flex flex-col items-center p-2 ${currentHash === '#/my' ? 'text-primary-500' : 'text-text-muted'}`}
-                                            >
-                                                <UserIcon className="w-6 h-6" /><span className="text-[10px] font-bold mt-1">{t('nav_my_info', '내 정보')}</span>
-                                            </button>
-                                        </div>
-                                    </nav>
-                                )}
-                            </>
-                        )}
+                {/* Login Notice Modal */}
+                {showNoticeModal && (
+                    <LoginNoticeModal
+                        user={user}
+                        onClose={handleCloseNotice}
+                    />
+                )}
 
-                        {/* Reward Success Modal */}
-                        {rewardSuccessModal.show && (
-                            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform scale-100 animate-in zoom-in-95 duration-200 relative overflow-hidden">
-                                    {/* Background Decoration */}
-                                    <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-                                        <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                            <circle cx="20" cy="20" r="5" fill="#FBBF24"></circle>
-                                            <circle cx="80" cy="30" r="7" fill="#3B82F6"></circle>
-                                            <rect x="40" y="60" width="8" height="8" fill="#EF4444" transform="rotate(45 44 64)"></rect>
-                                        </svg>
-                                    </div>
-
-                                    <div className="relative z-10">
-                                        {/* Icon */}
-                                        <div className="w-20 h-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-5 ring-4 ring-yellow-50 dark:ring-yellow-900/20">
-                                            <Gift className="w-10 h-10 text-yellow-600 dark:text-yellow-500 fill-yellow-500" />
-                                        </div>
-
-                                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
-                                            광고 시청 완료!<br />
-                                            크래딧이 지급되었습니다.
-                                        </h3>
-
-                                        <div className="my-6">
-                                            <span className="text-3xl font-black text-amber-500 flex items-center justify-center gap-1 drop-shadow-sm">
-                                                +{rewardSuccessModal.amount} <span className="text-xl text-gray-400 font-bold">Credits</span>
-                                            </span>
-                                        </div>
-
-                                        <button
-                                            onClick={() => setRewardSuccessModal({ show: false, amount: 0 })}
-                                            className="w-full bg-[#3B82F6] hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 active:scale-95"
-                                        >
-                                            확인
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* AD MANAGER */}
-                        <AdManager
-                            isOpen={showAd}
-                            onClose={() => setShowAd(false)}
-                            onReward={handleAdReward}
-                            triggerType={adRewardType === 'unlock' ? 'unlock' : 'point'}
-                        />
-
-                        {/* WELCOME MODAL */}
-                        <WelcomeModal open={showWelcomeModal} onClose={() => setShowWelcomeModal(false)} />
-
-                        {/* Login Notice Modal */}
-                        {showNoticeModal && (
-                            <LoginNoticeModal
-                                user={user}
-                                onClose={handleCloseNotice}
-                            />
-                        )}
-
-                        {/* TOILET SELECTION MODAL */}
-                        {selectionModalData.show && (
-                            <div className="fixed inset-0 z-[3000] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectionModalData({ show: false, toilets: [] })}>
-                                <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                                    {/* Fixed Header */}
-                                    <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border dark:border-border-dark">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="text-xl font-bold text-text-main dark:text-text-light">{t('toilet_selection_title', '화장실 선택')}</h3>
-                                            <button onClick={() => setSelectionModalData({ show: false, toilets: [] })} className="p-2 bg-background dark:bg-background-dark rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                                                <X className="w-5 h-5 text-text-muted" />
-                                            </button>
-                                        </div>
-                                        <p className="text-sm text-text-muted mb-3" dangerouslySetInnerHTML={{ __html: t('toilet_selection_desc', '이 주소에 여러 개의 화장실이 있습니다.<br />원하는 화장실을 선택해주세요.') }} />
-                                        <div className="text-xs font-bold text-text-muted bg-background dark:bg-background-dark p-2 rounded-lg flex justify-between items-center">
-                                            <span className="truncate">📍 {selectionModalData.toilets[0]?.address}</span>
-                                            <span className="ml-2 shrink-0">{user.role === UserRole.GUEST ? t('anonymous', '비회원') : (user.gender === Gender.MALE ? t('gender_male', '남성') : (user.gender === Gender.FEMALE ? t('gender_female', '여성') : ''))}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Scrollable List */}
-                                    <div className="flex-1 overflow-y-auto">
-                                        <div className="p-6 space-y-3">
-                                            {selectionModalData.toilets.map(t => {
-                                                return (
-                                                    <button
-                                                        key={t.id}
-                                                        onClick={() => {
-                                                            setSelectionModalData({ show: false, toilets: [] });
-                                                            window.location.hash = `#/toilet/${t.id}`;
-                                                        }}
-                                                        className="w-full bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-4 hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-all text-left"
-                                                    >
-                                                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center shrink-0 border border-gray-200 dark:border-gray-600">
-                                                            <span className="text-lg font-black text-gray-800 dark:text-gray-200">{t.floor}</span>
-                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">층</span>
-                                                        </div>
-
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-bold text-gray-900 dark:text-white truncate">{t.name}</span>
-
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                                <span className="flex items-center gap-1">
-                                                                    {t.genderType === 'MALE' && <span className="text-blue-500 font-bold">남성용</span>}
-                                                                    {t.genderType === 'FEMALE' && <span className="text-pink-500 font-bold">여성용</span>}
-                                                                    {t.genderType === 'UNISEX' && <span className="text-purple-500 font-bold">공용</span>}
-                                                                </span>
-                                                                <span className="text-gray-300">|</span>
-                                                                <span className="flex items-center gap-0.5 text-amber-500">
-                                                                    <Star className="w-3 h-3 fill-current" />
-                                                                    <span className="font-bold">{t.ratingAvg ? t.ratingAvg.toFixed(1) : '0.0'}</span>
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <ArrowRight className="w-5 h-5 text-gray-300" />
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* LOGIN MODAL */}
-                        {updateModal.show && (
-                            <UpdateModal
-                                type={updateModal.type}
-                                storeUrl={updateModal.storeUrl}
-                                message={updateModal.message}
-                                onClose={() => {
-                                    // Skip for today
-                                    const today = new Date().toISOString().split('T')[0];
-                                    localStorage.setItem('update_skipped_date', today);
-                                    setUpdateModal(prev => ({ ...prev, show: false }));
-                                }}
-                            />
-                        )}
-
-                        {showLoginModal && (
-                            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                                <div className="relative bg-surface dark:bg-surface-dark rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 max-h-[85vh] overflow-y-auto ring-1 ring-border/50">
-                                    {/* Close Button (X) */}
-                                    <button
-                                        onClick={() => setShowLoginModal(false)}
-                                        className="absolute top-4 right-4 p-2 text-text-muted hover:text-text-main transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-                                    >
-                                        <X className="w-6 h-6" />
+                {/* TOILET SELECTION MODAL */}
+                {selectionModalData.show && (
+                    <div className="fixed inset-0 z-[3000] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectionModalData({ show: false, toilets: [] })}>
+                        <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                            {/* Fixed Header */}
+                            <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border dark:border-border-dark">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold text-text-main dark:text-text-light">{t('toilet_selection_title', '화장실 선택')}</h3>
+                                    <button onClick={() => setSelectionModalData({ show: false, toilets: [] })} className="p-2 bg-background dark:bg-background-dark rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                                        <X className="w-5 h-5 text-text-muted" />
                                     </button>
+                                </div>
+                                <p className="text-sm text-text-muted mb-3" dangerouslySetInnerHTML={{ __html: t('toilet_selection_desc', '이 주소에 여러 개의 화장실이 있습니다.<br />원하는 화장실을 선택해주세요.') }} />
+                                <div className="text-xs font-bold text-text-muted bg-background dark:bg-background-dark p-2 rounded-lg flex justify-between items-center">
+                                    <span className="truncate">📍 {selectionModalData.toilets[0]?.address}</span>
+                                    <span className="ml-2 shrink-0">{user.role === UserRole.GUEST ? t('anonymous', '비회원') : (user.gender === Gender.MALE ? t('gender_male', '남성') : (user.gender === Gender.FEMALE ? t('gender_female', '여성') : ''))}</span>
+                                </div>
+                            </div>
 
-                                    <div className="flex flex-col items-center">
-                                        <img src="/images/app/ddong-icon.png" alt="Login Icon" className="w-24 h-24 md:w-32 md:h-32 object-contain mb-0" />
-                                        <h2 className="text-2xl font-black text-primary mb-3">대똥단결</h2>
-                                        <h3 className="text-xl font-bold text-text-main dark:text-text-light mb-2">{t('login_required_title', '로그인이 필요합니다')}</h3>
-
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <button onClick={performGoogleLogin} disabled={loginLoading} className="w-full py-4 bg-white border border-gray-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 text-gray-800 shadow-sm transition-transform active:scale-95 overflow-hidden">
-                                            {loginLoading ? (
-                                                <div className="flex items-center justify-center w-5 h-5">
-                                                    <Loader2 className="animate-spin w-5 h-5 text-gray-400" />
+                            {/* Scrollable List */}
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="p-6 space-y-3">
+                                    {selectionModalData.toilets.map(t => {
+                                        return (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => {
+                                                    setSelectionModalData({ show: false, toilets: [] });
+                                                    window.location.hash = `#/toilet/${t.id}`;
+                                                }}
+                                                className="w-full bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-4 hover:bg-blue-50 dark:hover:bg-gray-700 hover:border-blue-200 dark:hover:border-gray-600 transition-all text-left"
+                                            >
+                                                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center shrink-0 border border-gray-200 dark:border-gray-600">
+                                                    <span className="text-lg font-black text-gray-800 dark:text-gray-200">{t.floor}</span>
+                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">층</span>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
-                                                    <span>{t('login_google', 'Google로 시작하기')}</span>
-                                                </>
-                                            )}
-                                        </button>
 
-                                        <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                            <span className="font-black text-lg">N</span> {t('login_naver', 'Naver로 시작하기')}
-                                        </button>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="font-bold text-gray-900 dark:text-white truncate">{t.name}</span>
 
-                                        <button onClick={performKakaoLogin} className="w-full py-4 bg-[#FEE500] text-[#000000] rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                            <MessageSquareQuote className="w-5 h-5 fill-current" /> {t('login_kakao', 'Kakao로 시작하기')}
-                                        </button>
-
-                                        {/* Test Buttons & Manual Login - Only show on Localhost Web (Not Native) */}
-                                        {(!Capacitor.isNativePlatform() && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
-                                            <>
-                                                {/* Manual Email Login (Test) */}
-                                                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                                    <p className="text-xs text-gray-400 mb-2">테스트용 이메일 로그인</p>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="email"
-                                                            value={manualLoginEmail}
-                                                            onChange={(e) => setManualLoginEmail(e.target.value)}
-                                                            placeholder="이메일 입력"
-                                                            className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
-                                                        />
-                                                        <button
-                                                            onClick={handleManualEmailLogin}
-                                                            disabled={loginLoading}
-                                                            className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold whitespace-nowrap"
-                                                        >
-                                                            접속
-                                                        </button>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                        <span className="flex items-center gap-1">
+                                                            {t.genderType === 'MALE' && <span className="text-blue-500 font-bold">남성용</span>}
+                                                            {t.genderType === 'FEMALE' && <span className="text-pink-500 font-bold">여성용</span>}
+                                                            {t.genderType === 'UNISEX' && <span className="text-purple-500 font-bold">공용</span>}
+                                                        </span>
+                                                        <span className="text-gray-300">|</span>
+                                                        <span className="flex items-center gap-0.5 text-amber-500">
+                                                            <Star className="w-3 h-3 fill-current" />
+                                                            <span className="font-bold">{t.ratingAvg ? t.ratingAvg.toFixed(1) : '0.0'}</span>
+                                                        </span>
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-2 space-y-2">
-                                                    <button onClick={handleOpenTestAccountModal} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 shadow-sm border border-indigo-100 transition-colors flex items-center justify-center gap-2">
-                                                        <span className="text-xl">🧪</span> 테스트 계정 선택 (전체 목록)
-                                                    </button>
-                                                    <button onClick={() => handleTestLogin(Gender.MALE, UserRole.ADMIN)} className="w-full py-3 bg-gray-800 dark:bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-900 shadow-lg border border-transparent dark:border-gray-700">
-                                                        🛡️ 관리자 테스트
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                                <ArrowRight className="w-5 h-5 text-gray-300" />
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        )}
-
-                        {/* Banned User Modal */}
-                        {showBannedModal && (
-                            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                                <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in">
-                                    <div className="flex justify-center mb-4">
-                                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                                            <X className="w-8 h-8 text-red-600" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-center mb-2 text-gray-900">이용이 제한된 계정입니다</h3>
-                                    <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed">
-                                        해당 계정은 서비스 정책 위반으로 인해<br />
-                                        회원가입 및 이용이 영구적으로 제한되었습니다.
-                                    </p>
-                                    <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                                        <p className="text-xs text-blue-800 font-medium text-center">
-                                            📧 문의사항은 아래 이메일로 연락해주세요
-                                        </p>
-                                        <p className="text-sm font-bold text-blue-600 text-center mt-2">
-                                            qseek77@gmail.com
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setShowBannedModal(false);
-                                            setShowLoginModal(false);
-                                        }}
-                                        className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
-                                    >
-                                        확인
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Gender Selection Modal */}
-                        {showGenderSelectModal && pendingUser && (
-                            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-                                <div className="bg-surface dark:bg-surface-dark rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in ring-1 ring-border/50">
-                                    <div className="flex justify-center mb-4">
-                                        <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
-                                            <UserIcon className="w-8 h-8 text-primary" />
-                                        </div>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-center mb-2 text-text-main dark:text-text-light">성별을 선택해주세요</h3>
-                                    <p className="text-sm text-text-muted text-center mb-6 leading-relaxed">
-                                        더 나은 화장실 정보를 제공하기 위해<br />
-                                        성별을 선택해주세요.
-                                    </p>
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <button
-                                            onClick={() => handleGenderSelect(Gender.MALE)}
-                                            disabled={loginLoading}
-                                            className={`py-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex flex-col items-center gap-2 ${loginLoading ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
-                                        >
-                                            {loginLoading ? (
-                                                <Loader2 className="w-8 h-8 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <span className="text-3xl">👨</span>
-                                                    남성
-                                                </>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => handleGenderSelect(Gender.FEMALE)}
-                                            disabled={loginLoading}
-                                            className={`py-6 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex flex-col items-center gap-2 ${loginLoading ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
-                                        >
-                                            {loginLoading ? (
-                                                <Loader2 className="w-8 h-8 animate-spin" />
-                                            ) : (
-                                                <>
-                                                    <span className="text-3xl">👩</span>
-                                                    여성
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                    <p className="text-xs text-gray-400 text-center">
-                                        회원가입 완료 시 50 크레딧이 지급됩니다 🎁
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Test Account Selection Modal */}
-                        {showTestAccountModal && (
-                            <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-                                <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in ring-1 ring-border/50 flex flex-col max-h-[80vh]">
-                                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 rounded-t-3xl">
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                                <span>🧪</span> 테스트 계정 선택
-                                            </h3>
-                                            <p className="text-xs text-gray-500 mt-1">클릭하면 해당 계정으로 즉시 로그인됩니다.</p>
-                                        </div>
-                                        <button
-                                            onClick={() => { setShowTestAccountModal(false); setShowLoginModal(true); }}
-                                            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-                                        >
-                                            <X className="w-5 h-5 text-gray-500" />
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto p-0">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0 z-10 shadow-sm">
-                                                <tr>
-                                                    <th scope="col" className="px-6 py-3">Email / ID</th>
-                                                    <th scope="col" className="px-6 py-3">Nickname</th>
-                                                    <th scope="col" className="px-6 py-3 text-right">Credits</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                                {testAccounts.map((account) => (
-                                                    <tr
-                                                        key={account.id}
-                                                        onClick={() => handleTestAccountLogin(account)}
-                                                        className="bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer transition-colors group"
-                                                    >
-                                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
-                                                            <div className="flex flex-col">
-                                                                <span>{account.email}</span>
-                                                                <span className="text-[10px] text-gray-400 font-normal">{account.role}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                                                            {account.nickname || '-'}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <span className={`font-bold ${account.credits > 0 ? 'text-amber-500' : 'text-gray-400'}`}>
-                                                                {account.credits.toLocaleString()}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {testAccounts.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={3} className="px-6 py-10 text-center text-gray-400">
-                                                            계정이 없습니다.
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Login Notice Modal (Queue) */}
-                        {user.loginNotices && user.loginNotices.length > 0 && (
-                            <LoginNoticeModal
-                                user={user}
-                                onClose={(updatedUser) => {
-                                    setUser(updatedUser);
-                                    // No need to save to LS/DB here as component handles it, just update local state to refresh UI
-                                }}
-                            />
-                        )}
-
-                        {/* Notification Toast */}
-                        {notificationToast.show && (
-                            <div
-                                className="fixed top-4 left-4 right-4 z-[9999] animate-in slide-in-from-top-2 cursor-pointer"
-                                onClick={async () => {
-                                    const notifId = notificationToast.data?.id;
-                                    if (notifId) {
-                                        try {
-                                            await db.deleteNotifications([notifId]);
-                                            db.getUserByEmail(user.email).then(u => u && setUser(u));
-                                        } catch (e) {
-                                            console.error("Failed to delete toast notification", e);
-                                        }
-                                    }
-
-                                    if (notificationToast.data?.toiletId) {
-                                        window.location.hash = `#/toilet/${notificationToast.data.toiletId}`;
-                                    } else {
-                                        window.location.hash = '#/notifications';
-                                    }
-                                    setNotificationToast(prev => ({ ...prev, show: false }));
-                                }}
-                            >
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 flex items-center gap-4 border border-gray-100 dark:border-gray-700 ring-1 ring-black/5">
-                                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center shrink-0">
-                                        <Bell className="w-6 h-6 text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-0.5">{notificationToast.title}</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                                            {notificationToast.body}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
-                        <LayoutDebugger />
+                        </div>
                     </div>
+                )}
+
+                {/* LOGIN MODAL */}
+                {updateModal.show && (
+                    <UpdateModal
+                        type={updateModal.type}
+                        storeUrl={updateModal.storeUrl}
+                        message={updateModal.message}
+                        onClose={() => {
+                            // Skip for today
+                            const today = new Date().toISOString().split('T')[0];
+                            localStorage.setItem('update_skipped_date', today);
+                            setUpdateModal(prev => ({ ...prev, show: false }));
+                        }}
+                    />
+                )}
+
+                {showLoginModal && (
+                    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                        <div className="relative bg-surface dark:bg-surface-dark rounded-3xl w-full max-w-sm p-6 shadow-2xl text-center space-y-4 animate-in zoom-in-95 max-h-[85vh] overflow-y-auto ring-1 ring-border/50">
+                            {/* Close Button (X) */}
+                            <button
+                                onClick={() => setShowLoginModal(false)}
+                                className="absolute top-4 right-4 p-2 text-text-muted hover:text-text-main transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+
+                            <div className="flex flex-col items-center">
+                                <img src="/images/app/ddong-icon.png" alt="Login Icon" className="w-24 h-24 md:w-32 md:h-32 object-contain mb-0" />
+                                <h2 className="text-2xl font-black text-primary mb-3">대똥단결</h2>
+                                <h3 className="text-xl font-bold text-text-main dark:text-text-light mb-2">{t('login_required_title', '로그인이 필요합니다')}</h3>
+
+                            </div>
+
+                            <div className="space-y-3">
+                                <button onClick={performGoogleLogin} disabled={loginLoading} className="w-full py-4 bg-white border border-gray-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 text-gray-800 shadow-sm transition-transform active:scale-95 overflow-hidden">
+                                    {loginLoading ? (
+                                        <div className="flex items-center justify-center w-5 h-5">
+                                            <Loader2 className="animate-spin w-5 h-5 text-gray-400" />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="G" />
+                                            <span>{t('login_google', 'Google로 시작하기')}</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
+                                    <span className="font-black text-lg">N</span> {t('login_naver', 'Naver로 시작하기')}
+                                </button>
+
+                                <button onClick={performKakaoLogin} className="w-full py-4 bg-[#FEE500] text-[#000000] rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
+                                    <MessageSquareQuote className="w-5 h-5 fill-current" /> {t('login_kakao', 'Kakao로 시작하기')}
+                                </button>
+
+                                {/* Test Buttons & Manual Login - Only show on Localhost Web (Not Native) */}
+                                {(!Capacitor.isNativePlatform() && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
+                                    <>
+                                        {/* Manual Email Login (Test) */}
+                                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                            <p className="text-xs text-gray-400 mb-2">테스트용 이메일 로그인</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="email"
+                                                    value={manualLoginEmail}
+                                                    onChange={(e) => setManualLoginEmail(e.target.value)}
+                                                    placeholder="이메일 입력"
+                                                    className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
+                                                />
+                                                <button
+                                                    onClick={handleManualEmailLogin}
+                                                    disabled={loginLoading}
+                                                    className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold whitespace-nowrap"
+                                                >
+                                                    접속
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-2 space-y-2">
+                                            <button onClick={handleOpenTestAccountModal} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 shadow-sm border border-indigo-100 transition-colors flex items-center justify-center gap-2">
+                                                <span className="text-xl">🧪</span> 테스트 계정 선택 (전체 목록)
+                                            </button>
+                                            <button onClick={() => handleTestLogin(Gender.MALE, UserRole.ADMIN)} className="w-full py-3 bg-gray-800 dark:bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-900 shadow-lg border border-transparent dark:border-gray-700">
+                                                🛡️ 관리자 테스트
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Banned User Modal */}
+                {showBannedModal && (
+                    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                        <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                                    <X className="w-8 h-8 text-red-600" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-bold text-center mb-2 text-gray-900">이용이 제한된 계정입니다</h3>
+                            <p className="text-sm text-gray-600 text-center mb-6 leading-relaxed">
+                                해당 계정은 서비스 정책 위반으로 인해<br />
+                                회원가입 및 이용이 영구적으로 제한되었습니다.
+                            </p>
+                            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+                                <p className="text-xs text-blue-800 font-medium text-center">
+                                    📧 문의사항은 아래 이메일로 연락해주세요
+                                </p>
+                                <p className="text-sm font-bold text-blue-600 text-center mt-2">
+                                    qseek77@gmail.com
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowBannedModal(false);
+                                    setShowLoginModal(false);
+                                }}
+                                className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                            >
+                                확인
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Gender Selection Modal */}
+                {showGenderSelectModal && pendingUser && (
+                    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                        <div className="bg-surface dark:bg-surface-dark rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in zoom-in ring-1 ring-border/50">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                                    <UserIcon className="w-8 h-8 text-primary" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-bold text-center mb-2 text-text-main dark:text-text-light">성별을 선택해주세요</h3>
+                            <p className="text-sm text-text-muted text-center mb-6 leading-relaxed">
+                                더 나은 화장실 정보를 제공하기 위해<br />
+                                성별을 선택해주세요.
+                            </p>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <button
+                                    onClick={() => handleGenderSelect(Gender.MALE)}
+                                    disabled={loginLoading}
+                                    className={`py-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex flex-col items-center gap-2 ${loginLoading ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
+                                >
+                                    {loginLoading ? (
+                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span className="text-3xl">👨</span>
+                                            남성
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => handleGenderSelect(Gender.FEMALE)}
+                                    disabled={loginLoading}
+                                    className={`py-6 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex flex-col items-center gap-2 ${loginLoading ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
+                                >
+                                    {loginLoading ? (
+                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span className="text-3xl">👩</span>
+                                            여성
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-400 text-center">
+                                회원가입 완료 시 50 크레딧이 지급됩니다 🎁
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Test Account Selection Modal */}
+                {showTestAccountModal && (
+                    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg shadow-2xl animate-in zoom-in ring-1 ring-border/50 flex flex-col max-h-[80vh]">
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 rounded-t-3xl">
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span>🧪</span> 테스트 계정 선택
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-1">클릭하면 해당 계정으로 즉시 로그인됩니다.</p>
+                                </div>
+                                <button
+                                    onClick={() => { setShowTestAccountModal(false); setShowLoginModal(true); }}
+                                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-0">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3">Email / ID</th>
+                                            <th scope="col" className="px-6 py-3">Nickname</th>
+                                            <th scope="col" className="px-6 py-3 text-right">Credits</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                        {testAccounts.map((account) => (
+                                            <tr
+                                                key={account.id}
+                                                onClick={() => handleTestAccountLogin(account)}
+                                                className="bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer transition-colors group"
+                                            >
+                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                                                    <div className="flex flex-col">
+                                                        <span>{account.email}</span>
+                                                        <span className="text-[10px] text-gray-400 font-normal">{account.role}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                                                    {account.nickname || '-'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={`font-bold ${account.credits > 0 ? 'text-amber-500' : 'text-gray-400'}`}>
+                                                        {account.credits.toLocaleString()}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {testAccounts.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="px-6 py-10 text-center text-gray-400">
+                                                    계정이 없습니다.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Login Notice Modal (Queue) */}
+                {user.loginNotices && user.loginNotices.length > 0 && (
+                    <LoginNoticeModal
+                        user={user}
+                        onClose={(updatedUser) => {
+                            setUser(updatedUser);
+                            // No need to save to LS/DB here as component handles it, just update local state to refresh UI
+                        }}
+                    />
+                )}
+
+                {/* Notification Toast */}
+                {notificationToast.show && (
+                    <div
+                        className="fixed top-4 left-4 right-4 z-[9999] animate-in slide-in-from-top-2 cursor-pointer"
+                        onClick={async () => {
+                            const notifId = notificationToast.data?.id;
+                            if (notifId) {
+                                try {
+                                    await db.deleteNotifications([notifId]);
+                                    db.getUserByEmail(user.email).then(u => u && setUser(u));
+                                } catch (e) {
+                                    console.error("Failed to delete toast notification", e);
+                                }
+                            }
+
+                            if (notificationToast.data?.toiletId) {
+                                window.location.hash = `#/toilet/${notificationToast.data.toiletId}`;
+                            } else {
+                                window.location.hash = '#/notifications';
+                            }
+                            setNotificationToast(prev => ({ ...prev, show: false }));
+                        }}
+                    >
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-4 flex items-center gap-4 border border-gray-100 dark:border-gray-700 ring-1 ring-black/5">
+                            <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center shrink-0">
+                                <Bell className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-0.5">{notificationToast.title}</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                                    {notificationToast.body}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Layout Debug Panel - TEMPORARY FOR TROUBLESHOOTING */}
+                <LayoutDebugger />
+            </div>
 
         </GoogleMapsProvider>
     );

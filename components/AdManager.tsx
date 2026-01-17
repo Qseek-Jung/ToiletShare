@@ -406,7 +406,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                             )}
 
                             {!canClose && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
+                                <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10 z-50">
                                     <div
                                         className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
                                         style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
@@ -437,9 +437,10 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                             onError={handleMP4Error}
                             onWaiting={() => console.log('📽️ [AdManager] MP4 Waiting (Buffering)...')}
                             onStalled={() => console.warn('📽️ [AdManager] MP4 Stalled')}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover', background: 'black' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', background: 'black' }}
                             className="ad-video"
                         />
+
 
                         {!isPlaying && !canClose && (
                             <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
@@ -448,7 +449,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         )}
 
                         {!canClose && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
+                            <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/10 z-50">
                                 <div
                                     className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
                                     style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
@@ -460,8 +461,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     </div>
                 )}
 
-                {/* Bottom Unified Controls */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] flex justify-between items-end z-[70] pointer-events-none">
+                {/* Top Unified Controls - Below Status Bar */}
+                <div className="absolute top-[calc(env(safe-area-inset-top)+8px)] left-0 right-0 p-4 flex justify-between items-start z-[70] pointer-events-none">
                     <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 pointer-events-auto">
                         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         <span className="text-white/90 text-[11px] font-bold tracking-tight uppercase">Sponsored</span>
@@ -470,7 +471,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     {canClose ? (
                         <button
                             onClick={showMP4 ? () => { if (onReward) onReward(); onClose(); } : handleYoutubeClose}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300 pointer-events-auto cursor-pointer"
                         >
                             <span className="text-sm font-black">{adType === 'reward' ? '리워드 지급됨' : '닫기'}</span>
                             <div className="w-px h-3 bg-white/30 mx-1" />

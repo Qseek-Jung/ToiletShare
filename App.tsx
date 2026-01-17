@@ -50,6 +50,7 @@ import DebugConsole from './components/DebugConsole';
 import { LayoutDebugger } from './components/LayoutDebugger';
 
 import { useTranslation } from 'react-i18next';
+import { lockViewportHeight } from './utils/viewport';
 
 // Declaration for Google Identity Services & Maps & Social Logins
 declare global {
@@ -103,6 +104,11 @@ export default function App() {
             return newValue;
         });
     };
+
+    // Lock viewport height on mount (prevent iOS 898px→839px regression)
+    useEffect(() => {
+        lockViewportHeight();
+    }, []);
 
     // Record Visit (Once per session)
     useEffect(() => {

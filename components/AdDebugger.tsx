@@ -1,53 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 
-interface AdDebugLog {
-    timestamp: string;
-    type: 'info' | 'error' | 'warning';
-    message: string;
-}
-
+/**
+ * AdDebugger: Intercepts console logs related to ads and video playback
+ * to help diagnose why MP4 ads are not playing on iOS.
+ */
 export const AdDebugger: React.FC = () => {
-    const [logs, setLogs] = useState<AdDebugLog[]>([]);
-    const [isOpen, setIsOpen] = useState(true);
+    const [logs, setLogs] = useState<{ msg: string; type: 'info' | 'error' | 'warn'; time: string }[]>([]);
+    const [isVisible, setIsVisible] = useState(true);
 
     useEffect(() => {
-        // Intercept console methods
         const originalLog = console.log;
         const originalError = console.error;
         const originalWarn = console.warn;
 
-        const addLog = (type: 'info' | 'error' | 'warning', ...args: any[]) => {
-            const message = args.map(arg =>
-                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-            ).join(' ');
-
-            // Filter for ad-related logs
-            if (message.toLowerCase().includes('ad') ||
-                message.toLowerCase().includes('video') ||
-                message.toLowerCase().includes('youtube') ||
-                message.toLowerCase().includes('mp4')) {
-                setLogs(prev => [...prev.slice(-9), {
-                    timestamp: new Date().toLocaleTimeString(),
+        const addLog = (msg: any, type: 'info' | 'error' | 'warn') => {
+            const strMsg = typeof msg === 'string' ? msg : JSON.stringify(msg);
+            // Only capture ad/video related logs
+            if (
+                strMsg.toLowerCase().includes('ad') ||
+                strMsg.toLowerCase().includes('video') ||
+                strMsg.toLowerCase().includes('mp4') ||
+                strMsg.toLowerCase().includes('youtube') ||
+                strMsg.toLowerCase().includes('playback')
+            ) {
+                setLogs(prev => [{
+                    msg: strMsg,
                     type,
-                    message
-                }]);
+                    time: new Date().toLocaleTimeString()
+                }, ...prev].slice(0, 50));
             }
         };
 
         console.log = (...args) => {
-            originalLog(...args);
-            addLog('info', ...args);
+            addLog(args.join(' '), 'info');
+            originalLog.apply(console, args);
         };
-
         console.error = (...args) => {
-            originalError(...args);
-            addLog('error', ...args);
+            addLog(args.join(' '), 'error');
+            originalError.apply(console, args);
         };
-
         console.warn = (...args) => {
-            originalWarn(...args);
-            addLog('warning', ...args);
+            addLog(args.join(' '), 'warn');
+            originalWarn.apply(console, args);
         };
 
         return () => {
@@ -57,48 +51,31 @@ export const AdDebugger: React.FC = () => {
         };
     }, []);
 
-    if (!isOpen) return null;
+    if (!isVisible) return (
+        <button
+            onClick={() => setIsVisible(true)}
+            className="fixed top-20 right-2 z-[9999] bg-red-600 text-white text-[10px] p-2 rounded-full opacity-50"
+        >
+            AD LOGS
+        </button>
+    );
 
     return (
-        <div className="fixed top-20 right-4 w-80 max-h-96 bg-black/90 backdrop-blur-md text-white rounded-lg shadow-2xl z-[9999] overflow-hidden border border-white/20">
-            <div className="flex items-center justify-between p-3 bg-red-600/90 border-b border-white/20">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                    <span className="text-sm font-bold">Ad Debug</span>
-                </div>
-                <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1 hover:bg-white/20 rounded transition"
-                >
-                    <X className="w-4 h-4" />
-                </button>
+        <div className="fixed top-20 left-2 right-2 h-[200px] z-[9999] bg-black/90 border border-red-500 rounded-lg overflow-hidden flex flex-col font-mono text-[10px]">
+            <div className="bg-red-900/50 p-2 flex justify-between items-center border-b border-red-500/30">
+                <span className="font-bold text-red-100">📺 AD DEBUGGER</span>
+                <button onClick={() => setIsVisible(false)} className="text-white px-2">✕</button>
             </div>
-            <div className="overflow-y-auto max-h-80 p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
                 {logs.length === 0 ? (
-                    <div className="text-white/40 text-xs text-center py-4">
-                        광고 관련 로그 대기 중...
-                    </div>
+                    <div className="text-gray-500 italic">No ad logs captured yet...</div>
                 ) : (
-                    logs.map((log, idx) => (
-                        <div
-                            key={idx}
-                            className={`text-xs p-2 rounded border-l-2 ${log.type === 'error' ? 'bg-red-500/20 border-red-500' :
-                                    log.type === 'warning' ? 'bg-yellow-500/20 border-yellow-500' :
-                                        'bg-blue-500/20 border-blue-500'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-white/60 font-mono">{log.timestamp}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${log.type === 'error' ? 'bg-red-500' :
-                                        log.type === 'warning' ? 'bg-yellow-500' :
-                                            'bg-blue-500'
-                                    }`}>
-                                    {log.type.toUpperCase()}
-                                </span>
-                            </div>
-                            <pre className="whitespace-pre-wrap font-mono text-[11px] text-white/90">
-                                {log.message}
-                            </pre>
+                    logs.map((log, i) => (
+                        <div key={i} className={`border-b border-white/5 pb-1 ${log.type === 'error' ? 'text-red-400' :
+                                log.type === 'warn' ? 'text-yellow-400' : 'text-green-400'
+                            }`}>
+                            <span className="opacity-50 mr-1">[{log.time}]</span>
+                            {log.msg}
                         </div>
                     ))
                 )}

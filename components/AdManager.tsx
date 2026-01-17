@@ -261,9 +261,26 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     };
 
     // NEW: Handle MP4 error
-    const handleMP4Error = () => {
-        console.error('MP4 Playback Error');
+    const handleMP4Error = (e: any) => {
+        console.error('📽️ [AdManager] MP4 Playback Error:', {
+            error: e,
+            src: videoRef.current?.src,
+            readyState: videoRef.current?.readyState,
+            networkState: videoRef.current?.networkState
+        });
         handleAdMobFallback(config?.testMode || true);
+    };
+
+    const handleMP4LoadStart = () => {
+        console.log('📽️ [AdManager] MP4 Load Start:', playlistIds[0]);
+    };
+
+    const handleMP4CanPlay = () => {
+        console.log('📽️ [AdManager] MP4 Can Play (Buffered)');
+        // Try to force play if it hasn't started
+        if (videoRef.current && !isPlaying) {
+            videoRef.current.play().catch(e => console.error('📽️ [AdManager] AutoPlay Blocked:', e));
+        }
     };
 
     // Load YouTube API and Initialize Player
@@ -296,9 +313,6 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             playerRef.current = new window.YT.Player('youtube-player-container', {
                 height: '100%',
                 width: '100%',
-                // loadPlaylist via playerVars logic or directly? 
-                // Best practice: init without videoId, then loadPlaylist.
-                // Or use loadPlaylist in onReady.
                 playerVars: {
                     'autoplay': 1,
                     'mute': 1, // Required for iOS autoplay
@@ -308,19 +322,17 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     'modestbranding': 1,
                     'playsinline': 1,
                     'rel': 0,
-                    'showinfo': 0, // Deprecated but kept for older API compat
-                    'iv_load_policy': 3, // Hide annotations
+                    'showinfo': 0,
+                    'iv_load_policy': 3,
                 },
                 events: {
                     'onReady': (event: any) => {
-                        // Load Playlist
                         event.target.loadPlaylist({
                             playlist: ids,
                             index: 0,
                             startSeconds: 0
                         });
-                        event.target.setLoop(true); // Enable Infinite Loop
-                        // Unmute after playback starts (for better UX on iOS)
+                        event.target.setLoop(true);
                         setTimeout(() => {
                             try {
                                 event.target.unMute();
@@ -329,28 +341,19 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         }, 500);
                     },
                     'onStateChange': (event: any) => {
-                        // PLAYING = 1
                         if (event.data === 1) {
                             setIsPlaying(true);
                             if (safetyTimer) clearTimeout(safetyTimer);
                         }
-                        // ENDED = 0
                         else if (event.data === 0) {
-                            // Video ended. 
-                            // Since setLoop(true) is on, it should auto-play next.
-                            // We do NOT need manual logic here.
-                            // Just check if we can close? 
-                            // Timer is independent, so no action needed here except maybe logging.
-                            console.log("Video Ended. Loop should continue.");
+                            console.log("YouTube Video Ended (Looping)");
                         }
                         else {
-                            // Paused/Buffering
                             setIsPlaying(false);
                         }
                     },
                     'onError': (e: any) => {
                         console.error("YT Player Error", e);
-                        // Fallback to AdMob if YouTube fails
                         handleAdMobFallback(config?.testMode);
                     }
                 }
@@ -359,7 +362,6 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
         initPlayer();
 
-        // Safety timeout (Total Duration + 15s buffer)
         const safetyDuration = (targetDuration * 1000) + 15000;
         safetyTimer = setTimeout(() => {
             console.warn("Ad Safety Timer Triggered");
@@ -388,149 +390,104 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         <div className="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center font-sans">
             <div className="w-full h-full max-w-md bg-black relative flex flex-col items-center justify-center overflow-hidden">
 
-                {/* Header: Action & Status */}
-                <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-[60]">
-                    <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                {/* Clear top for iOS Status Bar */}
+                <div className="absolute top-0 left-0 right-0 h-[env(safe-area-inset-top)] bg-transparent z-[60]" />
+
+                {/* YouTube Player Section */}
+                {showYoutube && (
+                    <div className="w-full h-full flex items-center justify-center relative">
+                        <div ref={containerRef} className="w-full h-full bg-black relative flex items-center justify-center">
+                            <div id="youtube-player-container" className="w-full aspect-video pointer-events-auto"></div>
+
+                            {!isPlaying && !canClose && (
+                                <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
+                                    <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                </div>
+                            )}
+
+                            {!canClose && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
+                                    <div
+                                        className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                        style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="absolute inset-0 z-10 bg-transparent cursor-pointer" onClick={handleVideoClick} />
+                        </div>
+                    </div>
+                )}
+
+                {/* iOS MP4 Player Section */}
+                {showMP4 && (
+                    <div className="w-full h-full flex items-center justify-center relative">
+                        <video
+                            ref={videoRef}
+                            src={playlistIds[0]}
+                            autoPlay
+                            muted
+                            playsInline
+                            loop={true}
+                            preload="auto"
+                            onLoadStart={handleMP4LoadStart}
+                            onCanPlay={handleMP4CanPlay}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onError={handleMP4Error}
+                            onWaiting={() => console.log('📽️ [AdManager] MP4 Waiting (Buffering)...')}
+                            onStalled={() => console.warn('📽️ [AdManager] MP4 Stalled')}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', background: 'black' }}
+                            className="ad-video"
+                        />
+
+                        {!isPlaying && !canClose && (
+                            <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
+                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            </div>
+                        )}
+
+                        {!canClose && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
+                                <div
+                                    className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                                    style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
+                                />
+                            </div>
+                        )}
+
+                        <div className="absolute inset-0 z-10 bg-transparent cursor-pointer" onClick={handleVideoClick} />
+                    </div>
+                )}
+
+                {/* Bottom Unified Controls */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] flex justify-between items-end z-[70] pointer-events-none">
+                    <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 pointer-events-auto">
                         <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                         <span className="text-white/90 text-[11px] font-bold tracking-tight uppercase">Sponsored</span>
                     </div>
 
                     {canClose ? (
                         <button
-                            onClick={handleYoutubeClose}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300 pointer-events-auto cursor-pointer"
+                            onClick={showMP4 ? () => { if (onReward) onReward(); onClose(); } : handleYoutubeClose}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto cursor-pointer"
                         >
                             <span className="text-sm font-black">{adType === 'reward' ? '리워드 지급됨' : '닫기'}</span>
                             <div className="w-px h-3 bg-white/30 mx-1" />
                             <X className="w-5 h-5" />
                         </button>
                     ) : (
-                        <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-                            <span className="text-white text-sm font-black tabular-nums">{timeLeft}</span>
-                            <div className="w-px h-3 bg-white/20" />
+                        <div className="bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-full border border-white/20 flex items-center gap-2 pointer-events-auto">
+                            <span className="text-white text-base font-black tabular-nums">{timeLeft}</span>
+                            <div className="w-px h-4 bg-white/20" />
                             <span className="text-white/70 text-xs font-medium">
-                                {!isPlaying ? "로딩/대기 중..." : "광고 중..."}
+                                {!isPlaying ? "로딩 중..." : "광고 중..."}
                             </span>
                         </div>
                     )}
                 </div>
-
-                {/* Full Width Video Container */}
-                <div className="w-full h-full flex items-center justify-center relative">
-                    <div ref={containerRef} className="w-full h-full bg-black relative flex items-center justify-center">
-                        {/* YouTube Player: Fit-to-Width (contained) */}
-                        <div id="youtube-player-container" className="w-full aspect-video pointer-events-auto"></div>
-
-                        {!isPlaying && !canClose && (
-                            <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
-                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            </div>
-                        )}
-
-                        {/* Progress Bar (Bottom of Video Frame) */}
-                        {!canClose && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
-                                <div
-                                    className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                                    style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
-                                />
-                            </div>
-                        )}
-
-                        {/* Click Overlay (for click-through URL) */}
-                        <div
-                            className="absolute inset-0 z-10 bg-transparent cursor-pointer"
-                            onClick={handleVideoClick}
-                        />
-                    </div>
-                </div>
             </div>
         </div>
     );
-
-    // ===== iOS MP4 PLAYER =====
-    if (showMP4) {
-        return (
-            <div className="fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-center font-sans">
-                <div className="w-full h-full max-w-md bg-black relative flex flex-col items-center justify-center overflow-hidden">
-
-                    {/* Header: Action & Status */}
-                    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-[60]">
-                        <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                            <span className="text-white/90 text-[11px] font-bold tracking-tight uppercase">Sponsored</span>
-                        </div>
-
-                        {canClose ? (
-                            <button
-                                onClick={() => { if (onReward) onReward(); onClose(); }}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all active:scale-95 shadow-lg shadow-green-500/30 animate-in slide-in-from-top-4 duration-300"
-                            >
-                                <span className="text-sm font-black">{adType === 'reward' ? '리워드 지급됨' : '닫기'}</span>
-                                <div className="w-px h-3 bg-white/30 mx-1" />
-                                <X className="w-5 h-5" />
-                            </button>
-                        ) : (
-                            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
-                                <span className="text-white text-sm font-black tabular-nums">{timeLeft}</span>
-                                <div className="w-px h-3 bg-white/20" />
-                                <span className="text-white/70 text-xs font-medium">
-                                    {!isPlaying ? "로딩/대기 중..." : "광고 중..."}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Full Screen Video Container */}
-                    <div className="w-full h-full flex items-center justify-center relative">
-                        {/* MP4 Video Player (Cloudflare R2 / CDN) */}
-                        <video
-                            ref={videoRef}
-                            src={playlistIds[0]} // iOS: Single video only (loop=true)
-                            autoPlay
-                            muted
-                            playsInline
-                            loop={true} // iOS: Loop same video to minimize R2 traffic
-                            preload="auto"
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
-                            onError={handleMP4Error}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                background: 'black'
-                            }}
-                            className="ad-video"
-                        />
-
-                        {/* Loading Spinner */}
-                        {!isPlaying && !canClose && (
-                            <div className="absolute inset-0 flex items-center justify-center z-[5] pointer-events-none">
-                                <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            </div>
-                        )}
-
-                        {/* Progress Bar (Bottom) */}
-                        {!canClose && (
-                            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10 z-50">
-                                <div
-                                    className="h-full bg-primary-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                                    style={{ width: `${((initialTimeRef.current - timeLeft) / initialTimeRef.current) * 100}%` }}
-                                />
-                            </div>
-                        )}
-
-                        {/* Click Overlay (for click-through URL) */}
-                        <div
-                            className="absolute inset-0 z-10 bg-transparent cursor-pointer"
-                            onClick={handleVideoClick}
-                        />
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return null;
 };
+

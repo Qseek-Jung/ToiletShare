@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock, Globe, X } from 'lucide-react';
+import { Plus, Minus, ScrollText, Waves, Crosshair, Loader2, Check, Trash2, Lock, Globe, X, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Toilet, User, UserRole, Gender } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
@@ -416,7 +416,15 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
 
     return (
         <TextLayout className="pb-64 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
-            <h2 className="text-2xl font-black mb-6 dark:text-white">{editId ? t('submit_page_title_edit', "화장실 수정") : t('submit_page_title_new', "화장실 등록")}</h2>
+            <div className="flex items-center gap-3 mb-6">
+                <button
+                    onClick={() => window.location.hash = '#/'}
+                    className="p-2 -ml-2 text-text-main dark:text-text-light hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                >
+                    <ArrowRight className="w-6 h-6 rotate-180" />
+                </button>
+                <h2 className="text-2xl font-black dark:text-white">{editId ? t('submit_page_title_edit', "화장실 수정") : t('submit_page_title_new', "화장실 등록")}</h2>
+            </div>
             <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
                     <button onClick={() => setStep('location')} className="w-full py-4 bg-primary text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md"><Crosshair className="w-4 h-4" /> {formData.address ? t('submit_edit_location', "위치 수정하기") : t('submit_find_location', "지도에서 위치 찾기")}</button>

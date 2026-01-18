@@ -42,7 +42,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack, darkMode, on
     return (
         <TextLayout className="p-0 pb-20 relative bg-gray-50 dark:bg-gray-900">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-4 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-700">
+            <div className="bg-surface dark:bg-surface-dark px-4 pb-3 pt-3 flex items-center gap-4 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-700">
                 <button onClick={onBack} className="p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
                     <ArrowLeft className="w-6 h-6" />
                 </button>

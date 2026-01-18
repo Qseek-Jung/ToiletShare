@@ -415,7 +415,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
     }
 
     return (
-        <TextLayout className="pb-64 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+        <TextLayout className="pb-64 p-4">
             <div className="flex items-center gap-3 mb-6">
                 <button
                     onClick={() => window.location.hash = '#/'}

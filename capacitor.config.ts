@@ -4,8 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.toilet.korea',
   appName: '대똥단결',
   webDir: 'dist',
+  // FIX: Webview background #38bdf8 to match splash (seamless startup)
+  // Note: contentInset: 'never' in ios config prevents this blue from showing as gaps
+  backgroundColor: "#38bdf8",
   ios: {
-    contentInset: 'always',
+    // FIX: vital to prevent iOS from shifting content down when keyboard opens
+    contentInset: 'never',
     scheme: 'capacitor'
   },
   server: {
@@ -19,6 +23,18 @@ const config: CapacitorConfig = {
   },
 
   plugins: {
+    Keyboard: {
+      // FIX: Prevent native scroll view resizing flickering
+      resize: "body",
+      style: "DARK",
+      resizeOnFullScreen: true,
+    },
+    SplashScreen: {
+      backgroundColor: "#38bdf8", // FIXED: Splash stays Blue
+      launchShowDuration: 3000,
+      launchAutoHide: true,
+      androidStyleGravity: 'CENTER',
+    },
     GoogleAuth: {
       scopes: ["profile", "email"],
       serverClientId: "889382704312-28t3jni1q6qtsv3qo690ievb3u74v0n3.apps.googleusercontent.com",

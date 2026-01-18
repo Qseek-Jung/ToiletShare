@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 export const iOSDebugger: React.FC = () => {
-    const [isVisible, setIsVisible] = useState(true);
     const [metrics, setMetrics] = useState<{
         // Scroll & Position
         windowScrollY: number;
@@ -87,8 +86,6 @@ export const iOSDebugger: React.FC = () => {
     };
 
     useEffect(() => {
-        if (!isVisible) return;
-
         updateMetrics();
         const interval = setInterval(updateMetrics, 500); // 0.5초마다 업데이트
 
@@ -100,9 +97,7 @@ export const iOSDebugger: React.FC = () => {
             window.removeEventListener('resize', updateMetrics);
             window.removeEventListener('scroll', updateMetrics);
         };
-    }, [isVisible]);
-
-    if (!isVisible) return null;
+    }, []);
 
     const hasLayoutGap = metrics.windowScrollY > 0 ||
         metrics.visualViewportOffsetTop > 0 ||
@@ -112,9 +107,6 @@ export const iOSDebugger: React.FC = () => {
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-black/95 text-white p-3 font-mono text-xs border-b-2 border-red-500 select-none backdrop-blur-sm">
             <div className="flex justify-between items-center mb-2">
                 <div className="font-bold text-yellow-400">🔍 iOS Layout Debugger V115</div>
-                <button onClick={() => setIsVisible(false)} className="text-white bg-red-500/20 p-1 rounded hover:bg-red-500/40">
-                    <X className="w-4 h-4" />
-                </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[10px]">

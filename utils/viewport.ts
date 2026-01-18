@@ -16,33 +16,39 @@ export const lockViewportHeight = () => {
     const updateAppHeight = () => {
         const h = getViewportHeight();
         document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
+        console.log(`[VIEWPORT] Updated --app-height to ${Math.round(h)}px | innerHeight: ${window.innerHeight}px | visualViewport: ${window.visualViewport?.height}px`);
         return h;
     };
 
     // Initial setup
+    console.log('[VIEWPORT] lockViewportHeight initialized');
     updateAppHeight();
 
     // Handle visualViewport resize (iOS keyboard, orientation, etc)
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
+            console.log('[VIEWPORT] visualViewport resize event');
             updateAppHeight();
         });
     }
 
     // Fallback to window resize for older browsers
     window.addEventListener('resize', () => {
+        console.log('[VIEWPORT] window resize event');
         updateAppHeight();
     });
 
     // Scroll guard: prevent iOS from shifting the container
     window.addEventListener('scroll', () => {
         if (window.scrollY !== 0) {
+            console.warn(`[VIEWPORT] ⚠️ Scroll detected! scrollY: ${window.scrollY}px - Resetting to 0`);
             window.scrollTo(0, 0);
         }
     }, { passive: false });
 
     // Orientation change: Force immediate update
     window.addEventListener('orientationchange', () => {
+        console.log('[VIEWPORT] Orientation change detected');
         setTimeout(() => {
             updateAppHeight();
             resetViewport();

@@ -2678,8 +2678,7 @@ export default function App() {
                             </div>
                         </div>
                     </div>
-                )}
-                <iOSDebugger /></div>
+                )}</div>
 
         </GoogleMapsProvider>
     );

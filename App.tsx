@@ -46,7 +46,7 @@ import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
 
 
-import { LayoutSniffer } from './components/LayoutSniffer';
+import { iOSDebugger } from './components/iOSDebugger';
 
 import { useTranslation } from 'react-i18next';
 import { lockViewportHeight, resetViewport } from './utils/viewport';
@@ -2679,7 +2679,7 @@ export default function App() {
                         </div>
                     </div>
                 )}
-                <LayoutSniffer /></div>
+                <iOSDebugger /></div>
 
         </GoogleMapsProvider>
     );

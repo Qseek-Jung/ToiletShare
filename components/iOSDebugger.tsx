@@ -104,7 +104,17 @@ export const iOSDebugger: React.FC = () => {
         metrics.rootTop > 0;
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-black/95 text-white p-3 font-mono text-xs border-b-2 border-red-500 select-none backdrop-blur-sm">
+        <div
+            className="fixed top-0 left-0 right-0 z-[99999] bg-black text-white p-2 font-mono text-[10px] border-b-2 border-red-500 select-none"
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 99999,
+                pointerEvents: 'auto'
+            }}
+        >
             <div className="flex justify-between items-center mb-2">
                 <div className="font-bold text-yellow-400">🔍 iOS Layout Debugger V115</div>
             </div>

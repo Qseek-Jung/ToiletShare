@@ -88,32 +88,45 @@ export function lockViewportHeight() {
  * modifying the viewport meta tag and triggering a resize event.
  */
 export const resetViewport = () => {
-    // 1. Force Scroll Reset
+    console.log('[VIEWPORT] 🔧 resetViewport() called');
+    console.log(`[VIEWPORT] Current state BEFORE reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height}`);
+
+    // 1. Force Scroll Reset (Multiple methods)
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
-
-    // 2. Force iOS to recalculate viewport by manipulating meta tag
-    const viewport = document.querySelector('meta[name="viewport"]');
-    if (viewport) {
-        const content = viewport.getAttribute('content');
-        // Temporarily change and revert to trigger recalculation
-        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
-
-        // Force reflow
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        document.body.offsetHeight;
-
-        // Restore original
-        if (content) {
-            viewport.setAttribute('content', content);
-        }
+    if (window.visualViewport) {
+        window.visualViewport.offsetTop = 0; // Try to reset visualViewport offset
     }
 
-    // 3. Update app height based on current viewport
-    const h = window.visualViewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
+    // 2. AGGRESSIVE: Force iOS to recalculate viewport by meta tag manipulation
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+        const originalContent = viewport.getAttribute('content');
+        console.log('[VIEWPORT] Temporarily removing viewport meta...');
 
-    // 4. Dispatch resize event to wake up any lazy listeners
+        // STEP 1: Remove viewport meta completely
+        viewport.setAttribute('content', '');
+        document.body.offsetHeight; // Force reflow
+
+        // STEP 2: Set to minimal scale
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0');
+        document.body.offsetHeight; // Force reflow
+
+        // STEP 3: Restore original
+        if (originalContent) {
+            viewport.setAttribute('content', originalContent);
+        }
+        document.body.offsetHeight; // Force reflow
+    }
+
+    // 3. Force window resize event to trigger height recalculation
     window.dispatchEvent(new Event('resize'));
+
+    // 4. Update --app-height to full viewport
+    const finalHeight = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${finalHeight}px`);
+
+    console.log(`[VIEWPORT] State AFTER reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height} --app-height=${finalHeight}px`);
+    console.log('[VIEWPORT] ✅ resetViewport() complete');
 };

@@ -19,7 +19,9 @@ export function lockViewportHeight() {
         const visualH = window.visualViewport?.height ?? innerH;
 
         // iOS keyboard detection: visualViewport가 innerHeight보다 작으면 키보드가 열린 상태
-        const keyboardIsOpen = visualH < innerH - 20; // 20px threshold for detection
+        const keyboardIsOpen = visualH < innerH - 5; // 5px threshold for detection
+
+        console.log(`[VIEWPORT] Keyboard state: ${keyboardIsOpen ? 'OPEN' : 'CLOSED'} | visualH=${visualH} innerH=${innerH} diff=${innerH - visualH}`);
 
         // Keyboard state change detection
         if (keyboardWasOpen && !keyboardIsOpen) {
@@ -27,6 +29,12 @@ export function lockViewportHeight() {
             console.log('[VIEWPORT] ⚠️ Keyboard closed detected! Triggering resetViewport()');
             setTimeout(() => {
                 resetViewport();
+                // Force another reset after iOS animation completes
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                }, 300);
             }, 100);
         }
         keyboardWasOpen = keyboardIsOpen;

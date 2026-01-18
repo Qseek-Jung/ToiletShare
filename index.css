@@ -23,6 +23,11 @@ html,
 body {
   /* FIX: Default matches Splash Screen (Brand Blue) to prevent white flash */
   background-color: #38bdf8;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Dark mode: explicit background for safe-area coverage */
@@ -33,17 +38,16 @@ html.dark body {
 }
 
 #root {
-  /* Override height with CSS var for iOS viewport lock */
-  height: var(--app-height, 100dvh);
+  /* Use dynamic height from viewport management */
+  width: 100%;
+  height: var(--app-height, 100vh);
   font-family: 'Noto Sans KR', sans-serif;
   @apply bg-background text-text-main transition-colors duration-300;
   /* Ensure root covers the blue body background */
   background-color: var(--background, #ffffff);
-
-  /* FIX: Ensure root stays anchored to the top of the visual viewport */
-  position: fixed;
-  inset: 0;
   overflow: hidden;
+  /* Ensure we're at the top */
+  position: relative;
 }
 
 /* Smooth scrolling */
@@ -56,15 +60,6 @@ html {
 
 body {
   overscroll-behavior-y: none;
-  /* FIX: WebView white gap - position fixed covers entire viewport including safe-area */
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
 }
 
 /* Custom animations for React transitions */

@@ -2143,6 +2143,7 @@ export default function App() {
 
     return (
         <GoogleMapsProvider>
+            <iOSDebugger />
             <div className={`w-full h-full overflow-hidden flex flex-col font-sans relative ${darkMode && !currentHash.startsWith('#/admin') ? 'dark bg-gray-900' : 'bg-white'}`}>
                 {/* EXIT CONFIRMATION MODAL */}
                 {showExitModal && (

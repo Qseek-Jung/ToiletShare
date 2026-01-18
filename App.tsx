@@ -538,23 +538,24 @@ export default function App() {
                 }
             }
 
-            if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
-                try {
-                    // Force the background with !important to override html.dark CSS
-                    document.documentElement.style.setProperty('background-color', bgColor, 'important');
-                    document.body.style.setProperty('background-color', bgColor, 'important');
+            // Safety: If no bg found, don't set anything (let CSS handle it)
+            if (!bgColor || bgColor === 'rgba(0, 0, 0, 0)') return;
 
-                    console.log('🏗️ [Build 112] BG Sync:', {
-                        extracted: bgColor,
-                        target: targetId,
-                        innerH: window.innerHeight,
-                        rootH: document.getElementById('root')?.offsetHeight
-                    });
-                } catch (e) {
-                    console.error('[Build 112] Sync failed:', e);
-                }
+            try {
+                // Force the background with !important to override html.dark CSS
+                document.documentElement.style.setProperty('background-color', bgColor, 'important');
+                document.body.style.setProperty('background-color', bgColor, 'important');
+
+                console.log('🏗️ [Build 113] BG Sync:', {
+                    extracted: bgColor,
+                    target: targetId,
+                    innerH: window.innerHeight,
+                    rootH: document.getElementById('root')?.offsetHeight
+                });
+            } catch (e) {
+                console.error('[Build 113] Sync failed:', e);
             }
-        }, 200);
+        }, 50); // Reduced from 200ms to 50ms to minimize white flash
     }, [showSplash, isSubmitMapOpen]);
 
     useEffect(() => {
@@ -562,10 +563,6 @@ export default function App() {
         const handleLayoutReset = () => {
             syncBackground();
             resetViewport();
-            // Force safe-area recalculation on iOS
-            setTimeout(resetViewport, 50);
-            setTimeout(resetViewport, 200);
-            setTimeout(resetViewport, 500); // Final check for late shifts
         };
 
         window.addEventListener('hashchange', handleLayoutReset);
@@ -577,8 +574,11 @@ export default function App() {
             setTimeout(resetViewport, 50);
         };
         const handleFocusOut = () => {
-            // Wait for keyboard animation to finish
-            setTimeout(handleLayoutReset, 250);
+            // Wait for keyboard animation to finish (approx 300ms on iOS)
+            setTimeout(() => {
+                resetViewport();
+                syncBackground();
+            }, 300);
         };
 
         window.addEventListener('focusin', handleFocusIn);

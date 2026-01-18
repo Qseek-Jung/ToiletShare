@@ -560,35 +560,35 @@ export default function App() {
 
     useEffect(() => {
         syncBackground();
+
         const handleLayoutReset = () => {
             syncBackground();
             resetViewport();
         };
 
-        window.addEventListener('hashchange', handleLayoutReset);
-        window.addEventListener('popstate', handleLayoutReset);
-
-        // BUILD 112: Global scroll reset when keyboard appears/dismisses
-        const handleFocusIn = () => {
-            resetViewport();
-            setTimeout(resetViewport, 50);
-        };
+        // BUILD 114: Simplified keyboard handling
+        // Just wait for keyboard to finish animating, then reset
+        let keyboardTimeout: NodeJS.Timeout;
         const handleFocusOut = () => {
-            // Wait for keyboard animation to finish (approx 300ms on iOS)
-            setTimeout(() => {
+            // Clear any pending resets
+            if (keyboardTimeout) clearTimeout(keyboardTimeout);
+
+            // Wait for iOS keyboard animation to complete (typically 300ms)
+            keyboardTimeout = setTimeout(() => {
                 resetViewport();
                 syncBackground();
-            }, 300);
+            }, 350);
         };
 
-        window.addEventListener('focusin', handleFocusIn);
+        window.addEventListener('hashchange', handleLayoutReset);
+        window.addEventListener('popstate', handleLayoutReset);
         window.addEventListener('focusout', handleFocusOut);
 
         return () => {
             window.removeEventListener('hashchange', handleLayoutReset);
             window.removeEventListener('popstate', handleLayoutReset);
-            window.removeEventListener('focusin', handleFocusIn);
             window.removeEventListener('focusout', handleFocusOut);
+            if (keyboardTimeout) clearTimeout(keyboardTimeout);
         };
     }, [syncBackground, currentHash]);
 

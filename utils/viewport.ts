@@ -1,111 +1,90 @@
 /**
- * Lock viewport height to prevent iOS Safari dynamic resizing
+ * iOS Viewport Management - Build 114
  * 
  * Strategy:
- * - Use visualViewport.height (more accurate than window.innerHeight)
- * - Filter out small changes (keyboard, temporary UI)
- * - Multi-phase initialization for iOS stabilization
+ * - Use visualViewport.height as primary source (more reliable than window.innerHeight on iOS)
+ * - Dynamically update --app-height when viewport changes
+ * - Force iOS to recalculate viewport after keyboard dismissal
  */
+
 export const lockViewportHeight = () => {
-    let maxH = 0;
-    let lastW = window.innerWidth;
-
-    const getH = () => window.visualViewport?.height ?? window.innerHeight;
-
-    const set = (h: number) => {
-        if (h > maxH) maxH = h;
-        document.documentElement.style.setProperty('--app-height', `${Math.round(maxH)}px`);
+    const getViewportHeight = () => {
+        // Prefer visualViewport (iOS 13+) over window.innerHeight
+        return window.visualViewport?.height ?? window.innerHeight;
     };
 
-    const init = () => {
-        const h = getH();
-        if (h > maxH) {
-            maxH = h;
-            set(maxH);
-        }
+    const updateAppHeight = () => {
+        const h = getViewportHeight();
+        document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
+        return h;
     };
 
-    // Multi-phase initialization: iOS stabilizes viewport height asynchronously
-    init();
-    requestAnimationFrame(init);
-    setTimeout(init, 50);
-    setTimeout(init, 200); // Late catch for safe-area insets
+    // Initial setup
+    updateAppHeight();
 
-    // Handle resize events with filtering
-    const onResize = () => {
-        const h = getH();
-        const w = window.innerWidth;
-        const isOrientationChange = Math.abs(w - lastW) > 50;
+    // Handle visualViewport resize (iOS keyboard, orientation, etc)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            updateAppHeight();
+        });
+    }
 
-        if (isOrientationChange) {
-            maxH = h; // Reset latch on rotation
-            lastW = w;
-            set(maxH);
-            resetViewport();
-        } else if (h > maxH + 5) {
-            // Expansion detected (e.g. status bar hidden or safe area resolved)
-            maxH = h;
-            set(maxH);
-        }
-        // Shrinks (h < maxH) are ignored (keyboard/temp UI)
-    };
+    // Fallback to window resize for older browsers
+    window.addEventListener('resize', () => {
+        updateAppHeight();
+    });
 
-    // Scroll guard: prevent iOS from shifting the container up/down
-    window.addEventListener('scroll', (e) => {
+    // Scroll guard: prevent iOS from shifting the container
+    window.addEventListener('scroll', () => {
         if (window.scrollY !== 0) {
             window.scrollTo(0, 0);
         }
     }, { passive: false });
 
-    // Orientation change: Force update with delay
+    // Orientation change: Force immediate update
     window.addEventListener('orientationchange', () => {
         setTimeout(() => {
-            const h = getH();
-            maxH = h;
-            set(maxH);
-        }, 150);
+            updateAppHeight();
+            resetViewport();
+        }, 100);
     });
-
-    // Listen to both visualViewport and window resize
-    window.visualViewport?.addEventListener('resize', onResize);
-    window.addEventListener('resize', onResize);
 
     // Initial scroll reset
     window.scrollTo(0, 0);
 };
 
 /**
- * Force scroll reset and layout recalculation for iOS stability
+ * Force viewport recalculation for iOS stability
+ * This function forces iOS to re-evaluate the viewport size by temporarily
+ * modifying the viewport meta tag and triggering a resize event.
  */
 export const resetViewport = () => {
-    // 1. Force Scroll Reset (Immediate)
+    // 1. Force Scroll Reset
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
 
-    // 2. Reset Visual Viewport if available (iOS specific)
-    if (window.visualViewport) {
-        // This effectively resets the pinch-zoom and scroll offset
-        // but checking offsetTop is safer
-        if (window.visualViewport.offsetTop > 0) {
-            window.scrollTo(0, 0);
+    // 2. Force iOS to recalculate viewport by manipulating meta tag
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+        const content = viewport.getAttribute('content');
+        // Temporarily change and revert to trigger recalculation
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+
+        // Force reflow
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        document.body.offsetHeight;
+
+        // Restore original
+        if (content) {
+            viewport.setAttribute('content', content);
         }
     }
 
-    // 3. Force Layout Recalculation (Invisible)
-    const root = document.getElementById('root');
-    if (root) {
-        // Toggle padding slightly to force layout engine to re-evaluate height
-        // This is less intrusive than 'display: none'
-        const currentPad = root.style.paddingBottom;
-        root.style.paddingBottom = '1px';
+    // 3. Update app height based on current viewport
+    const h = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
 
-        // Trigger reflow
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        root.offsetHeight;
-
-        // Revert
-        root.style.paddingBottom = currentPad;
-    }
+    // 4. Dispatch resize event to wake up any lazy listeners
+    window.dispatchEvent(new Event('resize'));
 };
-

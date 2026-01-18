@@ -102,7 +102,7 @@ export const LayoutSniffer: React.FC = () => {
             >
                 <div className="flex items-center gap-1">
                     <Move className="w-3 h-3" />
-                    <span className="font-bold">LAYOUT SNIFFER (V113)</span>
+                    <span className="font-bold">LAYOUT SNIFFER (V114)</span>
                 </div>
                 <button onClick={() => setIsVisible(false)} className="text-white bg-red-500/20 p-1 rounded hover:bg-red-500/40 transition-colors">
                     <X className="w-3 h-3" />

@@ -16,6 +16,7 @@ import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { calculateDistance, compareVersions } from './utils';
 import { PoopIcon } from './components/Icons';
 import { AdManager } from './components/AdManager';
@@ -50,6 +51,7 @@ import { iOSDebugger } from './components/iOSDebugger';
 
 import { useTranslation } from 'react-i18next';
 import { lockViewportHeight, resetViewport } from './utils/viewport';
+import { logger } from './utils/logger';
 
 // Declaration for Google Identity Services & Maps & Social Logins
 declare global {
@@ -107,7 +109,18 @@ export default function App() {
     // Lock viewport height on mount (prevent iOS 898px→839px regression)
     useEffect(() => {
         lockViewportHeight();
+        // Init Logger
+        logger.init();
     }, []);
+
+    // FIX: Sync 'dark' class to HTML element
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [darkMode]);
 
     // Record Visit (Once per session)
     useEffect(() => {
@@ -524,18 +537,52 @@ export default function App() {
         setTimeout(() => {
             let bgColor = '';
             let targetId = '';
+            // Debug info
+            const debugInfo: any = {
+                hash: window.location.hash,
+                showSplash,
+                isSubmitMapOpen,
+                darkMode
+            };
 
             if (showSplash) {
-                // FIXED: Always use Brand Blue for Splash regardless of mode
+                // Splash always uses the brand blue regardless of mode
                 bgColor = '#38bdf8';
                 targetId = 'splash-screen-forced';
             } else if (!isSubmitMapOpen) {
-                const targetEl = document.getElementById('bottom-nav');
-                if (targetEl) {
-                    const style = window.getComputedStyle(targetEl);
-                    bgColor = style.backgroundColor;
-                    targetId = 'bottom-nav';
+                // After splash, set background based on light/dark mode
+                if (darkMode) {
+                    // Use dark menu color (same as bottom-nav dark background)
+                    const navEl = document.getElementById('bottom-nav');
+                    let navVisible = false;
+
+                    if (navEl) {
+                        const style = window.getComputedStyle(navEl);
+                        navVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                        debugInfo.navEl = { display: style.display, visible: navVisible, bg: style.backgroundColor };
+
+                        if (navVisible) {
+                            bgColor = style.backgroundColor; // dark surface color
+                            targetId = 'bottom-nav-dark';
+                        }
+                    }
+
+                    // Fallback if nav not found or hidden
+                    if (!bgColor) {
+                        bgColor = '#111827'; // fallback dark gray (slate-900)
+                        targetId = navEl ? 'fallback-dark-hidden-nav' : 'fallback-dark-no-nav';
+                    }
+                } else {
+                    bgColor = '#ffffff'; // light mode white background
+                    targetId = 'light-white';
                 }
+            }
+
+            // If checking fails or we want to revert to CSS default, remove the forced style
+            if (!showSplash && !bgColor && !isSubmitMapOpen) {
+                document.documentElement.style.removeProperty('background-color');
+                document.body.style.removeProperty('background-color');
+                return;
             }
 
             // Safety: If no bg found, don't set anything (let CSS handle it)
@@ -546,17 +593,39 @@ export default function App() {
                 document.documentElement.style.setProperty('background-color', bgColor, 'important');
                 document.body.style.setProperty('background-color', bgColor, 'important');
 
-                console.log('🏗️ [Build 113] BG Sync:', {
+                // BUILD 119: Sync theme-color meta tag for Status Bar area
+                // This fixes the "Blue space at the top" issue on iOS
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if (metaThemeColor) {
+                    metaThemeColor.setAttribute('content', bgColor);
+                }
+
+                // FIX: Status Bar Icon Color Sync (iOS/Android)
+                if (isNative) {
+                    // Style.Dark -> Light text (for dark backgrounds like Dark Mode or Blue Splash)
+                    // Style.Light -> Dark text (for light backgrounds)
+                    const statusBarStyle = (showSplash || darkMode) ? Style.Dark : Style.Light;
+                    StatusBar.setStyle({ style: statusBarStyle }).catch(() => { });
+
+                    // Optional: Set background color for Android
+                    if (bgColor.startsWith('#')) {
+                        StatusBar.setBackgroundColor({ color: bgColor }).catch(() => { });
+                    }
+                }
+
+                logger.log('🏗️ [Build 116] BG Sync:', {
                     extracted: bgColor,
                     target: targetId,
+                    debug: debugInfo,
+                    metaTheme: metaThemeColor?.getAttribute('content'),
                     innerH: window.innerHeight,
                     rootH: document.getElementById('root')?.offsetHeight
                 });
             } catch (e) {
-                console.error('[Build 113] Sync failed:', e);
+                logger.error('[Build 118] Sync failed:', e);
             }
         }, 50); // Reduced from 200ms to 50ms to minimize white flash
-    }, [showSplash, isSubmitMapOpen]);
+    }, [showSplash, isSubmitMapOpen, darkMode]);
 
     useEffect(() => {
         syncBackground();
@@ -571,11 +640,12 @@ export default function App() {
         // Keyboard detection is now handled automatically in viewport.ts via visualViewport resize events
 
         window.addEventListener('hashchange', handleLayoutReset);
-        window.addEventListener('popstate', handleLayoutReset);
+        // popstate listener removed to prevent infinite loop on back navigation
+        // window.addEventListener('popstate', handleLayoutReset);
 
         return () => {
             window.removeEventListener('hashchange', handleLayoutReset);
-            window.removeEventListener('popstate', handleLayoutReset);
+            // window.removeEventListener('popstate', handleLayoutReset);
         };
     }, [syncBackground, currentHash]);
 
@@ -592,6 +662,27 @@ export default function App() {
             lastAdRefreshTime.current = now;
         }
         // Else: Keep existing ad (stable key) -> No animation, no reload
+    }, [currentHash]);
+
+    // DEBUG: Log background colors only on navigation (Reduced noise)
+    useEffect(() => {
+        const logColors = () => {
+            const html = document.documentElement;
+            // const body = document.body;
+            // const root = document.getElementById('root');
+
+            const htmlBg = html.style.backgroundColor || window.getComputedStyle(html).backgroundColor;
+            const metaTheme = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+
+            console.log(`[BG_DEBUG] 🎨 HTML: ${htmlBg} | MetaTheme: ${metaTheme} | Path: ${window.location.hash}`);
+            console.log(`[VIEWPORT] 📏 Visual: ${window.visualViewport?.height} | Inner: ${window.innerHeight}`);
+        };
+
+        // Log initially and on every hash change
+        logColors();
+        // INTERVAL REMOVED as per user request to reduce noise
+        // const interval = setInterval(logColors, 2000); 
+        // return () => clearInterval(interval);
     }, [currentHash]);
     const [pendingUnlockToiletId, setPendingUnlockToiletId] = useState<string | null>(null);
 
@@ -2183,7 +2274,7 @@ export default function App() {
                         </div>
                         <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-widest drop-shadow-md mb-3">대똥단결</h1>
                         <p className="text-lg md:text-2xl font-bold opacity-90 tracking-tight">{t('splash_subtitle', '급똥으로 대동단결')}</p>
-                        <div className="absolute bottom-16 text-xs font-medium opacity-60">
+                        <div className="absolute bottom-16 pb-[env(safe-area-inset-bottom)] text-xs font-medium opacity-60">
                             Powered by Q
                         </div>
                     </div>

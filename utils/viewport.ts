@@ -12,16 +12,40 @@ let keyboardWasOpen = false;
 export function lockViewportHeight() {
     console.log('[VIEWPORT] lockViewportHeight initialized');
 
+    // Track maximum height seen to detect "stuck" states
+    let maxSeenHeight = window.innerHeight;
+
     // 현재 Visual Viewport 높이 기준으로 고정
     const updateHeight = () => {
         const innerH = window.innerHeight;
         // iOS에서 keyboard가 열려있으면 visualViewport.height가 줄어듬
         const visualH = window.visualViewport?.height ?? innerH;
 
+        // Update max seen height (only if plausible full screen)
+        if (visualH > maxSeenHeight) {
+            maxSeenHeight = visualH;
+        }
+
         // iOS keyboard detection: visualViewport가 innerHeight보다 작으면 키보드가 열린 상태
         const keyboardIsOpen = visualH < innerH - 5; // 5px threshold for detection
 
-        console.log(`[VIEWPORT] Keyboard state: ${keyboardIsOpen ? 'OPEN' : 'CLOSED'} | visualH=${visualH} innerH=${innerH} diff=${innerH - visualH}`);
+        // STUCK STATE DETECTION (New Build 117):
+        // Keyboard is closed (visualH ~= innerH) BUT height is significantly smaller than maxSeenHeight
+        // iOS often gets stuck at "Height - Bottom Safe Area" (e.g. 810 -> 763)
+        // Tightened threshold to 10px to catch this state.
+        const isStuck = !keyboardIsOpen && maxSeenHeight > 0 && (visualH < maxSeenHeight - 10);
+
+        console.log(`[VIEWPORT] State: ${keyboardIsOpen ? 'OPEN' : 'CLOSED'} | Stuck: ${isStuck} | visualH=${visualH} innerH=${innerH} maxH=${maxSeenHeight}`);
+
+        if (isStuck) {
+            if (isResetting) {
+                console.log('[VIEWPORT] ⏳ Skipping stuck detection (reset in progress)');
+                return;
+            }
+            console.warn('[VIEWPORT] ⚠️ Viewport stuck detected! Force resetting...');
+            resetViewport();
+            return;
+        }
 
         // Keyboard state change detection
         if (keyboardWasOpen && !keyboardIsOpen) {
@@ -40,7 +64,6 @@ export function lockViewportHeight() {
         keyboardWasOpen = keyboardIsOpen;
 
         document.documentElement.style.setProperty('--app-height', `${visualH}px`);
-        console.log(`[VIEWPORT] Updated --app-height to ${visualH}px | innerHeight: ${innerH}px | visualViewport: ${window.visualViewport?.height}px`);
         return visualH; // Return the calculated height
     };
 
@@ -88,6 +111,9 @@ export function lockViewportHeight() {
  * modifying the viewport meta tag and triggering a resize event.
  */
 export const resetViewport = () => {
+    if (isResetting) return;
+    isResetting = true;
+
     console.log('[VIEWPORT] 🔧 resetViewport() called');
     console.log(`[VIEWPORT] Current state BEFORE reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height}`);
 
@@ -97,6 +123,8 @@ export const resetViewport = () => {
     document.documentElement.scrollTop = 0;
 
     // 2. AGGRESSIVE: Force iOS to recalculate viewport by meta tag manipulation
+    // [DISABLED Build 119] This causes layout jumping/flashing.
+    /*
     const viewport = document.querySelector('meta[name="viewport"]');
     if (viewport) {
         const originalContent = viewport.getAttribute('content');
@@ -116,6 +144,7 @@ export const resetViewport = () => {
         }
         document.body.offsetHeight; // Force reflow
     }
+    */
 
     // 3. Force window resize event to trigger height recalculation
     window.dispatchEvent(new Event('resize'));
@@ -125,5 +154,8 @@ export const resetViewport = () => {
     document.documentElement.style.setProperty('--app-height', `${finalHeight}px`);
 
     console.log(`[VIEWPORT] State AFTER reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height} --app-height=${finalHeight}px`);
+    isResetting = false; // Reset flag
     console.log('[VIEWPORT] ✅ resetViewport() complete');
 };
+
+let isResetting = false;

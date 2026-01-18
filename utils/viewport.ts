@@ -78,15 +78,34 @@ export const lockViewportHeight = () => {
  * Force scroll reset and layout recalculation for iOS stability
  */
 export const resetViewport = () => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    // Force browser to recalculate fixed layouts
+    // 1. Force Scroll Reset (Immediate)
+    window.scrollTo(0, 0);
+    document.body.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+
+    // 2. Reset Visual Viewport if available (iOS specific)
+    if (window.visualViewport) {
+        // This effectively resets the pinch-zoom and scroll offset
+        // but checking offsetTop is safer
+        if (window.visualViewport.offsetTop > 0) {
+            window.scrollTo(0, 0);
+        }
+    }
+
+    // 3. Force Layout Recalculation (Invisible)
     const root = document.getElementById('root');
     if (root) {
-        root.style.transform = 'translateZ(0)'; // force layer promotion
+        // Toggle padding slightly to force layout engine to re-evaluate height
+        // This is less intrusive than 'display: none'
+        const currentPad = root.style.paddingBottom;
+        root.style.paddingBottom = '1px';
+
+        // Trigger reflow
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        root.offsetHeight;
+
+        // Revert
+        root.style.paddingBottom = currentPad;
     }
-    document.body.style.display = 'none';
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    document.body.offsetHeight; // trigger reflow
-    document.body.style.display = '';
 };
 

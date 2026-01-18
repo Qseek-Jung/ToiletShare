@@ -7,22 +7,37 @@
  * - Force iOS to recalculate viewport after keyboard dismissal
  */
 
-export const lockViewportHeight = () => {
-    const getViewportHeight = () => {
-        // Prefer visualViewport (iOS 13+) over window.innerHeight
-        return window.visualViewport?.height ?? window.innerHeight;
-    };
+let keyboardWasOpen = false;
 
-    const updateAppHeight = () => {
-        const h = getViewportHeight();
-        document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
-        console.log(`[VIEWPORT] Updated --app-height to ${Math.round(h)}px | innerHeight: ${window.innerHeight}px | visualViewport: ${window.visualViewport?.height}px`);
-        return h;
+export function lockViewportHeight() {
+    console.log('[VIEWPORT] lockViewportHeight initialized');
+
+    // 현재 Visual Viewport 높이 기준으로 고정
+    const updateHeight = () => {
+        const innerH = window.innerHeight;
+        // iOS에서 keyboard가 열려있으면 visualViewport.height가 줄어듬
+        const visualH = window.visualViewport?.height ?? innerH;
+
+        // iOS keyboard detection: visualViewport가 innerHeight보다 작으면 키보드가 열린 상태
+        const keyboardIsOpen = visualH < innerH - 20; // 20px threshold for detection
+
+        // Keyboard state change detection
+        if (keyboardWasOpen && !keyboardIsOpen) {
+            // Keyboard just closed! Force viewport reset
+            console.log('[VIEWPORT] ⚠️ Keyboard closed detected! Triggering resetViewport()');
+            setTimeout(() => {
+                resetViewport();
+            }, 100);
+        }
+        keyboardWasOpen = keyboardIsOpen;
+
+        document.documentElement.style.setProperty('--app-height', `${visualH}px`);
+        console.log(`[VIEWPORT] Updated --app-height to ${visualH}px | innerHeight: ${innerH}px | visualViewport: ${window.visualViewport?.height}px`);
+        return visualH; // Return the calculated height
     };
 
     // Initial setup
-    console.log('[VIEWPORT] lockViewportHeight initialized');
-    updateAppHeight();
+    updateHeight();
 
     // Handle visualViewport resize (iOS keyboard, orientation, etc)
     if (window.visualViewport) {

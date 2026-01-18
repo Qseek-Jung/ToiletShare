@@ -95,9 +95,6 @@ export const resetViewport = () => {
     window.scrollTo(0, 0);
     document.body.scrollTop = 0;
     document.documentElement.scrollTop = 0;
-    if (window.visualViewport) {
-        window.visualViewport.offsetTop = 0; // Try to reset visualViewport offset
-    }
 
     // 2. AGGRESSIVE: Force iOS to recalculate viewport by meta tag manipulation
     const viewport = document.querySelector('meta[name="viewport"]');

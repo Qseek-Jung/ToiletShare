@@ -43,14 +43,14 @@ export function lockViewportHeight() {
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
             console.log('[VIEWPORT] visualViewport resize event');
-            updateAppHeight();
+            updateHeight();
         });
     }
 
     // Fallback to window resize for older browsers
     window.addEventListener('resize', () => {
         console.log('[VIEWPORT] window resize event');
-        updateAppHeight();
+        updateHeight();
     });
 
     // Scroll guard: prevent iOS from shifting the container
@@ -63,11 +63,11 @@ export function lockViewportHeight() {
 
     // Orientation change: Force immediate update
     window.addEventListener('orientationchange', () => {
-        console.log('[VIEWPORT] Orientation change detected');
+        console.log('[VIEWPORT] orientationchange event');
         setTimeout(() => {
-            updateAppHeight();
-            resetViewport();
-        }, 100);
+            console.log('[VIEWPORT] Delayed update after orientationchange');
+            updateHeight();
+        }, 300);
     });
 
     // Initial scroll reset

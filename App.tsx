@@ -15,7 +15,8 @@ const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 
-import { PushNotifications } from '@capacitor/push-notifications';
+import { PushNotifications } from '@capacitor/push-notifications'; // Keep for type if needed, but logic uses FirebaseMessaging
+import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { calculateDistance, compareVersions } from './utils';
@@ -266,31 +267,28 @@ export default function App() {
         if (Capacitor.getPlatform() === 'web') return;
 
         try {
-            console.log('[NativeInit] 1. Requesting Push Permission...');
-            const currentPerm = await PushNotifications.checkPermissions();
+            console.log('[NativeInit] 1. Requesting Push Permission (FCM)...');
+            const currentPerm = await FirebaseMessaging.checkPermissions();
             console.log('[NativeInit] Current Push Permission:', currentPerm.receive);
 
             if (currentPerm.receive !== 'granted') {
-                const pushPerm = await PushNotifications.requestPermissions();
+                const pushPerm = await FirebaseMessaging.requestPermissions();
                 console.log('[NativeInit] Push Permission Request Result:', pushPerm.receive);
-                if (pushPerm.receive === 'granted') {
-                    console.log('[NativeInit] Push Granted. Registering...');
-                    await PushNotifications.register();
-                }
-            } else {
-                console.log('[NativeInit] Push already granted. Registering...');
-                await PushNotifications.register();
             }
 
-
+            console.log('[NativeInit] 2. Retrieving FCM Token...');
+            // Need to always call getToken on iOS/Android to ensure registration
+            const tokenResult = await FirebaseMessaging.getToken();
+            console.log('[NativeInit] FCM Token Retrieved:', tokenResult.token);
+            await handleTokenRefresh(tokenResult.token);
 
             console.log('[NativeInit] Waiting 1s before Location Permission...');
             await new Promise(r => setTimeout(r, 1000)); // Delay between prompts
 
-            console.log('[NativeInit] 2. Requesting Location Permission...');
+            console.log('[NativeInit] 3. Requesting Location Permission...');
             await Geolocation.requestPermissions();
 
-            console.log('[NativeInit] 3. Starting Private Service Init...');
+            console.log('[NativeInit] 4. Starting Private Service Init...');
             await notificationService.initialize();
 
             // Tiny delay before fetch
@@ -299,6 +297,21 @@ export default function App() {
             }, 500);
         } catch (e) {
             console.error('[NativeInit] Failed:', e);
+        }
+    };
+
+    const handleTokenRefresh = async (token: string) => {
+        console.log('FCM Token Refresh. Token:', token.substring(0, 10), '...');
+        localStorage.setItem('pending_push_token', token);
+        localStorage.setItem('push_token', token);
+
+        // CRITICAL: Save token to DB via Ref (Real-time access to user)
+        const currentUser = userRef.current;
+        if (currentUser && currentUser.id && currentUser.id !== 'guest') {
+            console.log('✅ [FCM] Saving token to DB for:', currentUser.id);
+            await db.savePushToken(currentUser.id, token);
+        } else {
+            console.log('⚠️ [FCM] User not ready yet. Token saved locally.');
         }
     };
 
@@ -311,34 +324,20 @@ export default function App() {
             initializeNative();
             initCrashlytics();
 
-            // Push Listeners
-            PushNotifications.addListener('registration', async (token) => {
-                console.log('Push Registration Success. Token:', token.value.substring(0, 10), '...');
-                localStorage.setItem('pending_push_token', token.value);
-                localStorage.setItem('push_token', token.value);
-
-                // CRITICAL: Save token to DB via Ref (Real-time access to user)
-                const currentUser = userRef.current;
-                if (currentUser && currentUser.id && currentUser.id !== 'guest') {
-                    console.log('✅ [Listener] Saving token to DB for:', currentUser.id);
-                    await db.savePushToken(currentUser.id, token.value);
-                } else {
-                    console.log('⚠️ [Listener] User not ready yet. Token saved locally.');
-                }
+            // Push Listeners (FirebaseMessaging)
+            FirebaseMessaging.addListener('tokenReceived', async (event) => {
+                await handleTokenRefresh(event.token);
             });
 
-            PushNotifications.addListener('registrationError', (error) => {
-                console.error('Push Registration Error:', error);
-            });
-
-            PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                console.log('Push Received:', notification);
+            // Note: FirebaseMessaging handles foreground notifications differently
+            FirebaseMessaging.addListener('notificationReceived', (event) => {
+                console.log('Push Received:', event.notification);
                 // Show In-App Toast
                 setNotificationToast({
                     show: true,
-                    title: notification.title || '알림',
-                    body: notification.body || '',
-                    data: notification.data
+                    title: event.notification.title || '알림',
+                    body: event.notification.body || '',
+                    data: event.notification.data
                 });
 
                 // Auto hide after 5 seconds
@@ -347,9 +346,9 @@ export default function App() {
                 }, 5000);
             });
 
-            PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-                console.log('Push Action:', notification);
-                const data = notification.notification.data;
+            FirebaseMessaging.addListener('notificationActionPerformed', (event) => {
+                console.log('Push Action:', event.notification);
+                const data = event.notification.data as any;
                 if (data?.toiletId) {
                     window.location.hash = `#/toilet/${data.toiletId}`;
                 } else {
@@ -371,14 +370,17 @@ export default function App() {
                 }
             });
 
+            // Clean up old PushNotifications listeners just in case
+            PushNotifications.removeAllListeners();
+
             return () => {
-                PushNotifications.removeAllListeners();
+                FirebaseMessaging.removeAllListeners();
                 LocalNotifications.removeAllListeners();
             };
         }
     }, []);
 
-    // Token Sync Effect: Handles token registration even if permission was granted before login
+    // Token Sync Effect
     useEffect(() => {
         const syncToken = async () => {
             const storedToken = localStorage.getItem('pending_push_token') || localStorage.getItem('push_token');
@@ -390,7 +392,6 @@ export default function App() {
                     if (!user.pushToken || user.pushToken !== storedToken) {
                         console.log(`[App] Syncing push token for user ${user.id}...`);
                         try {
-                            // Using savePushToken to ensure notification_enabled is true
                             await db.savePushToken(user.id, storedToken);
                             setUser(prev => ({ ...prev, pushToken: storedToken }));
                         } catch (e) {
@@ -399,25 +400,20 @@ export default function App() {
                     }
                 } else if (Capacitor.isNativePlatform()) {
                     // Retry Registration if missing
-                    console.log("[App] No local push token found. Forcing registration...");
+                    console.log("[App] No local push token found. Forcing FCM token fetch...");
                     try {
-                        const perm = await PushNotifications.checkPermissions();
-                        if (perm.receive === 'granted') {
-                            await PushNotifications.register();
-                        } else {
-                            // Optional: Request again? Might be annoying. Just log.
-                            console.warn("[App] Push permission not granted during sync check.");
+                        const tokenResult = await FirebaseMessaging.getToken();
+                        if (tokenResult && tokenResult.token) {
+                            await handleTokenRefresh(tokenResult.token);
                         }
                     } catch (e) {
-                        console.error("Retry registration failed:", e);
+                        console.warn("[App] Failed to auto-fetch FCM token:", e);
                     }
                 }
             }
         };
-        if (user.id) {
-            syncToken();
-        }
-    }, [user.id, user.role]);
+        syncToken();
+    }, [user.id]);
 
 
     // Restore session from localStorage on mount & Sync with Supabase

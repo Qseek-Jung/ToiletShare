@@ -12,6 +12,7 @@ def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCommunityHttp', :path => '../../node_modules/@capacitor-community/http'
+  pod 'CapacitorFirebaseMessaging', :path => '../../node_modules/@capacitor-firebase/messaging'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
   pod 'CapacitorBrowser', :path => '../../node_modules/@capacitor/browser'
   pod 'CapacitorDevice', :path => '../../node_modules/@capacitor/device'
@@ -33,8 +34,8 @@ target 'App' do
   capacitor_pods
   # Add your Pods here
 
-  pod 'Firebase/Crashlytics', '10.4.0' # Pin for Xcode 14.2 compatibility
-  pod 'Firebase/Analytics', '10.4.0'
+  pod 'Firebase/Crashlytics'
+  pod 'Firebase/Analytics'
   pod 'Alamofire', '5.6.4' # Pin for Xcode 14.2 compatibility
 end
 

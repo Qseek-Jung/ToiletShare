@@ -105,8 +105,30 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         // However, if we switched steps, the DOM element is new, so we must re-init.
         if (!window.google?.maps) return;
 
+        console.warn("=== Map Init Debug ===");
+        // console.warn("Key:", KAKAO_JAVASCRIPT_KEY ? `${KAKAO_JAVASCRIPT_KEY.substring(0, 5)}...` : "Missing (Empty String)");
+        // console.warn("Origin (window.location.href):", window.location.href);
+
+
+        // Simulator Default (San Francisco) Detection
+        // SF: ~37.7858, -122.4064
+        // If getting weird location, default to Seoul City Hall: 37.5665, 126.9780
+        let targetLat = formDataRef.current.lat;
+        let targetLng = formDataRef.current.lng;
+
+        // Reset if SF or 0,0
+        if ((Math.abs(targetLat - 37.7858) < 0.1 && Math.abs(targetLng + 122.4064) < 0.1) || (targetLat === 0 && targetLng === 0)) {
+            console.log("📍 Detected Simulator Default Location (SF). Defaulting to Seoul City Hall.");
+            targetLat = 37.5665;
+            targetLng = 126.9780;
+            // Update ref to avoid jump back
+            myLocationRef.current = { lat: targetLat, lng: targetLng };
+            // Note: We don't update formData/myLocation state immediately to avoid re-renders,
+            // but the map will start here.
+        }
+
         const map = new window.google.maps.Map(pickerMapRef.current, {
-            center: { lat: formDataRef.current.lat, lng: formDataRef.current.lng },
+            center: { lat: targetLat, lng: targetLng },
             zoom: 18,
             disableDefaultUI: true,
             fullscreenControl: false,
@@ -140,10 +162,10 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         pickerGoogleMap.current = map;
         // Removed center_changed listener to prevent re-rendering loop. We read center directly on submit.
 
-        const marker = new window.google.maps.Marker({ position: myLocationRef.current, map: map, icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: "#3B82F6", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 }, zIndex: 1 });
+        const marker = new window.google.maps.Marker({ position: { lat: targetLat, lng: targetLng }, map: map, icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: "#3B82F6", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 }, zIndex: 1 });
         pickerMarkerRef.current = marker;
 
-        const circle = new window.google.maps.Circle({ strokeColor: "#3B82F6", strokeOpacity: 0.3, strokeWeight: 1, fillColor: "#3B82F6", fillOpacity: 0.1, map: map, center: myLocationRef.current, radius: 30 });
+        const circle = new window.google.maps.Circle({ strokeColor: "#3B82F6", strokeOpacity: 0.3, strokeWeight: 1, fillColor: "#3B82F6", fillOpacity: 0.1, map: map, center: { lat: targetLat, lng: targetLng }, radius: 30 });
         pickerCircleRef.current = circle;
 
         // Build 55 Polish: Inject CSS to hide Branding/Terms (aesthetic request)
@@ -177,20 +199,6 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
                 if (window.google?.maps) initPickerMap();
                 else { const script = document.createElement("script"); script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&libraries=places&language=ko`; script.async = true; script.onload = initPickerMap; document.head.appendChild(script); }
 
-                // Also load Kakao SDK if not present for Geocoding (Free)
-                // @ts-ignore
-                if (!window.kakao?.maps?.services) {
-                    const kScript = document.createElement("script");
-                    kScript.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JAVASCRIPT_KEY}&libraries=services&autoload=false`;
-                    kScript.async = true;
-                    kScript.onload = () => {
-                        // @ts-ignore
-                        window.kakao.maps.load(() => {
-                            console.log("Kakao SDK loaded");
-                        });
-                    };
-                    document.head.appendChild(kScript);
-                }
             }, 100);
         }
     }, [step, initPickerMap]);
@@ -249,6 +257,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
 
             // Use Kakao Geocoder (Free) via Service
             const { reverseGeocodeKakao } = await import('../services/kakaoGeocoding');
+            console.warn(`[SubmitPage] Requesting Geocode for: ${lat}, ${lng}`);
             const addr = await reverseGeocodeKakao(lat, lng);
 
             if (addr) {

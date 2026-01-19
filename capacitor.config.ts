@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
   ios: {
     // FIX: vital to prevent iOS from shifting content down when keyboard opens
     contentInset: 'never',
-    scheme: 'capacitor'
+    // FIX: Use 'http' scheme (standard for Capacitor) - User must register 'http://localhost'
+    scheme: 'http'
   },
   server: {
     allowNavigation: [

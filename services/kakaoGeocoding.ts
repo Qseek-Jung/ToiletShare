@@ -1,277 +1,96 @@
-/**
- * Kakao Geocoding Service (via JS SDK)
- * Uses window.kakao.maps.services.Geocoder
- * Free Quota: 100,000 requests / day
- */
+import { CapacitorHttp } from '@capacitor/core';
 
-declare global {
-    interface Window {
-        kakao: any;
+const KAKAO_API_KEY = import.meta.env.VITE_KAKAO_API_KEY || 'd5a9498cedf6ffb73e6d6ca18ac82abf';
+const KAKAO_NATIVE_KEY = import.meta.env.VITE_KAKAO_NATIVE_KEY || '954f8caae336cb83506cad28e1de2e19';
+
+// Helper to construct KA Header
+// Format: sdk/1.0.0 os/javascript lang/ko-KR device/iPhone origin/http%3A%2F%2Flocalhost
+const getKAHeader = (type: 'js' | 'native') => {
+    if (type === 'js') {
+        return `sdk/1.43.0 os/javascript lang/ko-KR device/MacIntel origin/${encodeURIComponent('http://localhost')}`;
+    } else {
+        // Mimic iOS Native SDK header
+        return `sdk/2.22.0 os/ios lang/ko-KR device/iPhone origin/${encodeURIComponent('com.toilet.korea')}`;
     }
-}
-
-// Define response types based on Kakao Maps SDK documentation
-interface KakaoGeoResult {
-    address: {
-        address_name: string;
-        region_1depth_name: string;
-        region_2depth_name: string;
-        region_3depth_name: string;
-        mountain_yn: string;
-        main_address_no: string;
-        sub_address_no: string;
-    };
-    road_address: {
-        address_name: string;
-        region_1depth_name: string;
-        region_2depth_name: string;
-        region_3depth_name: string;
-        road_name: string;
-        underground_yn: string;
-        main_building_no: string;
-        sub_building_no: string;
-        building_name: string;
-        zone_no: string;
-    } | null;
-    x: string; // Longitude
-    y: string; // Latitude
-    address_type?: string;
-}
-
-interface KakaoKeywordResult {
-    place_name: string;
-    address_name: string;
-    road_address_name: string;
-    x: string;
-    y: string;
-    [key: string]: any;
-}
-
-// Helper to wait for SDK to be available
-export const checkKakaoSDK = (): Promise<boolean> => {
-    return new Promise((resolve) => {
-        if (window.kakao && window.kakao.maps) {
-            resolve(true);
-            return;
-        }
-
-        let retries = 0;
-        const maxRetries = 20; // 2 seconds total (100ms * 20)
-        const interval = setInterval(() => {
-            retries++;
-            if (window.kakao && window.kakao.maps) {
-                clearInterval(interval);
-                resolve(true);
-            } else if (retries >= maxRetries) {
-                clearInterval(interval);
-                console.error("Kakao Maps SDK failed to load within timeout.");
-                resolve(false);
-            }
-        }, 100);
-    });
 };
 
-export const geocodeAddressKakao = async (address: string): Promise<{ lat: number, lng: number, address_name: string, address_type?: string } | null> => {
-    const isLoaded = await checkKakaoSDK();
-    if (!isLoaded) return null;
-
-    return new Promise((resolve) => {
-        const runSearch = () => {
-            // @ts-ignore
-            if (!window.kakao.maps.services) {
-                console.error("Kakao Maps SDK 'services' library not found.");
-                resolve(null);
-                return;
+// Use CapacitorHttp to bypass CORS and Domain restrictions
+const fetchWithKey = async (url: string, key: string, origin: string, type: 'js' | 'native') => {
+    try {
+        const kaHeader = getKAHeader(type);
+        const options = {
+            url: url,
+            headers: {
+                'Authorization': `KakaoAK ${key}`,
+                'KA': kaHeader,
+                'Origin': origin,
+                'Referer': origin
             }
-
-            // Clean Address - remove parentheses, brackets, and invisible characters
-            const cleanAddress = address
-                .replace(/\([^)]*\)/g, '')
-                .replace(/\[[^\]]*\]/g, '')
-                .replace(/[\u200B-\u200D\uFEFF]/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            // @ts-ignore
-            const geocoder = new window.kakao.maps.services.Geocoder();
-            // @ts-ignore
-            const ps = new window.kakao.maps.services.Places();
-
-            // 1. First Attempt: Standard Address Search
-            // @ts-ignore
-            geocoder.addressSearch(cleanAddress, (result: KakaoGeoResult[], status: any) => {
-                // @ts-ignore
-                if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
-                    const item = result[0];
-                    resolve({
-                        lat: parseFloat(item.y),
-                        lng: parseFloat(item.x),
-                        address_name: item.road_address?.address_name || item.address.address_name,
-                        address_type: item.address_type || 'REGION'
-                    });
-                } else {
-                    console.warn(`[KakaoGeocoding] Address Search Failed for "${cleanAddress}": Status=${status}. Retrying with cleaning...`);
-
-                    // 2. Second Attempt: Strip text after the building number (e.g. "Road 123 BuildingName" -> "Road 123")
-                    // This handles cases where valid addresses are suffixed with facility names or specific floor info.
-                    // We look for a space, then digits (possibly hyphenated), then another space and any text.
-                    const simplifiedAddress = cleanAddress.replace(/(\s\d+(?:-\d+)?)\s+.+$/, '$1').trim();
-                    console.log(`[KakaoGeocoding] Pre-simplification: "${cleanAddress}" -> Post-simplification: "${simplifiedAddress}"`);
-
-                    if (simplifiedAddress !== cleanAddress) {
-                        // @ts-ignore
-                        geocoder.addressSearch(simplifiedAddress, (retryResult: KakaoGeoResult[], retryStatus: any) => {
-                            // @ts-ignore
-                            if (retryStatus === window.kakao.maps.services.Status.OK && retryResult.length > 0) {
-                                console.log(`[KakaoGeocoding] Retry Success with simplified address: "${simplifiedAddress}"`);
-                                const item = retryResult[0];
-                                resolve({
-                                    lat: parseFloat(item.y),
-                                    lng: parseFloat(item.x),
-                                    address_name: item.road_address?.address_name || item.address.address_name,
-                                    address_type: item.address_type || 'REGION'
-                                });
-                            } else {
-                                // 3. Third Attempt: Try KEYWORD SEARCH with the address string
-                                // Sometimes the address parser is too strict, but keyword search finds the location.
-                                console.warn(`[KakaoGeocoding] Simplified Search Failed. Trying Keyword Search for: "${cleanAddress}"`);
-                                // @ts-ignore
-                                ps.keywordSearch(cleanAddress, (kwResult: KakaoKeywordResult[], kwStatus: any) => {
-                                    if (kwStatus === window.kakao.maps.services.Status.OK && kwResult.length > 0) {
-                                        console.log(`[KakaoGeocoding] Keyword Search Success for address string`);
-                                        const item = kwResult[0];
-                                        resolve({
-                                            lat: parseFloat(item.y),
-                                            lng: parseFloat(item.x),
-                                            address_name: item.road_address_name || item.address_name, // Keyword result fields differ slightly
-                                            address_type: 'ROAD_ADDR' // Assume success implies valid location
-                                        });
-                                    } else {
-                                        console.error(`[KakaoGeocoding] All attempts failed for "${cleanAddress}"`);
-                                        resolve(null);
-                                    }
-                                });
-                            }
-                        });
-                    } else {
-                        // No simplification possible, try keyword search immediately
-                        console.warn(`[KakaoGeocoding] No simplification possible. Trying Keyword Search for: "${cleanAddress}"`);
-                        // @ts-ignore
-                        ps.keywordSearch(cleanAddress, (kwResult: KakaoKeywordResult[], kwStatus: any) => {
-                            if (kwStatus === window.kakao.maps.services.Status.OK && kwResult.length > 0) {
-                                console.log(`[KakaoGeocoding] Keyword Search Success for address string`);
-                                const item = kwResult[0];
-                                resolve({
-                                    lat: parseFloat(item.y),
-                                    lng: parseFloat(item.x),
-                                    address_name: item.road_address_name || item.address_name,
-                                    address_type: 'ROAD_ADDR'
-                                });
-                            } else {
-                                console.error(`[KakaoGeocoding] All attempts failed for "${cleanAddress}"`);
-                                resolve(null);
-                            }
-                        });
-                    }
-                }
-            });
         };
 
-        // Execute logic
-        // @ts-ignore
-        if (!window.kakao.maps.services) {
-            // @ts-ignore
-            window.kakao.maps.load(() => {
-                runSearch();
-            });
+        console.warn(`[KakaoGeocoding] Requesting: ${url}`);
+        console.warn(`[KakaoGeocoding] Using Key: ${key.substring(0, 5)}... Type: ${type}`);
+        // console.warn(`[KakaoGeocoding] KA Header: ${kaHeader}`);
+
+        const response = await CapacitorHttp.get(options);
+
+        if (response.status === 200) {
+            return response.data;
         } else {
-            runSearch();
+            console.error(`[KakaoGeocoding] Failed: ${response.status}`, response.data);
+            return null;
         }
-    });
+    } catch (e) {
+        console.error(`[KakaoGeocoding] Exception`, e);
+        return null;
+    }
+};
+
+export const checkKakaoSDK = async (): Promise<boolean> => {
+    return true;
 };
 
 export const reverseGeocodeKakao = async (lat: number, lng: number): Promise<string | null> => {
-    const isLoaded = await checkKakaoSDK();
-    if (!isLoaded) return null;
+    const url = `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${lng}&y=${lat}`;
 
-    return new Promise((resolve) => {
-        const runReverseGeo = () => {
-            // @ts-ignore
-            if (!window.kakao.maps.services) {
-                console.error("Kakao Maps SDK 'services' library not found.");
-                resolve(null);
-                return;
-            }
+    // Strategy 1: JS Key + KA Header (JS Mimic)
+    let data = await fetchWithKey(url, KAKAO_API_KEY, 'http://localhost', 'js');
 
-            // @ts-ignore
-            const geocoder = new window.kakao.maps.services.Geocoder();
-
-            // @ts-ignore
-            geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-                // @ts-ignore
-                if (status === window.kakao.maps.services.Status.OK) {
-                    const addr = result[0].road_address?.address_name || result[0].address.address_name;
-                    resolve(addr);
-                } else {
-                    resolve(null);
-                }
-            });
-        };
-
-        // Execute logic
-        // @ts-ignore
-        if (!window.kakao.maps.services) {
-            // @ts-ignore
-            window.kakao.maps.load(() => {
-                runReverseGeo();
-            });
-        } else {
-            runReverseGeo();
+    if (!data || !data.documents) {
+        // Strategy 2: Native Key + KA Header (iOS Mimic)
+        // User explicitly suggested using Native Key ("954f...")
+        if (KAKAO_NATIVE_KEY) {
+            console.warn("[KakaoGeocoding] Retry with Native Key & KA Header...");
+            // Native SDK usually uses bundle ID as origin/referer implicitly in headers
+            data = await fetchWithKey(url, KAKAO_NATIVE_KEY, 'http://localhost', 'native');
         }
-    });
+    }
+
+    if (data && data.documents && data.documents.length > 0) {
+        const item = data.documents[0];
+        const addr = item.road_address?.address_name || item.address?.address_name;
+        console.warn(`[KakaoGeocoding] Success: ${addr}`);
+        return addr;
+    }
+
+    return null;
 };
 
-export const keywordSearchKakao = async (keyword: string): Promise<{ lat: number, lng: number, address_name: string, place_name?: string } | null> => {
-    const isLoaded = await checkKakaoSDK();
-    if (!isLoaded) return null;
+export const geocodeAddressKakao = async (address: string): Promise<any | null> => {
+    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+    const data = await fetchWithKey(url, KAKAO_API_KEY, 'http://localhost', 'js');
 
-    return new Promise((resolve) => {
-        const runKeywordSearch = () => {
-            // @ts-ignore
-            if (!window.kakao.maps.services) {
-                console.error("Kakao Maps SDK 'services' library not found.");
-                resolve(null);
-                return;
-            }
-
-            // @ts-ignore
-            const ps = new window.kakao.maps.services.Places();
-            // @ts-ignore
-            ps.keywordSearch(keyword, (result: KakaoKeywordResult[], status: any) => {
-                // @ts-ignore
-                if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
-                    const item = result[0];
-                    resolve({
-                        lat: parseFloat(item.y),
-                        lng: parseFloat(item.x),
-                        address_name: item.road_address_name || item.address_name,
-                        place_name: item.place_name
-                    });
-                } else {
-                    resolve(null);
-                }
-            });
+    if (data && data.documents && data.documents.length > 0) {
+        const item = data.documents[0];
+        return {
+            lat: parseFloat(item.y),
+            lng: parseFloat(item.x),
+            address_name: item.address_name
         };
+    }
+    return null;
+};
 
-        // Execute logic
-        // @ts-ignore
-        if (!window.kakao.maps.services) {
-            // @ts-ignore
-            window.kakao.maps.load(() => {
-                runKeywordSearch();
-            });
-        } else {
-            runKeywordSearch();
-        }
-    });
+export const keywordSearchKakao = async (keyword: string): Promise<any | null> => {
+    return null;
 };

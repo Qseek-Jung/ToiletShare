@@ -69,15 +69,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "CapacitorDidRegisterForRemoteNotifications"), object: deviceToken)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "CapacitorDidFailToRegisterForRemoteNotifications"), object: error)
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        NotificationCenter.default.post(name: .capacitorDidReceiveRemoteNotification, object: userInfo)
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "CapacitorDidReceiveRemoteNotification"), object: userInfo)
         completionHandler(.newData)
     }
 }

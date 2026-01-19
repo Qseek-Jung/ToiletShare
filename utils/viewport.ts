@@ -10,7 +10,7 @@
 let keyboardWasOpen = false;
 
 export function lockViewportHeight() {
-    console.log('[VIEWPORT] lockViewportHeight initialized');
+    // console.log('[VIEWPORT] lockViewportHeight initialized');
 
     // Track maximum height seen to detect "stuck" states
     let maxSeenHeight = window.innerHeight;
@@ -35,14 +35,14 @@ export function lockViewportHeight() {
         // Tightened threshold to 10px to catch this state.
         const isStuck = !keyboardIsOpen && maxSeenHeight > 0 && (visualH < maxSeenHeight - 10);
 
-        console.log(`[VIEWPORT] State: ${keyboardIsOpen ? 'OPEN' : 'CLOSED'} | Stuck: ${isStuck} | visualH=${visualH} innerH=${innerH} maxH=${maxSeenHeight}`);
+        // console.log(`[VIEWPORT] State: ${keyboardIsOpen ? 'OPEN' : 'CLOSED'} | Stuck: ${isStuck} | visualH=${visualH} innerH=${innerH} maxH=${maxSeenHeight}`);
 
         if (isStuck) {
             if (isResetting) {
-                console.log('[VIEWPORT] ⏳ Skipping stuck detection (reset in progress)');
+                // console.log('[VIEWPORT] ⏳ Skipping stuck detection (reset in progress)');
                 return;
             }
-            console.warn('[VIEWPORT] ⚠️ Viewport stuck detected! Force resetting...');
+            // console.warn('[VIEWPORT] ⚠️ Viewport stuck detected! Force resetting...');
             resetViewport();
             return;
         }
@@ -50,7 +50,7 @@ export function lockViewportHeight() {
         // Keyboard state change detection
         if (keyboardWasOpen && !keyboardIsOpen) {
             // Keyboard just closed! Force viewport reset
-            console.log('[VIEWPORT] ⚠️ Keyboard closed detected! Triggering resetViewport()');
+            // console.log('[VIEWPORT] ⚠️ Keyboard closed detected! Triggering resetViewport()');
             setTimeout(() => {
                 resetViewport();
                 // Force another reset after iOS animation completes
@@ -64,6 +64,7 @@ export function lockViewportHeight() {
         keyboardWasOpen = keyboardIsOpen;
 
         document.documentElement.style.setProperty('--app-height', `${visualH}px`);
+        console.log(`[SCROLL_DEBUG] Viewport Height Updated: ${visualH}px | innerH: ${innerH}px | Body overflow: ${document.body.style.overflow}`);
         return visualH; // Return the calculated height
     };
 
@@ -73,30 +74,30 @@ export function lockViewportHeight() {
     // Handle visualViewport resize (iOS keyboard, orientation, etc)
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
-            console.log('[VIEWPORT] visualViewport resize event');
+            // console.log('[VIEWPORT] visualViewport resize event');
             updateHeight();
         });
     }
 
     // Fallback to window resize for older browsers
     window.addEventListener('resize', () => {
-        console.log('[VIEWPORT] window resize event');
+        // console.log('[VIEWPORT] window resize event');
         updateHeight();
     });
 
     // Scroll guard: prevent iOS from shifting the container
     window.addEventListener('scroll', () => {
         if (window.scrollY !== 0) {
-            console.warn(`[VIEWPORT] ⚠️ Scroll detected! scrollY: ${window.scrollY}px - Resetting to 0`);
+            // console.warn(`[VIEWPORT] ⚠️ Scroll detected! scrollY: ${window.scrollY}px - Resetting to 0`);
             window.scrollTo(0, 0);
         }
     }, { passive: false });
 
     // Orientation change: Force immediate update
     window.addEventListener('orientationchange', () => {
-        console.log('[VIEWPORT] orientationchange event');
+        // console.log('[VIEWPORT] orientationchange event');
         setTimeout(() => {
-            console.log('[VIEWPORT] Delayed update after orientationchange');
+            // console.log('[VIEWPORT] Delayed update after orientationchange');
             updateHeight();
         }, 300);
     });
@@ -114,8 +115,8 @@ export const resetViewport = () => {
     if (isResetting) return;
     isResetting = true;
 
-    console.log('[VIEWPORT] 🔧 resetViewport() called');
-    console.log(`[VIEWPORT] Current state BEFORE reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height}`);
+    // console.log('[VIEWPORT] 🔧 resetViewport() called');
+    // console.log(`[VIEWPORT] Current state BEFORE reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height}`);
 
     // 1. Force Scroll Reset (Multiple methods)
     window.scrollTo(0, 0);
@@ -128,7 +129,7 @@ export const resetViewport = () => {
     const viewport = document.querySelector('meta[name="viewport"]');
     if (viewport) {
         const originalContent = viewport.getAttribute('content');
-        console.log('[VIEWPORT] Temporarily removing viewport meta...');
+        // console.log('[VIEWPORT] Temporarily removing viewport meta...');
 
         // STEP 1: Remove viewport meta completely
         viewport.setAttribute('content', '');
@@ -153,9 +154,9 @@ export const resetViewport = () => {
     const finalHeight = window.visualViewport?.height ?? window.innerHeight;
     document.documentElement.style.setProperty('--app-height', `${finalHeight}px`);
 
-    console.log(`[VIEWPORT] State AFTER reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height} --app-height=${finalHeight}px`);
+    // console.log(`[VIEWPORT] State AFTER reset: innerH=${window.innerHeight} visualH=${window.visualViewport?.height} --app-height=${finalHeight}px`);
     isResetting = false; // Reset flag
-    console.log('[VIEWPORT] ✅ resetViewport() complete');
+    // console.log('[VIEWPORT] ✅ resetViewport() complete');
 };
 
 let isResetting = false;

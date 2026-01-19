@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { adMobService } from '../services/admob';
-import { X } from 'lucide-react';
+import { X, Volume2, VolumeX } from 'lucide-react';
 import { dbSupabase } from '../services/db_supabase';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
@@ -38,6 +38,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
     const [playlistIds, setPlaylistIds] = useState<string[]>([]);
     const [clickUrls, setClickUrls] = useState<string[]>([]); // NEW: Click-through URLs
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0); // NEW: Current video in playlist
+    const [isMuted, setIsMuted] = useState(false); // Default: Sound ON
 
     // Config State
     const [config, setConfig] = useState<any>(null);
@@ -60,6 +61,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             setPlaylistIds([]);
             setClickUrls([]);
             setCurrentVideoIndex(0);
+            setIsMuted(false); // Default Sound ON
 
             // Refs RESET
             playlistIdsRef.current = [];
@@ -279,7 +281,27 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         console.log('📽️ [AdManager] MP4 Can Play (Buffered)');
         // Try to force play if it hasn't started
         if (videoRef.current && !isPlaying) {
-            videoRef.current.play().catch(e => console.error('📽️ [AdManager] AutoPlay Blocked:', e));
+            videoRef.current.play().catch(e => {
+                console.error('📽️ [AdManager] AutoPlay Blocked:', e);
+                // If blocked (likely due to unmuted), fallback to muted and let user unmute
+                if (!isMuted) {
+                    setIsMuted(true);
+                    setTimeout(() => {
+                        if (videoRef.current) videoRef.current.play().catch(() => { });
+                    }, 100);
+                }
+            });
+        }
+    };
+
+    const toggleMute = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsMuted(prev => !prev);
+
+        // Handle YouTube
+        if (showYoutube && playerRef.current) {
+            if (isMuted) playerRef.current.unMute();
+            else playerRef.current.mute();
         }
     };
 
@@ -426,7 +448,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                             ref={videoRef}
                             src={playlistIds[0]}
                             autoPlay
-                            muted
+                            muted={isMuted}
                             playsInline
                             loop={true}
                             preload="auto"
@@ -458,6 +480,14 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         )}
 
                         <div className="absolute inset-0 z-10 bg-transparent cursor-pointer" onClick={handleVideoClick} />
+
+                        {/* Sound Toggle (Right Bottom) - Enhanced Visibility and Z-Index */}
+                        <button
+                            onClick={toggleMute}
+                            className="absolute bottom-6 right-6 z-[100] w-14 h-14 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white border-2 border-white/20 active:scale-95 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-auto"
+                        >
+                            {isMuted ? <VolumeX className="w-7 h-7" /> : <Volume2 className="w-7 h-7" />}
+                        </button>
                     </div>
                 )}
 

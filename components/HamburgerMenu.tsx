@@ -145,7 +145,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                     </div>
 
                     {/* Section 4: App Info */}
-                    <div className="px-4 py-2 pb-10">
+                    <div className="px-4 py-2 pb-40">
                         <div className="text-xs font-bold text-gray-400 mb-2 px-2">{t('app_info', '앱 정보')}</div>
                         <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800">
                             <MenuItem

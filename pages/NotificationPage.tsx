@@ -4,7 +4,7 @@ import { TextLayout } from '../components/TextLayout';
 import { User, PushNotification, NotificationType, AppNotice } from '../types';
 import { dbSupabase as db } from '../services/db_supabase';
 import { formatDistanceToNow } from '../utils';
-import { NoticeDetailModal } from '../components/NoticeDetailModal';
+
 
 interface NotificationPageProps {
     user: User;
@@ -37,7 +37,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
 
     // Modals
     const [showClearConfirm, setShowClearConfirm] = useState(false);
-    const [selectedNotice, setSelectedNotice] = useState<AppNotice | null>(null);
+
 
     const loadData = async () => {
         if (!user.id) return;
@@ -93,15 +93,9 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
         loadData();
     }, [user.id]);
 
-    useEffect(() => {
-        onNoticeModalChange(!!selectedNotice);
-    }, [selectedNotice, onNoticeModalChange]);
 
-    useEffect(() => {
-        const handler = () => setSelectedNotice(null);
-        window.addEventListener('closeNoticeDetail', handler);
-        return () => window.removeEventListener('closeNoticeDetail', handler);
-    }, []);
+
+
 
     // Handlers
     const handleItemClick = async (item: DisplayItem) => {
@@ -111,7 +105,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
         }
 
         if (item.kind === 'notice') {
-            setSelectedNotice(item);
+            window.location.hash = `#/notice/${item.id}`;
             return;
         }
 
@@ -218,7 +212,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
     const hasItems = (latestNotice !== null) || (olderNotices.length > 0) || (notifications.length > 0);
 
     return (
-        <TextLayout className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <TextLayout className="pb-24 bg-gray-50 dark:bg-gray-900 min-h-screen" noPadding>
             {/* Header */}
             <div className="fixed top-0 left-0 right-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 px-4 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))] flex items-center justify-between transition-all duration-300">
                 <div className="flex items-center gap-1">
@@ -262,7 +256,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
                 )}
             </div>
 
-            <div className="pt-[calc(4rem+env(safe-area-inset-top))] pb-20 px-4 max-w-lg mx-auto w-full">
+            <div className="pt-[calc(3.5rem+env(safe-area-inset-top))] pb-20 px-4 max-w-lg mx-auto w-full">
                 {isLoading ? (
                     <div className="flex justify-center py-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -418,12 +412,7 @@ export const NotificationPage: React.FC<NotificationPageProps> = ({ user, onRefr
             )}
 
             {/* Notice Detail Modal */}
-            {selectedNotice && (
-                <NoticeDetailModal
-                    notice={selectedNotice}
-                    onClose={() => setSelectedNotice(null)}
-                />
-            )}
+
         </TextLayout>
     );
 };

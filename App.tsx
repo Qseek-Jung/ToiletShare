@@ -45,6 +45,7 @@ import { RegistrationGuide } from './pages/guide/RegistrationGuide';
 import { adMobService } from './services/admob';
 import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
+import NoticePage from './pages/NoticePage';
 
 
 import { iOSDebugger } from './components/iOSDebugger';
@@ -375,17 +376,25 @@ export default function App() {
             const storedToken = localStorage.getItem('pending_push_token') || localStorage.getItem('push_token');
             const isLoggedIn = user.id && user.id !== 'guest' && user.role !== UserRole.GUEST;
 
-            if (isLoggedIn && storedToken) {
-                // If user doesn't have a token or it's different, sync it
-                if (!user.pushToken || user.pushToken !== storedToken) {
-                    console.log(`[App] Syncing pending push token for user ${user.id}...`);
+            if (isLoggedIn) {
+                if (storedToken) {
+                    // Normal Sync
+                    if (!user.pushToken || user.pushToken !== storedToken) {
+                        console.log(`[App] Syncing pending push token for user ${user.id}...`);
+                        try {
+                            await db.savePushToken(user.id, storedToken);
+                            setUser(prev => ({ ...prev, pushToken: storedToken }));
+                        } catch (e) {
+                            console.error('❌ Failed to sync token on login:', e);
+                        }
+                    }
+                } else if (Capacitor.isNativePlatform()) {
+                    // Retry Registration if missing
+                    console.log("[App] No local push token found. Retrying registration...");
                     try {
-                        await db.savePushToken(user.id, storedToken);
-                        setUser(prev => ({ ...prev, pushToken: storedToken }));
-                        // We don't necessarily clear pending_push_token yet to ensure retries, 
-                        // but the check above (user.pushToken !== storedToken) prevents infinite loops.
+                        await PushNotifications.register();
                     } catch (e) {
-                        console.error('❌ Failed to sync token on login:', e);
+                        console.error("Retry registration failed:", e);
                     }
                 }
             }
@@ -613,14 +622,7 @@ export default function App() {
                     }
                 }
 
-                logger.log('🏗️ [Build 116] BG Sync:', {
-                    extracted: bgColor,
-                    target: targetId,
-                    debug: debugInfo,
-                    metaTheme: metaThemeColor?.getAttribute('content'),
-                    innerH: window.innerHeight,
-                    rootH: document.getElementById('root')?.offsetHeight
-                });
+                // logger.log removed
             } catch (e) {
                 logger.error('[Build 118] Sync failed:', e);
             }
@@ -664,25 +666,9 @@ export default function App() {
         // Else: Keep existing ad (stable key) -> No animation, no reload
     }, [currentHash]);
 
-    // DEBUG: Log background colors only on navigation (Reduced noise)
+    // DEBUG: Log background colors removed by user request
     useEffect(() => {
-        const logColors = () => {
-            const html = document.documentElement;
-            // const body = document.body;
-            // const root = document.getElementById('root');
-
-            const htmlBg = html.style.backgroundColor || window.getComputedStyle(html).backgroundColor;
-            const metaTheme = document.querySelector('meta[name="theme-color"]')?.getAttribute('content');
-
-            console.log(`[BG_DEBUG] 🎨 HTML: ${htmlBg} | MetaTheme: ${metaTheme} | Path: ${window.location.hash}`);
-            console.log(`[VIEWPORT] 📏 Visual: ${window.visualViewport?.height} | Inner: ${window.innerHeight}`);
-        };
-
-        // Log initially and on every hash change
-        logColors();
-        // INTERVAL REMOVED as per user request to reduce noise
-        // const interval = setInterval(logColors, 2000); 
-        // return () => clearInterval(interval);
+        // Reduced noise
     }, [currentHash]);
     const [pendingUnlockToiletId, setPendingUnlockToiletId] = useState<string | null>(null);
 
@@ -1059,33 +1045,34 @@ export default function App() {
         } finally {
             setIsLoading(false);
         }
-    }, [myLocation]); // Re-create if myLocation changes (so distance calc is correct)
+    }, []); // Removed myLocation dependency to prevent spurious re-creation
 
 
 
-    // Initialize DB Data & Reload User (Async)
     // Initialize DB Data & Reload User (Async)
     // Fix: Use a ref to prevent re-fetching on every GPS update
     const hasInitialLoaded = useRef(false);
+    const lastProcessedTrigger = useRef(0);
 
     useEffect(() => {
         const loadData = async () => {
             // 1. Reload Toilets (Initial 2km radius) & 2. Reload User (Sync)
-            // Only fetch if this is a manual refresh (refreshTrigger > 0) or the FIRST valid location fix
-            const isValidLocation = myLocation.lat !== 0 && myLocation.lng !== 0;
-            const shouldFetch = refreshTrigger > 0 || (isValidLocation && !hasInitialLoaded.current);
 
-            console.log('🔄 loadData Check:', {
-                validLoc: isValidLocation,
-                trigger: refreshTrigger,
-                initialDone: hasInitialLoaded.current,
-                shouldFetch
-            });
+            const isValidLocation = myLocation.lat !== 0 && myLocation.lng !== 0;
+
+            // Condition 1: Manual Refresh Triggered (and hasn't been processed yet)
+            const isManualRefresh = refreshTrigger > lastProcessedTrigger.current;
+
+            // Condition 2: First Valid Location Load
+            const isFirstLoad = isValidLocation && !hasInitialLoaded.current;
+
+            const shouldFetch = isManualRefresh || isFirstLoad;
+
+            // console.log('🔄 loadData Check:', { validLoc: isValidLocation, trigger: refreshTrigger, shouldFetch });
 
             if (shouldFetch) {
-                if (isValidLocation && !hasInitialLoaded.current) {
-                    hasInitialLoaded.current = true;
-                }
+                if (isFirstLoad) hasInitialLoaded.current = true;
+                if (isManualRefresh) lastProcessedTrigger.current = refreshTrigger;
 
                 const toiletPromise = isValidLocation
                     ? fetchToiletsInRadius(myLocation.lat, myLocation.lng, 2)
@@ -2055,6 +2042,10 @@ export default function App() {
             return <NotificationPage user={user} onRefreshUser={() => {
                 db.getUserByEmail(user.email).then(u => u && setUser(u));
             }} onNoticeModalChange={setIsNoticeModalOpen} />;
+        }
+        if (currentHash.startsWith('#/notice/')) {
+            const noticeId = currentHash.split('/notice/')[1];
+            return <NoticePage user={user} noticeId={noticeId} />;
         }
         if (currentHash === '#/app-info') {
             return <AppInfoPage user={user} onBack={() => window.history.back()} />;

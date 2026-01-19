@@ -160,30 +160,18 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
                                 onClick={() => { onClose(); onNavigate('#/privacy'); }}
                             />
                             <div className="h-[1px] bg-gray-50 dark:bg-gray-800 mx-4" />
-                            {Capacitor.isNativePlatform() ? (
-                                <div className="w-full px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left cursor-default">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                            <Info className="w-5 h-5 text-gray-500" />
-                                        </div>
-                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">{t('version_info', '버전 정보')}</span>
+                            <button
+                                onClick={() => { onClose(); onNavigate('#/app-info'); }}
+                                className="w-full px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                        <Info className="w-5 h-5 text-gray-500" />
                                     </div>
-                                    <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{APP_VERSION}</span>
+                                    <span className="font-medium text-sm text-gray-700 dark:text-gray-200">{t('app_info', '앱 정보')}</span>
                                 </div>
-                            ) : (
-                                <button
-                                    onClick={() => { onClose(); onNavigate('#/app-info'); }}
-                                    className="w-full px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                            <Info className="w-5 h-5 text-gray-500" />
-                                        </div>
-                                        <span className="font-medium text-sm text-gray-700 dark:text-gray-200">{t('app_info', '앱 정보')}</span>
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{APP_VERSION}</span>
-                                </button>
-                            )}
+                                <span className="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">{APP_VERSION}</span>
+                            </button>
                         </div>
                     </div>
                 </div>

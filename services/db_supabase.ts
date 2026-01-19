@@ -1672,6 +1672,13 @@ export class SupabaseDatabaseService {
                 console.log("ℹ️ Delivered as in-app only (no push token)");
             }
 
+            // [DEBUG] Log failure details if success is false
+            if (!data?.success) {
+                console.error("❌ [db] sendPushNotification failed via Edge Function:", data);
+            } else {
+                console.log("✅ [db] sendPushNotification success:", data);
+            }
+
             return {
                 success: data && data.success === true,
                 pushSent: data && data.success === true && !data.inAppOnly

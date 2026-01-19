@@ -109,6 +109,11 @@ export default function App() {
         });
     };
 
+    const userRef = useRef(user);
+    useEffect(() => {
+        userRef.current = user;
+    }, [user]);
+
     // Lock viewport height on mount (prevent iOS 898px→839px regression)
     useEffect(() => {
         lockViewportHeight();
@@ -310,14 +315,13 @@ export default function App() {
                 localStorage.setItem('pending_push_token', token.value);
                 localStorage.setItem('push_token', token.value);
 
-                // CRITICAL: Save token to DB for FCM delivery
-                const currentUser = localStorage.getItem('currentUser');
-                if (currentUser) {
-                    const user = JSON.parse(currentUser);
-                    if (user.id) {
-                        await db.updateUserPushToken(user.id, token.value);
-                        console.log('✅ Push token saved to DB for user:', user.id);
-                    }
+                // CRITICAL: Save token to DB via Ref (Real-time access to user)
+                const currentUser = userRef.current;
+                if (currentUser && currentUser.id && currentUser.id !== 'guest') {
+                    console.log('✅ [Listener] Saving token to DB for:', currentUser.id);
+                    await db.savePushToken(currentUser.id, token.value);
+                } else {
+                    console.log('⚠️ [Listener] User not ready yet. Token saved locally.');
                 }
             });
 
@@ -382,8 +386,9 @@ export default function App() {
                 if (storedToken) {
                     // Normal Sync
                     if (!user.pushToken || user.pushToken !== storedToken) {
-                        console.log(`[App] Syncing pending push token for user ${user.id}...`);
+                        console.log(`[App] Syncing push token for user ${user.id}...`);
                         try {
+                            // Using savePushToken to ensure notification_enabled is true
                             await db.savePushToken(user.id, storedToken);
                             setUser(prev => ({ ...prev, pushToken: storedToken }));
                         } catch (e) {
@@ -392,16 +397,24 @@ export default function App() {
                     }
                 } else if (Capacitor.isNativePlatform()) {
                     // Retry Registration if missing
-                    console.log("[App] No local push token found. Retrying registration...");
+                    console.log("[App] No local push token found. Forcing registration...");
                     try {
-                        await PushNotifications.register();
+                        const perm = await PushNotifications.checkPermissions();
+                        if (perm.receive === 'granted') {
+                            await PushNotifications.register();
+                        } else {
+                            // Optional: Request again? Might be annoying. Just log.
+                            console.warn("[App] Push permission not granted during sync check.");
+                        }
                     } catch (e) {
                         console.error("Retry registration failed:", e);
                     }
                 }
             }
         };
-        syncToken();
+        if (user.id) {
+            syncToken();
+        }
     }, [user.id, user.role]);
 
 

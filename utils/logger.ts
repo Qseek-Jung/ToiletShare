@@ -18,7 +18,11 @@ const ALLOWED_KEYWORDS = [
     '색상',
     'color',
     'viewport',
-    'safe-bottom'
+    'safe-bottom',
+    'pushmgmt',
+    '[db]',
+    'fcm',
+    'notification'
 ];
 
 // Check if filtering is enabled (can be toggled via env or runtime flag)

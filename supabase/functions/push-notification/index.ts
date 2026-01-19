@@ -81,6 +81,21 @@ serve(async (req) => {
                 body: notif.message,
             },
             data: dataPayload,
+            // [Fix] Add APNs specific config for iOS
+            apns: {
+                payload: {
+                    aps: {
+                        sound: "default"
+                    }
+                }
+            },
+            // [Fix] Add Android specific config
+            android: {
+                priority: "high",
+                notification: {
+                    sound: "default"
+                }
+            }
         };
 
         const response = await getMessaging().send(message);

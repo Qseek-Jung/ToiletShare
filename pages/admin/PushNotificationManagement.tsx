@@ -110,26 +110,32 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
             console.log(`[PushMgmt] Sending to ${selectedUsers.length} users:`, selectedUsers);
             const results = await Promise.all(selectedUsers.map(async (userId) => {
                 try {
-                    console.log(`[PushMgmt] Creating notification for ${userId}...`);
+                    console.log(`[PushMgmt] Creating notification record for ${userId}...`);
                     const newNotif = await db.createNotification(
                         NotificationType.ADMIN_MESSAGE,
                         userId,
                         messageTitle,
                         messageContent
                     );
-                    console.log(`[PushMgmt] Created DB record: ${newNotif.id}. Triggering push...`);
+                    console.log(`[PushMgmt] ✅ DB Record created: ${newNotif.id}. Requesting Edge Function...`);
+
                     const delivery = await db.sendPushNotification(newNotif);
-                    console.log(`[PushMgmt] Delivery result for ${userId}:`, delivery);
+                    console.log(`[PushMgmt] 📨 Delivery Result for ${userId}:`, delivery);
+
+                    if (!delivery.success) {
+                        console.warn(`[PushMgmt] ⚠️ Sending failed for ${userId}. Check backend logs.`);
+                    }
+
                     return delivery; // returns { success, pushSent }
                 } catch (e) {
-                    console.error(`[PushMgmt] Failed to send to ${userId}`, e);
+                    console.error(`[PushMgmt] ❌ Critical Error sending to ${userId}`, e);
                     return { success: false, pushSent: false };
                 }
             }));
 
             const inAppSuccessCount = results.filter(r => r.success).length;
             const pushSuccessCount = results.filter(r => r.pushSent).length;
-            console.log(`[PushMgmt] Finished sending. In-app: ${inAppSuccessCount}, Push: ${pushSuccessCount}`);
+            console.log(`[PushMgmt] 🏁 Batch Complete. In-App: ${inAppSuccessCount}, Push: ${pushSuccessCount}/${selectedUsers.length}`);
 
             if (inAppSuccessCount > 0) {
                 setModalConfig({

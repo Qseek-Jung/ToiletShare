@@ -5,6 +5,9 @@ import { User, UserRole } from '../types';
 import { APP_VERSION, LAST_UPDATE_DATE, UPDATE_NOTES, COMPANY_INFO } from '../constants/version';
 import { ContactModal } from '../components/ContactModal';
 import { dbSupabase as db } from '../services/db_supabase';
+import { PushNotifications } from '@capacitor/push-notifications';
+import { Capacitor } from '@capacitor/core';
+import { Bell, RefreshCw } from 'lucide-react';
 
 interface AppInfoPageProps {
     user: User;
@@ -117,6 +120,50 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                             </li>
                         ))}
                     </ul>
+                </div>
+
+                {/* Push Diagnostics (Visible for debugging) */}
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                        <Bell className="w-5 h-5 text-orange-500" />
+                        푸시 알림 진단
+                    </h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">User ID</span>
+                            <span className="font-mono text-xs">{user.id ? user.id.substring(0, 8) + '...' : 'Guest'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">Local Token</span>
+                            <span className={`font-bold ${localStorage.getItem('push_token') ? 'text-green-500' : 'text-red-500'}`}>
+                                {localStorage.getItem('push_token') ? '발급됨 (OK)' : '없음 (Missing)'}
+                            </span>
+                        </div>
+
+                        <button
+                            onClick={async () => {
+                                try {
+                                    if (Capacitor.getPlatform() === 'web') {
+                                        alert('웹에서는 동작하지 않습니다.');
+                                        return;
+                                    }
+                                    const result = await PushNotifications.requestPermissions();
+                                    if (result.receive === 'granted') {
+                                        await PushNotifications.register();
+                                        alert('재등록 요청을 보냈습니다. 잠시 후 다시 확인해주세요.');
+                                    } else {
+                                        alert('권한이 거부되었습니다. 설정에서 허용해주세요.');
+                                    }
+                                } catch (e) {
+                                    alert('오류: ' + JSON.stringify(e));
+                                }
+                            }}
+                            className="w-full mt-2 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            토큰 강제 재발급 (Resync)
+                        </button>
+                    </div>
                 </div>
 
                 <div className="text-center text-xs text-gray-400 py-4">

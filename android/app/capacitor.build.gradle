@@ -9,9 +9,10 @@ android {
 
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
-    implementation project(':capacitor-community-admob')
     implementation project(':capacitor-community-http')
+    implementation project(':capacitor-firebase-messaging')
     implementation project(':capacitor-app')
+    implementation project(':capacitor-browser')
     implementation project(':capacitor-device')
     implementation project(':capacitor-dialog')
     implementation project(':capacitor-filesystem')
@@ -20,6 +21,7 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-push-notifications')
     implementation project(':capacitor-share')
+    implementation project(':capacitor-status-bar')
     implementation project(':codetrix-studio-capacitor-google-auth')
     implementation project(':team-lepisode-capacitor-naver-login')
     implementation project(':transistorsoft-capacitor-background-fetch')

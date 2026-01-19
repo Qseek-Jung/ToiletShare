@@ -205,8 +205,8 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                         setPreviewUrl(dataUrl);
                         setNewBannerFile(file);
 
-                        if (ratio < 5) {
-                            setRatioError(`비율 알림 (${ratio.toFixed(1)}:1). 이 이미지는 하단 바 등 가로가 긴 영역에는 노출되지 않고, 모달 등 적절한 위치에서만 사용됩니다.`);
+                        if (ratio < 3.0) {
+                            setRatioError(`비율 알림 (${ratio.toFixed(1)}:1). 이 이미지는 모달용으로 적합하며, 하단 배너에는 위아래가 잘릴 수 있습니다.`);
                         } else {
                             setRatioError(null);
                         }
@@ -756,7 +756,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                 [모바일 앱 배너 제작 가이드 - 고화질 권장 규격]<br />
                                 <br />
                                 1. 권장 해상도 (High-DPI 선명도 확보를 위한 규격)<br />
-                                - 하단 바/목록 배너: 1080 x 200 px (또는 가로 최소 720px 이상)<br />
+                                - 하단 바/목록 배너: 1080 x 290 px (약 3.7:1 비율, 또는 가로 720px 이상)<br />
                                 - 길찾기(상세) 상단: 1080 x 270 px (4:1 비율 가로형)<br />
                                 - 홈 화면 리스트: 1080 x 216 px (5:1 비율)<br />
                                 - 등록 성공 팝업: 1080 x 800 px (3:2 ~ 4:3 비율)<br />
@@ -785,7 +785,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                     <div className="mb-4">
                                         <div className="flex gap-2 mb-2">
                                             {[
-                                                { id: 'BANNER', label: 'Banner (하단/지도)', desc: '1080x200 (5:1)' },
+                                                { id: 'BANNER', label: 'Banner (하단/지도)', desc: '1080x290 (3.7:1)' },
                                                 { id: 'NATIVE_LIST', label: 'Native (목록)', desc: '1080x216 (5:1)' },
                                                 { id: 'NATIVE_MODAL', label: 'Native (모달)', desc: '1080x800 (1.35:1)' },
                                                 { id: 'NATIVE_DETAIL', label: 'Detail (상세 상단)', desc: '1080x270 (4:1)' }

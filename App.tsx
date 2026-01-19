@@ -85,7 +85,8 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(false);
     // Persist Map State (Center/Zoom)
     const [lastMapState, setLastMapState] = useState<{ center: { lat: number, lng: number }, zoom: number } | null>(null);
-    const [manualLoginEmail, setManualLoginEmail] = useState(''); // Test Login State
+    const [webAdminId, setWebAdminId] = useState('');
+    const [webAdminPw, setWebAdminPw] = useState('');
     // Persist List View State
     const [isHomeListOpen, setIsHomeListOpen] = useState(false);
     // Dark Mode State
@@ -1753,73 +1754,41 @@ export default function App() {
     };
 
 
-    const handleManualEmailLogin = async () => {
-        if (!manualLoginEmail || !manualLoginEmail.includes('@')) {
-            return;
-        }
+    const handleWebAdminLogin = async () => {
+        if (!webAdminId || !webAdminPw) return alert("ID와 비밀번호를 입력해주세요.");
         setLoginLoading(true);
 
-        // Sanitize
-        const email = manualLoginEmail.trim().toLowerCase();
-
         try {
-            const users = await db.getUsers();
-            let targetUser = users.find(u => u.email === email);
+            // Hardcoded Credentials Check as requested
+            if (webAdminId === 'qseek@naver.com' && webAdminPw === 'jung0536328807!!') {
+                const targetUser = await db.getUserByEmail(webAdminId);
+                if (targetUser) {
+                    if (targetUser.status === 'banned') {
+                        setShowBannedModal(true);
+                        setLoginLoading(false);
+                        return;
+                    }
 
-            if (!targetUser) {
-                // Create New User (Test Mode)
-                // Ask for gender via modal logic? 
-                // Creating temp user
-                const defaultNickname = email.split('@')[0];
-                const tempUser: User = {
-                    id: 'test_' + Date.now(),
-                    email: email,
-                    nickname: defaultNickname,
-                    gender: Gender.UNISEX, // Default, will ask if we triggers modal
-                    role: UserRole.USER,
-                    credits: 50,
-                    signupProvider: 'email_test',
-                    createdAt: new Date().toISOString()
-                };
+                    if (targetUser.status === UserStatus.WITHDRAWN) {
+                        targetUser.status = UserStatus.ACTIVE;
+                        targetUser.deletedAt = undefined;
+                        await db.saveUser(targetUser);
+                    }
 
-                if (email === SUPERVISOR_EMAIL) {
-                    tempUser.role = UserRole.ADMIN;
-                    tempUser.credits = 999;
+                    setUser(targetUser);
+                    localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                    setShowLoginModal(false);
+                    console.log('✅ Web Admin Logged In:', targetUser.email);
+                } else {
+                    alert("관리자 계정 정보를 DB에서 찾을 수 없습니다.");
                 }
-
-                // Show Gender Selection Implementation
-                setPendingUser(tempUser);
-                setShowGenderSelectModal(true);
-                setShowLoginModal(false);
-                setLoginLoading(false);
-                return;
+            } else {
+                alert("ID 또는 비밀번호가 올바르지 않습니다.");
             }
-
-            // Existing User Logic
-            if (targetUser.status === 'banned') {
-                setShowBannedModal(true);
-                setLoginLoading(false);
-                return;
-            }
-
-            if (targetUser.status === UserStatus.WITHDRAWN) {
-                targetUser.status = UserStatus.ACTIVE;
-                targetUser.deletedAt = undefined;
-                targetUser.withdrawalReason = undefined;
-                await db.saveUser(targetUser);
-                alert("계정이 복구되었습니다.");
-            }
-
-            setUser(targetUser);
-            localStorage.setItem('currentUser', JSON.stringify(targetUser));
-            setShowLoginModal(false);
-            setLoginLoading(false);
-            window.location.hash = '#/';
-            alert(`테스트 로그인 성공: ${targetUser.nickname}`);
-
         } catch (e) {
-            console.error(e);
-            alert("로그인 중 오류 발생");
+            console.error("Web Admin Login Failed:", e);
+            alert("로그인 처리 중 오류가 발생했습니다.");
+        } finally {
             setLoginLoading(false);
         }
     };
@@ -2576,35 +2545,34 @@ export default function App() {
                                 </button>
 
                                 {/* Test Buttons & Manual Login - Only show on Localhost Web (Not Native) */}
-                                {(!Capacitor.isNativePlatform() && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) && (
+                                {(!Capacitor.isNativePlatform()) && (
                                     <>
-                                        {/* Manual Email Login (Test) */}
-                                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                                            <p className="text-xs text-gray-400 mb-2">테스트용 이메일 로그인</p>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="email"
-                                                    value={manualLoginEmail}
-                                                    onChange={(e) => setManualLoginEmail(e.target.value)}
-                                                    placeholder="이메일 입력"
-                                                    className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
-                                                />
-                                                <button
-                                                    onClick={handleManualEmailLogin}
-                                                    disabled={loginLoading}
-                                                    className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg text-xs font-bold whitespace-nowrap"
-                                                >
-                                                    접속
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-2 space-y-2">
-                                            <button onClick={handleOpenTestAccountModal} className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-100 shadow-sm border border-indigo-100 transition-colors flex items-center justify-center gap-2">
-                                                <span className="text-xl">🧪</span> 테스트 계정 선택 (전체 목록)
-                                            </button>
-                                            <button onClick={() => handleTestLogin(Gender.MALE, UserRole.ADMIN)} className="w-full py-3 bg-gray-800 dark:bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-900 shadow-lg border border-transparent dark:border-gray-700">
-                                                🛡️ 관리자 테스트
+                                        {/* Web Admin Login (Hidden/Secure for Production Web) */}
+                                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                                            <p className="text-xs text-gray-400 mb-1 text-left">관리자 로그인 (Web Only)</p>
+                                            <input
+                                                type="email"
+                                                value={webAdminId}
+                                                onChange={(e) => setWebAdminId(e.target.value)}
+                                                placeholder="관리자 ID"
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
+                                            />
+                                            <input
+                                                type="password"
+                                                value={webAdminPw}
+                                                onChange={(e) => setWebAdminPw(e.target.value)}
+                                                placeholder="비밀번호"
+                                                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl text-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-primary"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleWebAdminLogin();
+                                                }}
+                                            />
+                                            <button
+                                                onClick={handleWebAdminLogin}
+                                                disabled={loginLoading}
+                                                className="w-full py-3 bg-gray-900 dark:bg-black text-white rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-lg"
+                                            >
+                                                관리자 접속
                                             </button>
                                         </div>
                                     </>

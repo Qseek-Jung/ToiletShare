@@ -282,6 +282,8 @@ export default function App() {
                 await PushNotifications.register();
             }
 
+
+
             console.log('[NativeInit] Waiting 1s before Location Permission...');
             await new Promise(r => setTimeout(r, 1000)); // Delay between prompts
 

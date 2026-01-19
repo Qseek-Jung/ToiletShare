@@ -64,7 +64,7 @@ export function lockViewportHeight() {
         keyboardWasOpen = keyboardIsOpen;
 
         document.documentElement.style.setProperty('--app-height', `${visualH}px`);
-        console.log(`[SCROLL_DEBUG] Viewport Height Updated: ${visualH}px | innerH: ${innerH}px | Body overflow: ${document.body.style.overflow}`);
+        // console.log(`[SCROLL_DEBUG] Viewport Height Updated: ${visualH}px | innerH: ${innerH}px | Body overflow: ${document.body.style.overflow}`);
         return visualH; // Return the calculated height
     };
 

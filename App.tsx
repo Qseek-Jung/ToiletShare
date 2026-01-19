@@ -10,6 +10,7 @@ import { dbSupabase as db } from './services/db_supabase';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "GOOGLE_CLIENT_ID_PLACEHOLDER";
 const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID || "NAVER_CLIENT_ID_PLACEHOLDER";
 const KAKAO_JAVASCRIPT_KEY = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || "KAKAO_JS_KEY_PLACEHOLDER";
+const KAKAO_NATIVE_KEY = import.meta.env.VITE_KAKAO_NATIVE_KEY || "";
 const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail.com";
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
@@ -73,7 +74,8 @@ const initCrashlytics = async () => {
 export default function App() {
     const { t } = useTranslation();
     const [user, setUser] = useState<User>(INITIAL_USER);
-    const [myLocation, setMyLocation] = useState<{ lat: number, lng: number }>({ lat: 37.5048, lng: 127.0884 });
+    // Default to Seoul City Hall (37.5665, 126.9780) instead of Gangnam
+    const [myLocation, setMyLocation] = useState<{ lat: number, lng: number }>({ lat: 37.5665, lng: 126.9780 });
     const [toilets, setToilets] = useState<Toilet[]>([]);
     const [filteredToilets, setFilteredToilets] = useState<Toilet[]>([]);
     const [unlockedToilets, setUnlockedToilets] = useState<Record<string, number>>({});
@@ -798,8 +800,18 @@ export default function App() {
                     timeout: 10000,
                     maximumAge: 0
                 });
-                setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-                saveLastLocation(position.coords.latitude, position.coords.longitude);
+
+                // Simulator Fix: If outside Korea (e.g. San Francisco), default to Seoul City Hall
+                let lat = position.coords.latitude;
+                let lng = position.coords.longitude;
+                if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+                    console.log(`📍 Outside Korea detected (${lat}, ${lng}). Defaulting to Seoul City Hall.`);
+                    lat = 37.5665;
+                    lng = 126.9780;
+                }
+
+                setMyLocation({ lat, lng });
+                saveLastLocation(lat, lng);
                 console.log('✅ Baseline location acquired');
 
                 // Start continuous watching
@@ -809,8 +821,15 @@ export default function App() {
                     maximumAge: 0
                 }, (pos, err) => {
                     if (pos) {
-                        setMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                        saveLastLocation(pos.coords.latitude, pos.coords.longitude);
+                        let lat = pos.coords.latitude;
+                        let lng = pos.coords.longitude;
+                        if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+                            // console.log(`📍 Watch: Outside Korea (${lat}, ${lng}). Using Seoul.`);
+                            lat = 37.5665;
+                            lng = 126.9780;
+                        }
+                        setMyLocation({ lat, lng });
+                        saveLastLocation(lat, lng);
                         // console.log('📍 Real-time location updated');
                     }
                     if (err) console.warn('⚠️ watchPosition error:', err);
@@ -829,8 +848,17 @@ export default function App() {
                         timeout: 5000,
                         maximumAge: 0
                     });
-                    setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-                    saveLastLocation(position.coords.latitude, position.coords.longitude);
+
+                    let lat = position.coords.latitude;
+                    let lng = position.coords.longitude;
+                    if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+                        console.log(`📍 Resume: Outside Korea (${lat}, ${lng}). Using Seoul.`);
+                        lat = 37.5665;
+                        lng = 126.9780;
+                    }
+
+                    setMyLocation({ lat, lng });
+                    saveLastLocation(lat, lng);
                 } catch (e) {
                     console.warn('Failed to refresh location on resume:', e);
                 }
@@ -879,8 +907,17 @@ export default function App() {
                     maximumAge: 0
                 });
                 if (!isMounted) return;
-                setMyLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-                saveLastLocation(position.coords.latitude, position.coords.longitude);
+
+                let lat = position.coords.latitude;
+                let lng = position.coords.longitude;
+                if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+                    console.log(`📍 Init: Outside Korea (${lat}, ${lng}). Using Seoul.`);
+                    lat = 37.5665;
+                    lng = 126.9780;
+                }
+
+                setMyLocation({ lat, lng });
+                saveLastLocation(lat, lng);
                 if (!cached) finishSplash();
             } catch (err: any) {
                 console.warn(`⚠️ GPS Failed during init: ${err.message}`);
@@ -1334,12 +1371,30 @@ export default function App() {
             } catch (error: any) {
                 console.error("Google Login Failed:", error);
 
-                let errorMsg = "❌ Google 로그인 실패\n\n";
-                if (error.message) errorMsg += `Message: ${error.message}\n`;
-                if (error.code) errorMsg += `Code: ${error.code}\n`;
-                errorMsg += `\n상세: ${JSON.stringify(error)}`;
+                // Check for generic cancellation codes/messages
+                const isCancelled =
+                    error.code === '10' ||
+                    error.code === 10 ||
+                    error.code === '12501' ||
+                    error.code === 12501 ||
+                    error.code === '-5' ||
+                    error.code === -5 ||
+                    (error.message && (
+                        error.message.toLowerCase().includes('canceled') ||
+                        error.message.toLowerCase().includes('cancelled') ||
+                        error.message === '10'
+                    ));
 
-                alert(errorMsg);
+                if (isCancelled) {
+                    console.log("Google Login Cancelled");
+                } else {
+                    let errorMsg = "❌ Google 로그인 실패\n\n";
+                    if (error.message) errorMsg += `Message: ${error.message}\n`;
+                    if (error.code) errorMsg += `Code: ${error.code}\n`;
+                    errorMsg += `\n상세: ${JSON.stringify(error)}`;
+
+                    alert(errorMsg);
+                }
             } finally {
                 setLoginLoading(false);
             }
@@ -1478,18 +1533,15 @@ export default function App() {
                     errorMessage += `Type: ${error.constructor.name}\n`;
                 }
 
-                // Capture ALL properties including non-enumerable
-                const allProps = JSON.stringify(error, Object.getOwnPropertyNames(error), 2);
-                errorMessage += `\n상세정보:\n${allProps}`;
-
+                // Only alert if NOT cancelled
                 alert(errorMessage);
             }
-            setLoginLoading(false);
         } finally {
-            if (Capacitor.isNativePlatform()) {
-                setLoginLoading(false);
-            }
+            setLoginLoading(false);
         }
+
+        // Capture ALL properties including non-enumerable
+
     };
     const performKakaoLogin = async () => {
         try {

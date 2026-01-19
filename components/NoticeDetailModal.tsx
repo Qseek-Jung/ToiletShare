@@ -20,7 +20,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = ({ notice, on
     };
 
     return (
-        <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col animate-in slide-in-from-bottom duration-300">
+        <div className="fixed inset-0 z-[60] bg-white dark:bg-gray-900 flex flex-col animate-in slide-in-from-bottom duration-300 pt-[env(safe-area-inset-top)]">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
                 <h2 className="text-lg font-bold truncate pr-4 text-gray-900 dark:text-white">공지사항</h2>

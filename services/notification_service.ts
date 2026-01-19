@@ -332,7 +332,7 @@ class NotificationService {
 
     // Defines Channels on Android
     public async createChannels() {
-        if (Capacitor.getPlatform() === 'web') return;
+        if (Capacitor.getPlatform() !== 'android') return;
 
         // 1. Activity Reminders (Review request, Nightlife, etc)
         await LocalNotifications.createChannel({

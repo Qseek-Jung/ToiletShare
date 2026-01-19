@@ -452,7 +452,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
                 {/* List View Modal (Overlay) */}
                 {showList && (
-                    <div className="absolute top-[72px] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
+                    <div className="absolute top-[calc(env(safe-area-inset-top)+70px)] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
                         <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-2xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
 
                             {/* Fixed Native Ad Area (Top of List) */}

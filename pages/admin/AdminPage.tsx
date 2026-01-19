@@ -29,8 +29,15 @@ interface AdminPageProps {
 
 // PageContainer - Responsive layout container
 const PageContainer = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-    <div className="w-full h-full bg-gray-50 flex justify-center overflow-hidden">
-        <div className={`w-full max-w-md md:max-w-4xl lg:max-w-7xl bg-white h-full overflow-y-auto no-scrollbar shadow-2xl ${className}`}>
+    <div className="fixed inset-0 z-50 bg-gray-50 overflow-hidden pt-[env(safe-area-inset-top)]">
+        <div
+            className={`w-full max-w-md md:max-w-4xl lg:max-w-7xl mx-auto bg-white h-full overflow-y-auto no-scrollbar shadow-2xl ${className}`}
+            ref={(el) => {
+                if (el) {
+                    console.log(`[SCROLL_DEBUG] AdminPage Container: clientH=${el.clientHeight}, scrollH=${el.scrollHeight}, overflowY=${window.getComputedStyle(el).overflowY}`);
+                }
+            }}
+        >
             {children}
         </div>
     </div>

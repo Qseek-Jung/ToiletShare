@@ -69,14 +69,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        ApplicationDelegateProxy.shared.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "CapacitorDidRegisterForRemoteNotificationsNotification"), object: deviceToken)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        ApplicationDelegateProxy.shared.application(application, didFailToRegisterForRemoteNotificationsWithError: error)
+        NotificationCenter.default.post(name: Notification.Name(rawValue: "CapacitorDidFailToRegisterForRemoteNotificationsNotification"), object: error)
     }
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        ApplicationDelegateProxy.shared.application(application, didReceiveRemoteNotification: userInfo, fetchCompletionHandler: completionHandler)
+        // Forwarding to Capacitor via NotificationCenter if needed, but 'CapacitorDidRegister...' is the critical one.
+        // There is no public Notification string for 'didReceive' found in Capacitor 6 sources, relying on Swizzling for that.
+        completionHandler(.newData)
     }
 }

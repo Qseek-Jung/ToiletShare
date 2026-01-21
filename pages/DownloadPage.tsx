@@ -1,13 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Copy, Check, MapPin, Star, Gift, ShieldCheck, ChevronDown, Award, Users, Smartphone } from 'lucide-react';
+import { Copy, Check, MapPin, Star, Gift, ShieldCheck, ChevronDown, Award, Users, Smartphone, X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
 interface DownloadPageProps {
     referrerCode: string | null;
 }
 
+const SCREENSHOTS = [
+    { src: '/images/Screenshot/Main(IOS-phone).png', label: '주변 화장실 찾기' },
+    { src: '/images/Screenshot/toilet_detail(IOS-phone).png', label: '상세 정보 및 리뷰' },
+    { src: '/images/Screenshot/toilet_navi(IOS-phone).png', label: '길찾기 안내' },
+    { src: '/images/Screenshot/toilet_submit(IOS-phone).png', label: '새로운 장소 제보' },
+    { src: '/images/Screenshot/setup(IOS-phone).png', label: '간편한 설정' }
+];
+
 const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
     const [copied, setCopied] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+
+    // Lightbox State
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const [zoomLevel, setZoomLevel] = useState<number>(1);
+
+    const screenshots = SCREENSHOTS; // Alias for consistency
 
     useEffect(() => {
         const handleScroll = () => {
@@ -33,6 +47,33 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
         } else {
             if (storeUrl !== '#') window.location.href = storeUrl;
         }
+    };
+
+    // Lightbox Handlers
+    const openLightbox = (index: number) => {
+        setLightboxIndex(index);
+        setZoomLevel(1);
+        // Lock body scroll
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeLightbox = () => {
+        setLightboxIndex(null);
+        setZoomLevel(1);
+        document.body.style.overflow = '';
+    };
+
+    const toggleZoom = () => {
+        setZoomLevel(prev => prev === 1 ? 2.5 : 1);
+    };
+
+    const navigateLightbox = (direction: number) => {
+        if (lightboxIndex === null) return;
+        let newIndex = lightboxIndex + direction;
+        if (newIndex < 0) newIndex = screenshots.length - 1;
+        if (newIndex >= screenshots.length) newIndex = 0;
+        setLightboxIndex(newIndex);
+        setZoomLevel(1);
     };
 
     return (
@@ -95,26 +136,99 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
 
                     {/* Horizontal Scroll Content */}
                     <div className="flex gap-6 overflow-x-auto px-6 pb-10 scrollbar-hide snap-x snap-mandatory">
-                        {[
-                            { src: '/images/Screenshot/Main(IOS-phone).png', label: '주변 화장실 찾기' },
-                            { src: '/images/Screenshot/toilet_detail(IOS-phone).png', label: '상세 정보 및 리뷰' },
-                            { src: '/images/Screenshot/toilet_navi(IOS-phone).png', label: '길찾기 안내' },
-                            { src: '/images/Screenshot/toilet_submit(IOS-phone).png', label: '새로운 장소 제보' },
-                            { src: '/images/Screenshot/setup(IOS-phone).png', label: '간편한 설정' }
-                        ].map((shot, idx) => (
-                            <div key={idx} className="flex-shrink-0 w-64 snap-center">
-                                <div className="relative rounded-[32px] overflow-hidden shadow-2xl aspect-[9/19]">
+                        {screenshots.map((shot, idx) => (
+                            <div key={idx} className="flex-shrink-0 w-72 snap-center group cursor-pointer" onClick={() => openLightbox(idx)}>
+                                <div className="relative rounded-[24px] overflow-hidden shadow-2xl border border-gray-100 bg-gray-50 hover:scale-[1.02] transition-transform duration-300">
+                                    {/* Thumbnail: Removing aspect constraint and using object-contain to show full quality text */}
                                     <img
                                         src={shot.src}
                                         alt={shot.label}
-                                        className="w-full h-full object-cover object-top"
+                                        className="w-full h-auto object-contain"
+                                        loading="lazy"
                                     />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm transform translate-y-2 group-hover:translate-y-0 transition-all">
+                                            터치하여 확대
+                                        </div>
+                                    </div>
                                 </div>
                                 <p className="mt-4 text-center font-bold text-gray-900 text-sm">{shot.label}</p>
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {/* Lightbox Overlay */}
+                {lightboxIndex !== null && (
+                    <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
+                        {/* Header Controls */}
+                        <div className="absolute top-0 left-0 right-0 z-50 p-4 flex justify-between items-center text-white bg-gradient-to-b from-black/50 to-transparent">
+                            <div className="text-sm font-medium opacity-80">
+                                {lightboxIndex + 1} / {screenshots.length}
+                            </div>
+                            <button
+                                onClick={closeLightbox}
+                                className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Main Image Container */}
+                        <div
+                            className="w-full h-full flex items-center justify-center overflow-auto touch-pan-x touch-pan-y"
+                            onClick={(e) => {
+                                // Close if clicking outside image (on background)
+                                if (e.target === e.currentTarget) closeLightbox();
+                            }}
+                        >
+                            <img
+                                src={screenshots[lightboxIndex].src}
+                                alt="Fullscreen"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleZoom();
+                                }}
+                                className={`transition-all duration-300 ease-out cursor-zoom-in
+                                    ${zoomLevel > 1
+                                        ? 'w-auto h-auto max-w-none scale-[1.0]' // Zoomed: Allow logic to handle scale via width, or just native size.
+                                        // Actually, for crisp text, we want native size.
+                                        // If screen is small, w-auto h-auto might still effectively be "contain" if intrinsic is small.
+                                        // But screenshots are usually large.
+                                        // Let's use min-w-[150%] to force zoom feel.
+                                        : 'max-w-full max-h-full object-contain p-4' // Default: Fit
+                                    }
+                                `}
+                                style={zoomLevel > 1 ? { minWidth: '150%' } : {}}
+                            />
+                        </div>
+
+                        {/* Navigation Buttons (Hidden if zoomed for better panning) */}
+                        {zoomLevel === 1 && (
+                            <>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); navigateLightbox(-1); }}
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors backdrop-blur-md"
+                                >
+                                    <ChevronLeft className="w-8 h-8" />
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); navigateLightbox(1); }}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors backdrop-blur-md"
+                                >
+                                    <ChevronRight className="w-8 h-8" />
+                                </button>
+                            </>
+                        )}
+
+                        {/* Zoom Hint / Footer */}
+                        <div className="absolute bottom-10 left-0 right-0 text-center pointer-events-none">
+                            <div className="inline-block bg-black/50 text-white/80 px-4 py-2 rounded-full text-xs backdrop-blur-md">
+                                {zoomLevel === 1 ? '화면을 터치하면 확대됩니다' : '화면을 터치하면 축소됩니다'}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* --- Feature 1 (Left Aligned) --- */}

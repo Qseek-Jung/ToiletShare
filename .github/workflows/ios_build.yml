@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build iOS App
-    runs-on: macos-13  # macos-latest uses Xcode 16.x which breaks Firebase 10.29.0
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
@@ -22,12 +22,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
-
-      - name: Select Xcode 14.3 (Compatible with Firebase 10.29.0)
-        run: |
-          sudo xcode-select -s /Applications/Xcode_14.3.app/Contents/Developer
-          xcodebuild -version
-          swift --version
 
       - name: Create .env file (The Nuclear Option)
         run: |
@@ -136,7 +130,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="ShareToilet App Store" \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
-            IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             ONLY_ACTIVE_ARCH=NO \
             ENABLE_BITCODE=NO
 

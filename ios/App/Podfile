@@ -1,4 +1,5 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
+require 'xcodeproj'
 
 platform :ios, '15.0'
 use_frameworks!
@@ -11,6 +12,7 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'CapacitorCommunityAppleSignIn', :path => '../../node_modules/@capacitor-community/apple-sign-in'
   pod 'CapacitorCommunityHttp', :path => '../../node_modules/@capacitor-community/http'
   pod 'CapacitorFirebaseMessaging', :path => '../../node_modules/@capacitor-firebase/messaging'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
@@ -34,8 +36,10 @@ target 'App' do
   capacitor_pods
   # Add your Pods here
 
-  pod 'Firebase/Crashlytics'
-  pod 'Firebase/Analytics'
+  pod 'Firebase/Crashlytics', '10.29.0'
+  pod 'Firebase/Analytics', '10.29.0'
+  pod 'Firebase/Messaging', '10.29.0'
+  pod 'Firebase/Core', '10.29.0'
   pod 'Alamofire', '5.6.4' # Pin for Xcode 14.2 compatibility
 end
 
@@ -49,6 +53,73 @@ post_install do |installer|
       config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      
+      # Fix for FBLPromises_Privacy: Only apply Swift hacks to non-bundle targets
+      if target.respond_to?(:product_type) && target.product_type == "com.apple.product-type.bundle"
+        # Skip aggressive Swift settings for bundles
+      else
+        config.build_settings['ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES'] = 'YES'
+        config.build_settings['LIBRARY_SEARCH_PATHS'] = ['$(SDKROOT)/usr/lib/swift', '$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)', '$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)', '$(inherited)']
+        config.build_settings['OTHER_LDFLAGS'] = '$(inherited) -Wl,-U,___swift_FORCE_LOAD_$_swiftCompatibility56 -Wl,-U,___swift_FORCE_LOAD_$_swiftCompatibility55'
+      end
     end
   end
+
+  # 2. Fix MAIN APP Target (Inject Linker Flags into App.xcodeproj)
+  # The error happens in "Link App", so we must patch the App target itself, not just Pods.
+  project_path = 'App.xcodeproj'
+  project = Xcodeproj::Project.open(project_path)
+  project.targets.each do |target|
+    if target.name == 'App'
+      puts "🎯 Patching Main App Target: #{target.name}"
+      target.build_configurations.each do |config|
+        # Ensure OTHER_LDFLAGS is an array
+        ld_flags = config.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+        ld_flags = [ld_flags] if ld_flags.is_a?(String)
+        
+        # Inject flags if not present
+        # Brute Force Underscore Variants because Xcode/Arch can vary (1, 2, 3, or 4 underscores)
+        symbols = [
+           'swift_FORCE_LOAD_$_swiftCompatibility56',
+           'swift_FORCE_LOAD_$_swiftCompatibility55',
+           'swift_FORCE_LOAD_$_swiftCompatibilityConcurrency'
+        ]
+        
+        prefixes = ['_', '__', '___', '____']
+        
+        symbols.each do |sym|
+           prefixes.each do |p|
+              full_sym = p + sym
+              flag = "-Wl,-U,#{full_sym}"
+              unless ld_flags.include?(flag)
+                 ld_flags << flag
+                 puts "   -> Injected undefined flag: #{flag}"
+              end
+           end
+        end
+        
+        config.build_settings['OTHER_LDFLAGS'] = ld_flags
+
+        # Inject LIBRARY_SEARCH_PATHS
+        search_paths = config.build_settings['LIBRARY_SEARCH_PATHS'] || ['$(inherited)']
+        search_paths = [search_paths] if search_paths.is_a?(String)
+        
+        new_paths = [
+          '$(SDKROOT)/usr/lib/swift',
+          '$(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME)',
+          '$(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)'
+        ]
+        
+        new_paths.each do |path|
+          unless search_paths.include?(path)
+            search_paths << path
+            puts "   -> Injected #{path} to LIBRARY_SEARCH_PATHS for #{config.name}"
+          end
+        end
+        
+        config.build_settings['LIBRARY_SEARCH_PATHS'] = search_paths
+      end
+    end
+  end
+  project.save
 end

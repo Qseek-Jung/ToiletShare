@@ -14,6 +14,7 @@ const KAKAO_NATIVE_KEY = import.meta.env.VITE_KAKAO_NATIVE_KEY || "";
 const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail.com";
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
+import { SignInWithApple, SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
 
 import { PushNotifications } from '@capacitor/push-notifications'; // Keep for type if needed, but logic uses FirebaseMessaging
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
@@ -48,6 +49,7 @@ import { adMobService } from './services/admob';
 import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
 import NoticePage from './pages/NoticePage';
+import DownloadPage from './pages/DownloadPage';
 
 
 import { iOSDebugger } from './components/iOSDebugger';
@@ -101,7 +103,7 @@ export default function App() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [updateModal, setUpdateModal] = useState<{ show: boolean, type: 'force' | 'optional', storeUrl: string, message: string }>({ show: false, type: 'optional', storeUrl: '', message: '' });
     const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-
+    const [showDownloadPage, setShowDownloadPage] = useState(false);
 
     const toggleDarkMode = () => {
         setDarkMode(prev => {
@@ -165,8 +167,11 @@ export default function App() {
     useEffect(() => {
         const refCode = new URLSearchParams(window.location.search).get('ref');
         if (refCode) {
-            sessionStorage.setItem('referral_code', refCode);
+            localStorage.setItem('referrer_code', refCode);
             console.log('🔗 Referral code captured:', refCode);
+            // If we want to show DownloadPage explicitly when ref is present:
+            // If we want to show DownloadPage explicitly when ref is present:
+            setShowDownloadPage(true);
         }
     }, []);
 
@@ -1315,6 +1320,43 @@ export default function App() {
     };
 
 
+
+    const performAppleLogin = async () => {
+        try {
+            setLoginLoading(true);
+            const options: SignInWithAppleOptions = {
+                clientId: 'com.toilet.korea',
+                redirectURI: 'https://toiletshare.pages.dev/auth/callback',
+                scopes: 'name email',
+                state: '12345',
+                nonce: 'nonce',
+            };
+
+            const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
+            console.log('Apple Sign In Result:', result);
+
+            const email = result.response.email;
+            if (!email) {
+                // In production, should handle relay email or sub
+                // For MVP/Verification, we assume email is returned (first login)
+                // If missing on 2nd login, we might need to alert user or handle logic
+                // But often it's cached or we should use sub.
+                // Warn user if missing.
+                alert("Apple 로그인: 이메일 정보가 없습니다. (앱 삭제 후 재설치 또는 설정 확인 필요)");
+                setLoginLoading(false);
+                return;
+            }
+
+            // Default to UNISEX/MALE as Apple doesn't typically provide gender
+            await handleSocialLoginSuccess(email, Gender.UNISEX, false, 'apple');
+
+        } catch (e) {
+            console.error('Apple Login Error:', e);
+            // alert("Apple 로그인 취소");
+            setLoginLoading(false);
+        }
+    };
+
     const performGoogleLogin = async () => {
         setLoginLoading(true);
 
@@ -1352,6 +1394,19 @@ export default function App() {
                             credits: 50,
                             signupProvider: 'google',
                         };
+
+                        // Check Referral
+                        const refCode = localStorage.getItem('referrer_code');
+                        if (refCode) {
+                            // Will process later? No, Google flow logic is a bit manual here.
+                            // We set PendingUser, but when did we save?
+                            // Ah, showGenderSelectModal(true) -> handleGenderSelect -> saveUser.
+                            // So we need to store refCode in PendingUser? 
+                            // Or just rely on localStorage being available when Gender is selected.
+                            // 'newUser' interface has 'referrerId'. Let's add it.
+                            newUser.referrerId = refCode;
+                        }
+
                         setPendingUser(newUser);
                         setShowLoginModal(false); // Close Login Modal
                         setShowGenderSelectModal(true); // Open Gender Modal
@@ -1665,7 +1720,8 @@ export default function App() {
     };
 
     // Shared success handler to reduce code duplication
-    const handleSocialLoginSuccess = async (email: string, gender: Gender, hasGenderInfo: boolean, provider: 'kakao') => {
+    // Shared success handler to reduce code duplication
+    const handleSocialLoginSuccess = async (email: string, gender: Gender, hasGenderInfo: boolean, provider: 'kakao' | 'apple') => {
         // Check if user already exists
         const existingUsers = await db.getUsers();
         let targetUser = existingUsers.find(u => u.email === email);
@@ -1699,28 +1755,31 @@ export default function App() {
                     await db.saveUser(tempUser);
                     await db.recordNewUser(); // Record new user stat
                     // CHECK REFERRAL
-                    const refCode = sessionStorage.getItem('referral_code');
+                    const refCode = localStorage.getItem('referrer_code');
                     if (refCode) {
                         try {
-                            const referrerId = atob(refCode);
+                            // Assuming refCode is the Referrer ID directly (or stripped code)
+                            // If base64 was intended, keep atob. But for URL params usually it's plain.
+                            // Let's rely on direct string for now as per landing page.
+                            const referrerId = refCode;
                             await db.processReferral(referrerId, tempUser.id);
-                            sessionStorage.removeItem('referral_code');
-                            console.log('🎁 Referral processed for:', referrerId);
+                            localStorage.removeItem('referrer_code');
                         } catch (e) {
-                            console.error('Referral processing failed', e);
+                            console.error('Referral Error:', e);
                         }
                     }
-
-                    console.log(`✨ New ${provider} user registered:`, email);
-                    setUser(tempUser);
-                    localStorage.setItem('currentUser', JSON.stringify(tempUser));
-                    setShowLoginModal(false);
-                    setShowWelcomeModal(true); // Trigger Welcome Modal
-                    window.location.hash = '#/';
-                } catch (error) {
-                    setShowBannedModal(true);
+                } catch (e) {
+                    // console.error('Referral processing failed', e);
                 }
+
+                console.log(`✨ New ${provider} user registered:`, email);
+                setUser(tempUser);
+                localStorage.setItem('currentUser', JSON.stringify(tempUser));
+                setShowLoginModal(false);
+                setShowWelcomeModal(true); // Trigger Welcome Modal
+                window.location.hash = '#/';
             }
+
         } else {
             // 1. Check Banned
             if (targetUser.status === 'banned') {
@@ -2086,6 +2145,14 @@ export default function App() {
             return <SettingsPage onBack={() => window.history.back()} darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />;
         }
 
+        if (showDownloadPage) {
+            return (
+                <div className="absolute inset-0 w-full h-full overflow-y-auto overscroll-y-contain bg-white pb-safe" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <DownloadPage referrerCode={new URLSearchParams(window.location.search).get('ref')} />
+                </div>
+            );
+        }
+
         // 2. Home & Detail Overlay Logic
         // Handles: '', '#/', '#/toilet/:id', and unmatched routes (Home default)
 
@@ -2306,7 +2373,7 @@ export default function App() {
                 <div className="flex-1 w-full relative">{!showSplash && CurrentPage}</div>
 
 
-                {!currentHash.includes('admin') && !showSplash && !showAd && !isDetailModalOpen && !isNoticeModalOpen && (
+                {!currentHash.includes('admin') && !showSplash && !showAd && !showDownloadPage && !isDetailModalOpen && !isNoticeModalOpen && (
                     <>
                         {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
                         {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
@@ -2523,6 +2590,12 @@ export default function App() {
                             </div>
 
                             <div className="space-y-3">
+                                {Capacitor.getPlatform() === 'ios' && (
+                                    <button onClick={performAppleLogin} disabled={loginLoading} className="w-full py-4 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
+                                        <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-2.9.35-.9-.46-1.87-.46-2.6 0-.96.58-1.78.68-2.65-.45-3.44-4.2-2.18-9.04 1.83-9.52 1.3-.16 2.05.74 2.65.65.6-.1 1.76-1.07 3.3-.8 2 .18 3.1 1.05 3.1 1.05s-1.8 1.04-1.6 3.65c.23 2.98 2.37 3.55 2.37 3.55s-1.3 3.65-3.5 6.07zM14.6 6.35c.78-1.08 1.1-2.3 1.03-3.07-1.1.06-2.58.74-3.3 1.95-.6.94-.95 2.3-.95 3 1.33.14 2.5-1.12 3.22-1.9z" /></svg>
+                                        <span>Apple로 계속하기</span>
+                                    </button>
+                                )}
                                 <button onClick={performGoogleLogin} disabled={loginLoading} className="w-full py-4 bg-white border border-gray-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 text-gray-800 shadow-sm transition-transform active:scale-95 overflow-hidden">
                                     {loginLoading ? (
                                         <div className="flex items-center justify-center w-5 h-5">

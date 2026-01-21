@@ -60,22 +60,28 @@ export const AdBanner: React.FC<AdBannerProps> = ({
                     if (config.customBanners.length === 0) setSource('admob');
                     else setShouldShow(false); // Have custom banners but none for this type -> Hide
                 }
-            } else {
-                // AdMob Logic
-                // If isInline (List/Modal), we might want to use MREC or specialized logic?
-                // For now, AdMobService handles standard banners.
-                // If type is NATIVE_LIST/MODAL, we ideally use showNativeBanner (MREC).
-                // But AdMobService.showBanner is 'ADAPTIVE'.
-                // Let's rely on standard banner for now unless 'Native' implies MREC.
-                // The AdMob service we updated has 'showNativeBanner' logic (implied potentially).
-                // Actually we didn't fully implement showNativeBanner in the replace, 
-                // but we configured IDs.
-                // Let's simpler: Just show standard banner for now.
-                // Re-trigger show on mount
             }
         };
 
         checkConfig();
+
+        // Listen for App Resume to refresh Ad Config
+        const setupListener = async () => {
+            const { App } = await import('@capacitor/app');
+            return App.addListener('appStateChange', ({ isActive }) => {
+                if (isActive) {
+                    // Force re-check on resume (uses TTL cache in db_supabase)
+                    checkConfig();
+                }
+            });
+        };
+
+        let listenerHandle: any;
+        setupListener().then(handle => { listenerHandle = handle; });
+
+        return () => {
+            if (listenerHandle) listenerHandle.remove();
+        };
     }, [type]); // Re-run if type changes
 
     useEffect(() => {

@@ -103,7 +103,10 @@ export default function App() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [updateModal, setUpdateModal] = useState<{ show: boolean, type: 'force' | 'optional', storeUrl: string, message: string }>({ show: false, type: 'optional', storeUrl: '', message: '' });
     const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
-    const [showDownloadPage, setShowDownloadPage] = useState(false);
+    const [showDownloadPage, setShowDownloadPage] = useState(() => {
+        // Check URL for referral code immediately to bypass splash
+        return !!new URLSearchParams(window.location.search).get('ref');
+    });
 
     const toggleDarkMode = () => {
         setDarkMode(prev => {
@@ -169,11 +172,9 @@ export default function App() {
         if (refCode) {
             localStorage.setItem('referrer_code', refCode);
             console.log('🔗 Referral code captured:', refCode);
-            // If we want to show DownloadPage explicitly when ref is present:
-            // If we want to show DownloadPage explicitly when ref is present:
-            setShowDownloadPage(true);
+            // State is already set in initialization to prevent splash flash
         }
-    }, []);
+    }, [showDownloadPage]);
 
 
     // Version Check
@@ -550,7 +551,11 @@ export default function App() {
     const [testAccounts, setTestAccounts] = useState<User[]>([]);
 
     // Splash Screen State
-    const [showSplash, setShowSplash] = useState(true);
+    const [showSplash, setShowSplash] = useState(() => {
+        // Skip splash if referral code exists (Download Page mode)
+        const isDownloadPage = !!new URLSearchParams(window.location.search).get('ref');
+        return !isDownloadPage;
+    });
     const [splashImgError, setSplashImgError] = useState(false);
 
     // AdManager State

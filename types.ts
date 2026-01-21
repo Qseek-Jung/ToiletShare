@@ -42,7 +42,7 @@ export interface User {
   lastLogin?: string;
   pushToken?: string;  // Device push notification token
   notificationEnabled?: boolean;
-  signupProvider?: 'email' | 'google' | 'kakao' | 'naver' | 'email_test';
+  signupProvider?: 'email' | 'google' | 'kakao' | 'naver' | 'email_test' | 'apple';
   referrerId?: string; // Who invited this user
 
   // Activity & Level

@@ -1831,8 +1831,14 @@ export class SupabaseDatabaseService {
         };
     }
 
-    async getAdConfig(): Promise<AdConfig> {
-        if (this.adConfigCache) return this.adConfigCache;
+    private adConfigTimestamp: number = 0;
+    private readonly AD_CONFIG_TTL = 5 * 60 * 1000; // 5 minutes
+
+    async getAdConfig(forceRefresh = false): Promise<AdConfig> {
+        const now = Date.now();
+        if (!forceRefresh && this.adConfigCache && (now - this.adConfigTimestamp < this.AD_CONFIG_TTL)) {
+            return this.adConfigCache;
+        }
 
         const { data } = await supabase.from('app_config').select('value').eq('key', 'ad_config').single();
         if (data && data.value) {
@@ -1861,6 +1867,7 @@ export class SupabaseDatabaseService {
             }
 
             this.adConfigCache = config;
+            this.adConfigTimestamp = now;
             return config;
         }
 
@@ -1894,6 +1901,7 @@ export class SupabaseDatabaseService {
             }
         };
         this.adConfigCache = defaultConfig;
+        this.adConfigTimestamp = now;
         return defaultConfig;
     }
 

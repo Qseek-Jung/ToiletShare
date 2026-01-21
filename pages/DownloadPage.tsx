@@ -79,38 +79,14 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
                         />
                     </div>
 
-                    {/* Referral Card */}
-                    {referrerCode && (
-                        <div className="bg-white border border-gray-100 shadow-xl rounded-2xl p-5 max-w-xs mx-auto transform hover:-translate-y-1 transition-all duration-300">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <Gift className="w-4 h-4 text-blue-500" />
-                                    <span className="text-xs font-bold text-gray-500 uppercase">초대 혜택</span>
-                                </div>
-                                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Active</span>
-                            </div>
-                            <div
-                                onClick={() => handleCopyAndRedirect('#')}
-                                className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 cursor-pointer hover:bg-gray-100 transition-colors"
-                            >
-                                <div className="flex flex-col items-start">
-                                    <span className="text-[10px] text-gray-400 font-medium">Referral Code</span>
-                                    <span className="text-xl font-mono font-black text-gray-800 tracking-wider leading-none">{referrerCode}</span>
-                                </div>
-                                {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-gray-400" />}
-                            </div>
-                            <p className="text-[10px] text-gray-400 mt-3 text-center">
-                                터치하여 복사하고 웰컴 포인트를 받으세요.
-                            </p>
-                        </div>
-                    )}
+                    {/* Referral Card Hidden (Background Processing) */}
                 </div>
             </header>
 
 
 
             {/* --- App Screenshot Gallery (New) --- */}
-            <section className="py-12 bg-white overflow-hidden">
+            <section className="pb-12 pt-0 bg-white overflow-hidden">
                 <div className="max-w-md mx-auto">
                     <div className="px-6 mb-8 text-center">
                         <h2 className="text-2xl font-black text-gray-900 mb-3 tracking-tight">서비스 미리보기</h2>

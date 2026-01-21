@@ -23,6 +23,12 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Select Xcode 14.3 (Compatible with Firebase 10.29.0)
+        run: |
+          sudo xcode-select -s /Applications/Xcode_14.3.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+
       - name: Create .env file (The Nuclear Option)
         run: |
           echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env

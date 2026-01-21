@@ -79,12 +79,15 @@ jobs:
       - name: Patch iOS Native Code (Info.plist, AppDelegate)
         run: node scripts/patch-ios.js
 
+      - name: Prepare Ruby Environment (xcodeproj)
+        run: |
+          gem install xcodeproj
+
       - name: Sync Capacitor
         run: npx cap sync ios
 
       - name: Register GoogleService-Info.plist in Xcode
         run: |
-          gem install xcodeproj
           ruby scripts/add-google-service.rb
 
 

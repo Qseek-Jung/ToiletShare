@@ -287,21 +287,17 @@ export interface AdConfig {
     native: string;
   };
 
-  // Platform-specific AdMob IDs (NEW)
+  // Platform-specific AdMob IDs (Video Ads Only)
   adMobIdsIOS?: {
     appId?: string;
-    banner?: string;
     interstitial?: string;
     reward?: string;
-    native?: string;
   };
 
   adMobIdsAndroid?: {
     appId?: string;
-    banner?: string;
     interstitial?: string;
     reward?: string;
-    native?: string;
   };
 
   // ===== Platform-Specific Interstitial Ads =====

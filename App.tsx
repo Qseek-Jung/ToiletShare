@@ -15,6 +15,7 @@ const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 import { SignInWithApple, SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
+import { AppTrackingTransparency } from 'capacitor-plugin-app-tracking-transparency';
 
 import { PushNotifications } from '@capacitor/push-notifications'; // Keep for type if needed, but logic uses FirebaseMessaging
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
@@ -126,6 +127,15 @@ export default function App() {
         lockViewportHeight();
         // Init Logger
         logger.init();
+
+        // Request ATT Permission (iOS only) - Critical for App Store Review
+        if (Capacitor.getPlatform() === 'ios') {
+            AppTrackingTransparency.requestPermission().then((status) => {
+                console.log('ATT Status:', status);
+            }).catch((e) => {
+                console.warn('ATT Request Failed:', e);
+            });
+        }
     }, []);
 
     // FIX: Sync 'dark' class to HTML element

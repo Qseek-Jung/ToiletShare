@@ -324,8 +324,9 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                             {selectedPlatform === 'ios' && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
                                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                        <h4 className="font-bold text-sm text-blue-900 mb-2">대똥단결 iOS App</h4>
+                                        <h4 className="font-bold text-sm text-blue-900 mb-2">대똥단결 iOS App - 동영상 광고만</h4>
                                         <p className="text-xs text-blue-700">App ID: ca-app-pub-8142649369272916~9190025429</p>
+                                        <p className="text-xs text-blue-600 mt-1">※ 배너는 커스텀 배너 사용</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-4">
@@ -337,16 +338,6 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                                 onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, appId: e.target.value } })}
                                                 className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
                                                 placeholder="ca-app-pub-8142649369272916~9190025429"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">IOS_Main_Banner (하단 배너)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsIOS?.banner || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, banner: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/5307503583"
                                             />
                                         </div>
                                         <div className="space-y-1">
@@ -369,16 +360,6 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                                 placeholder="ca-app-pub-8142649369272916/3994421919"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">IOS_Native_Banner (리스트/모달 인라인)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsIOS?.native || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, native: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/6617372368"
-                                            />
-                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -387,8 +368,9 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                             {selectedPlatform === 'android' && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
                                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                        <h4 className="font-bold text-sm text-green-900 mb-2">대똥단결 Android App</h4>
+                                        <h4 className="font-bold text-sm text-green-900 mb-2">대똥단결 Android App - 동영상 광고만</h4>
                                         <p className="text-xs text-green-700">App ID: ca-app-pub-8142649369272916~9342907044</p>
+                                        <p className="text-xs text-green-600 mt-1">※ 배너는 커스텀 배너 사용</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-4">
@@ -400,16 +382,6 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                                 onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, appId: e.target.value } })}
                                                 className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
                                                 placeholder="ca-app-pub-8142649369272916~9342907044"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">Android_Main_Banner (하단 배너)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsAndroid?.banner || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, banner: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/1667146634"
                                             />
                                         </div>
                                         <div className="space-y-1">
@@ -430,16 +402,6 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                                 onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, reward: e.target.value } })}
                                                 className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
                                                 placeholder="ca-app-pub-8142649369272916/1560486806"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">Android_Native_Banner (리스트/모달 인라인)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsAndroid?.native || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, native: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/8300837744"
                                             />
                                         </div>
                                     </div>

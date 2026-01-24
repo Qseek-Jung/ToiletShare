@@ -82,6 +82,8 @@
 		<string>naversearchapp</string>
 		<string>naversearchthirdlogin</string>
 	</array>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>이 앱은 사용자에게 최적화된 광고를 제공하기 위해 기기 식별자를 수집합니다.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>내 주변 화장실을 찾기 위해 현재 위치 정보가 필요합니다.</string>
 

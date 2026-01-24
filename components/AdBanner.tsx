@@ -8,12 +8,11 @@ interface AdBannerProps {
     position?: 'top' | 'bottom';
     className?: string;
     maxHeight?: number;
-    // Ratio constraints for responsive sizing
     minRatio?: number;
     maxRatio?: number;
-    isInline?: boolean; // If true, doesn't stick to screen edges
-    margin?: number; // Margin for top/bottom sticky
-    type?: CustomBannerType; // Added type prop
+    isInline?: boolean;
+    margin?: number;
+    type?: CustomBannerType;
 }
 
 export const AdBanner: React.FC<AdBannerProps> = ({
@@ -24,7 +23,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     maxRatio,
     isInline = false,
     margin = 0,
-    type = 'BANNER' // Default to BANNER
+    type = 'BANNER'
 }) => {
     const [shouldShow, setShouldShow] = useState(false);
     const [customBanner, setCustomBanner] = useState<{ imageUrl: string, targetUrl: string } | null>(null);
@@ -46,7 +45,6 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             if (config.bannerSource === 'custom') {
                 // Filter by type
                 const validBanners = config.customBanners.filter(b => {
-                    // Backwards compatibility: if b.type is undefined, treat as BANNER
                     const bType = b.type || 'BANNER';
                     return bType === type;
                 });
@@ -55,10 +53,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
                     const randomBanner = validBanners[Math.floor(Math.random() * validBanners.length)];
                     setCustomBanner(randomBanner);
                 } else {
-                    // Fallback to AdMob if no valid custom banner for this type
-                    // Or hide? Let's fallback to AdMob if custom is empty
                     if (config.customBanners.length === 0) setSource('admob');
-                    else setShouldShow(false); // Have custom banners but none for this type -> Hide
+                    else setShouldShow(false);
                 }
             }
         };
@@ -70,7 +66,6 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             const { App } = await import('@capacitor/app');
             return App.addListener('appStateChange', ({ isActive }) => {
                 if (isActive) {
-                    // Force re-check on resume (uses TTL cache in db_supabase)
                     checkConfig();
                 }
             });
@@ -82,7 +77,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return () => {
             if (listenerHandle) listenerHandle.remove();
         };
-    }, [type]); // Re-run if type changes
+    }, [type]);
 
     useEffect(() => {
         if (!shouldShow || source !== 'admob') {
@@ -92,48 +87,26 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         }
 
         const showAdMob = async () => {
-            const pos = position === 'top' ? BannerAdPosition.TOP_CENTER : BannerAdPosition.BOTTOM_CENTER;
-            // Native/Inline slots might need different handling if plugin supports view-embedding.
-            // Capacitor AdMob Banners are overlays. Inline visual is hard.
-            // If isInline is true, we simply reserve space in DOM, but the Ad is overlay (fixed or absolute).
-            // This is a known limitation.
-            // Best effort: Show banner at calculated position?
-            // Wait, standard usage in this app for inline: 
-            // It actually just renders the Custom Banner as img.
-            // For AdMob: The plugin puts a WebView overlay.
-            // If we want "Native", we generally need a different plugin or Native Advanced.
-            // For this task, we focus on Custom Banners logic mostly as per user request.
-            // For AdMob, we just call showBanner.
+            // Get config to initialize AdMob
+            const config = await dbSupabase.getAdConfig();
 
-            // Note: If type is 'NATIVE_MODAL' or 'NATIVE_LIST', standard banner might look odd overlaying.
-            // We'll stick to 'showBanner' which does overlay at top/bottom.
-            // If isInline, we might skip AdMob if it can't be embedded?
-            // Actually, for specific "Native" slots, maybe we DON'T show AdMob Standard Banner 
-            // because it floats?
-            // Let's assume user is okay with Custom Banners for those slots or AdMob if it works.
+            // Initialize AdMob with config from Supabase
+            await adMobService.initialize(config);
 
-            // For now, only show AdMob if strict "BANNER" type (Bottom/Top) to avoid floating ads over content?
-            // Or allow it.
+            // Only show AdMob banner for BANNER type to avoid floating ads over content
             if (type === 'BANNER') {
-                if (position === 'bottom') adMobService.showBottomBanner();
-                else adMobService.showBanner(BannerAdPosition.TOP_CENTER, { margin });
-            } else {
-                // For Native slots, AdMob overlay is tricky.
-                // Maybe we create an MREC ad?
-                // But sticking to simple update:
-                // If AdMob source AND Native type -> Try valid AdMob or Hide
-                // Let's hide AdMob for Native slots for now to prevent UI breaking, 
-                // UNLESS Custom Banner is present.
-                // User specifically asked for "Custom Banner categorization".
+                if (position === 'bottom') {
+                    await adMobService.showBottomBanner();
+                } else {
+                    await adMobService.showBanner(BannerAdPosition.TOP_CENTER, { margin });
+                }
             }
         };
 
         showAdMob();
 
         return () => {
-            // adMobService.hideBanner(); // Don't hide on unmount aggressively if global?
-            // Actually AdBanner is used in specific places.
-            // Use hide logic carefully.
+            // Cleanup handled by individual components if needed
         };
     }, [shouldShow, source, position, margin, type]);
 
@@ -159,8 +132,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     }
 
     // AdMob Placeholder
-    // Since AdMob banners are overlays, we don't need a DOM element unless we want to reserve space.
-    // For bottom banner, we usually adjust body padding.
-    // For inline/native, we might ideally want a placeholder, but current implementation is overlay-based for AdMob.
+    // AdMob banners are native overlays, so we don't render a DOM element
+    // The banner will appear as a native overlay at the specified position
     return null;
 };

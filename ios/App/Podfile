@@ -12,6 +12,8 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
+  pod 'BrandonknudsenAdmobNativeAdvanced', :path => '../../node_modules/@brandonknudsen/admob-native-advanced'
+  pod 'CapacitorCommunityAdmob', :path => '../../node_modules/@capacitor-community/admob'
   pod 'CapacitorCommunityAppleSignIn', :path => '../../node_modules/@capacitor-community/apple-sign-in'
   pod 'CapacitorCommunityHttp', :path => '../../node_modules/@capacitor-community/http'
   pod 'CapacitorFirebaseMessaging', :path => '../../node_modules/@capacitor-firebase/messaging'
@@ -30,16 +32,17 @@ def capacitor_pods
   pod 'TeamLepisodeCapacitorNaverLogin', :path => '../../node_modules/@team-lepisode/capacitor-naver-login'
   pod 'TransistorsoftCapacitorBackgroundFetch', :path => '../../node_modules/@transistorsoft/capacitor-background-fetch'
   pod 'CapacitorKakaoLoginPlugin', :path => '../../node_modules/capacitor-kakao-login-plugin'
+  pod 'CapacitorPluginAppTrackingTransparency', :path => '../../node_modules/capacitor-plugin-app-tracking-transparency'
 end
 
 target 'App' do
   capacitor_pods
   # Add your Pods here
 
-  pod 'Firebase/Crashlytics'
-  pod 'Firebase/Analytics'
-  pod 'Firebase/Messaging'
-  pod 'Firebase/Core'
+  pod 'Firebase/Crashlytics', '10.29.0'
+  pod 'Firebase/Analytics', '10.29.0'
+  pod 'Firebase/Messaging', '10.29.0'
+  pod 'Firebase/Core', '10.29.0'
   pod 'Alamofire', '5.6.4' # Pin for Xcode 14.2 compatibility
 end
 
@@ -82,7 +85,26 @@ post_install do |installer|
         symbols = [
            'swift_FORCE_LOAD_$_swiftCompatibility56',
            'swift_FORCE_LOAD_$_swiftCompatibility55',
-           'swift_FORCE_LOAD_$_swiftCompatibilityConcurrency'
+           'swift_FORCE_LOAD_$_swiftCompatibilityConcurrency',
+           # Add MarketplaceKit symbols for AdMob SDK 12.12.0+
+           's14MarketplaceKit14AppDistributorO10testFlightyA2CmFWC',
+           's14MarketplaceKit14AppDistributorO11marketplaceyACSSACmFWC',
+           's14MarketplaceKit14AppDistributorO3webyA2CmFWC',
+           's14MarketplaceKit14AppDistributorO5otheryA2CmFWC',
+           's14MarketplaceKit14AppDistributorO7currentACvgZ',
+           's14MarketplaceKit14AppDistributorO7currentACvgZTu',
+           's14MarketplaceKit14AppDistributorO8appStoreyA2CmFWC',
+           's14MarketplaceKit14AppDistributorOMa',
+           's14MarketplaceKit14AppDistributorOMn',
+           'swift_FORCE_LOAD_$_swiftXPC',
+           'swift_FORCE_LOAD_$_swift_Builtin_float',
+           'swift_FORCE_LOAD_$_swift_errno',
+           'swift_FORCE_LOAD_$_swift_math',
+           'swift_FORCE_LOAD_$_swift_signal',
+           'swift_FORCE_LOAD_$_swift_stdio',
+           'swift_FORCE_LOAD_$_swift_time',
+           'swift_FORCE_LOAD_$_swiftsys_time',
+           'swift_FORCE_LOAD_$_swiftunistd'
         ]
         
         prefixes = ['_', '__', '___', '____']

@@ -231,10 +231,23 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     const handleAdMobFallback = async (testMode: boolean) => {
         try {
+            // Initialize AdMob with config first
+            await adMobService.initialize(config);
+
             if (adType === 'reward') {
+                // Prepare reward ad first
+                await adMobService.prepareRewardVideo();
+                // Wait a bit for ad to load
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Show reward ad
                 const result = await adMobService.showRewardVideo();
                 if (result && onReward) onReward();
             } else {
+                // Prepare interstitial ad first
+                await adMobService.prepareInterstitial();
+                // Wait a bit for ad to load
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Show interstitial
                 await adMobService.showInterstitial();
             }
         } catch (error) {

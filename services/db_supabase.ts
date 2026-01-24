@@ -87,7 +87,8 @@ export class SupabaseDatabaseService {
             loginCount: u.login_count,
             adViewCount: u.ad_view_count,
             referrerId: u.referrer_id,
-            signupProvider: u.signup_provider
+            signupProvider: u.signup_provider,
+            appleIdentifier: u.apple_identifier // Add mapping
         } as User;
     }
 
@@ -1164,9 +1165,13 @@ export class SupabaseDatabaseService {
             last_login: new Date().toISOString(),
             push_token: user.pushToken,
             notification_enabled: user.notificationEnabled,
+            login_notices: user.loginNotices,
+            login_count: user.loginCount,
+            ad_view_count: user.adViewCount,
+            referrer_id: user.referrerId,
             signup_provider: user.signupProvider,
-            referrer_id: user.referrerId
-        }, { onConflict: 'email' });
+            apple_identifier: user.appleIdentifier // Persist Apple ID
+        }, { onConflict: 'id' });
 
         if (!error) {
             this.incrementDailyStat('visitors');
@@ -1197,7 +1202,23 @@ export class SupabaseDatabaseService {
     }
 
     async getUserByEmail(email: string): Promise<User | null> {
-        const { data, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error || !data) return null;
+        return this.mapUser(data);
+    }
+
+    async getUserByAppleId(appleId: string): Promise<User | null> {
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('apple_identifier', appleId)
+            .single();
+
         if (error || !data) return null;
         return this.mapUser(data);
     }

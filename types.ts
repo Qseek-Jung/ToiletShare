@@ -44,6 +44,7 @@ export interface User {
   notificationEnabled?: boolean;
   signupProvider?: 'email' | 'google' | 'kakao' | 'naver' | 'email_test' | 'apple';
   referrerId?: string; // Who invited this user
+  appleIdentifier?: string; // Stable Apple User ID (sub) for re-auth without email
 
   // Activity & Level
   activityScore?: number;
@@ -284,6 +285,23 @@ export interface AdConfig {
     rewardInterstitial: string;
     appOpen: string;
     native: string;
+  };
+
+  // Platform-specific AdMob IDs (NEW)
+  adMobIdsIOS?: {
+    appId?: string;
+    banner?: string;
+    interstitial?: string;
+    reward?: string;
+    native?: string;
+  };
+
+  adMobIdsAndroid?: {
+    appId?: string;
+    banner?: string;
+    interstitial?: string;
+    reward?: string;
+    native?: string;
   };
 
   // ===== Platform-Specific Interstitial Ads =====

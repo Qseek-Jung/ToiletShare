@@ -1349,21 +1349,32 @@ export default function App() {
             };
 
             const result: SignInWithAppleResponse = await SignInWithApple.authorize(options);
-            console.log('Apple Sign In Result:', result);
 
-            const email = result.response.email;
+            let email = result.response.email;
             let appleUserId = result.response.user;
 
-            // FALLBACK: If 'user' field is missing (sometimes happens entirely), extract 'sub' from identityToken
-            if (!appleUserId && result.response.identityToken) {
+            // Extract email and user ID from JWT if not provided directly
+            if (result.response.identityToken) {
                 try {
                     const decoded: any = jwtDecode(result.response.identityToken);
-                    if (decoded && decoded.sub) {
+                    if (!appleUserId && decoded.sub) {
                         appleUserId = decoded.sub;
-                        console.log("Extracted Apple ID from JWT:", appleUserId);
+                    }
+                    if (!email && decoded.email) {
+                        email = decoded.email;
                     }
                 } catch (jwtErr) {
-                    console.error("JWT Decode Error:", jwtErr);
+                    // Fallback: manual base64 decode
+                    try {
+                        const parts = result.response.identityToken.split('.');
+                        if (parts.length === 3) {
+                            const payload = JSON.parse(atob(parts[1]));
+                            if (!email && payload.email) email = payload.email;
+                            if (!appleUserId && payload.sub) appleUserId = payload.sub;
+                        }
+                    } catch (manualErr) {
+                        console.error('Failed to decode Apple JWT:', manualErr);
+                    }
                 }
             }
 
@@ -1750,14 +1761,27 @@ export default function App() {
 
         let targetUser: User | undefined;
 
-        // 1. Try to find by stableId first (Priority for Apple/Native logins)
+        // 1. Try to find by stableId (Apple Identifier) first - Most reliable
         if (stableId) {
-            targetUser = existingUsers.find(u => u.id === stableId);
+            // Priority 1: Check by dedicated apple_identifier column (New Logic)
+            targetUser = await db.getUserByAppleId(stableId);
+
+            // Priority 2: Check by ID (Old Logic - for new users created with stableId as PK)
+            if (!targetUser) {
+                targetUser = existingUsers.find(u => u.id === stableId);
+            }
         }
 
         // 2. If not found, try by email
         if (!targetUser && email) {
             targetUser = existingUsers.find(u => u.email === email);
+
+            // MIGRATION: If found by email but no appleIdentifier, link them now!
+            if (targetUser && stableId && provider === 'apple' && !targetUser.appleIdentifier) {
+                console.log("🔗 Linking existing user to Apple ID:", stableId);
+                targetUser.appleIdentifier = stableId;
+                await db.saveUser(targetUser); // Persist the link
+            }
         }
 
         if (!targetUser) {
@@ -1772,13 +1796,17 @@ export default function App() {
             const defaultNickname = email.split('@')[0];
             const tempUser: User = {
                 // Use stableId if available (e.g. Apple User ID), ensuring re-login works without email
-                id: stableId || `${provider}_` + Date.now(),
+                // Ideally use generated UUID and store stableId in appleIdentifier, 
+                // but for now keeping compatibility with existing ID scheme or using stableId as ID if preferred.
+                // Better: Generate unique ID, store stableId in appleIdentifier.
+                id: `${provider}_` + Date.now(),
                 email,
                 nickname: defaultNickname,
                 gender, // Will be updated if needed
                 role: UserRole.USER,
                 credits: 50,
-                signupProvider: provider
+                signupProvider: provider,
+                appleIdentifier: stableId // Persist stable ID for future lookups
             };
 
             if (email === SUPERVISOR_EMAIL) {
@@ -1818,8 +1846,8 @@ export default function App() {
                 setUser(tempUser);
                 localStorage.setItem('currentUser', JSON.stringify(tempUser));
                 // Update ID for future lookups (optional but good practice to sync)
-                if (stableId && tempUser.id !== stableId) {
-                    // Mismatch shouldn't happen with above logic, but safety check
+                if (stableId && tempUser.appleIdentifier !== stableId) {
+                    // Should be set above, but safety check
                 }
                 setShowLoginModal(false);
                 setShowWelcomeModal(true); // Trigger Welcome Modal

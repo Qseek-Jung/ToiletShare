@@ -231,27 +231,39 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     const handleAdMobFallback = async (testMode: boolean) => {
         try {
+            console.log('[AdManager] Starting AdMob fallback', { adType, testMode, config });
+
             // Initialize AdMob with config first
             await adMobService.initialize(config);
+            console.log('[AdManager] AdMob initialized');
 
             if (adType === 'reward') {
                 // Prepare reward ad first
+                console.log('[AdManager] Preparing reward ad...');
                 await adMobService.prepareRewardVideo();
+                console.log('[AdManager] Reward ad prepared, waiting...');
                 // Wait a bit for ad to load
                 await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('[AdManager] Showing reward ad...');
                 // Show reward ad
                 const result = await adMobService.showRewardVideo();
+                console.log('[AdManager] Reward ad result:', result);
                 if (result && onReward) onReward();
             } else {
                 // Prepare interstitial ad first
+                console.log('[AdManager] Preparing interstitial ad...');
                 await adMobService.prepareInterstitial();
+                console.log('[AdManager] Interstitial ad prepared, waiting...');
                 // Wait a bit for ad to load
                 await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('[AdManager] Showing interstitial ad...');
                 // Show interstitial
                 await adMobService.showInterstitial();
+                console.log('[AdManager] Interstitial ad shown');
             }
         } catch (error) {
-            console.error("AdMob Playback Failed:", error);
+            console.error("❌ [AdManager] AdMob Playback Failed:", error);
+            alert(`AdMob 오류: ${error.message || error}`);
         } finally {
             onClose();
         }

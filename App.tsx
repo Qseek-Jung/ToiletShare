@@ -1351,23 +1351,17 @@ export default function App() {
             console.log('Apple Sign In Result:', result);
 
             const email = result.response.email;
-            if (!email) {
-                // In production, should handle relay email or sub
-                // For MVP/Verification, we assume email is returned (first login)
-                // If missing on 2nd login, we might need to alert user or handle logic
-                // But often it's cached or we should use sub.
-                // Warn user if missing.
-                alert("Apple 로그인: 이메일 정보가 없습니다. (앱 삭제 후 재설치 또는 설정 확인 필요)");
-                setLoginLoading(false);
-                return;
-            }
+            const appleUserId = result.response.user;
 
             // Default to UNISEX/MALE as Apple doesn't typically provide gender
-            await handleSocialLoginSuccess(email, Gender.UNISEX, false, 'apple');
+            // Pass appleUserId as stableId to handle cases where email is missing on re-login
+            await handleSocialLoginSuccess(email || '', Gender.UNISEX, false, 'apple', appleUserId);
 
-        } catch (e) {
+        } catch (e: any) {
             console.error('Apple Login Error:', e);
-            // alert("Apple 로그인 취소");
+            if (e.code !== '1001' && e.code !== '1000') { // Ignore cancel errors
+                alert("Apple 로그인 실패: " + (e.message || JSON.stringify(e)));
+            }
             setLoginLoading(false);
         }
     };
@@ -1736,16 +1730,35 @@ export default function App() {
 
     // Shared success handler to reduce code duplication
     // Shared success handler to reduce code duplication
-    const handleSocialLoginSuccess = async (email: string, gender: Gender, hasGenderInfo: boolean, provider: 'kakao' | 'apple') => {
+    const handleSocialLoginSuccess = async (email: string, gender: Gender, hasGenderInfo: boolean, provider: 'kakao' | 'apple', stableId?: string) => {
         // Check if user already exists
         const existingUsers = await db.getUsers();
-        let targetUser = existingUsers.find(u => u.email === email);
+
+        let targetUser: User | undefined;
+
+        // 1. Try to find by stableId first (Priority for Apple/Native logins)
+        if (stableId) {
+            targetUser = existingUsers.find(u => u.id === stableId);
+        }
+
+        // 2. If not found, try by email
+        if (!targetUser && email) {
+            targetUser = existingUsers.find(u => u.email === email);
+        }
 
         if (!targetUser) {
+            // If new user AND no email provided (Apple re-login edge case), we cannot register
+            if (!email) {
+                alert("Apple 로그인: 이메일 정보가 없습니다.\n(설정 > Apple ID > 암호 및 보안 > 'Apple로 로그인'에서 '대똥단결' 삭제 후 다시 시도해주세요)");
+                setLoginLoading(false);
+                return;
+            }
+
             // New user
             const defaultNickname = email.split('@')[0];
             const tempUser: User = {
-                id: `${provider}_` + Date.now(),
+                // Use stableId if available (e.g. Apple User ID), ensuring re-login works without email
+                id: stableId || `${provider}_` + Date.now(),
                 email,
                 nickname: defaultNickname,
                 gender, // Will be updated if needed
@@ -1790,6 +1803,10 @@ export default function App() {
                 console.log(`✨ New ${provider} user registered:`, email);
                 setUser(tempUser);
                 localStorage.setItem('currentUser', JSON.stringify(tempUser));
+                // Update ID for future lookups (optional but good practice to sync)
+                if (stableId && tempUser.id !== stableId) {
+                    // Mismatch shouldn't happen with above logic, but safety check
+                }
                 setShowLoginModal(false);
                 setShowWelcomeModal(true); // Trigger Welcome Modal
                 window.location.hash = '#/';

@@ -448,18 +448,26 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                             <label className="block text-sm font-bold text-gray-700 mb-3">광고 소스 선택</label>
                             <div className="flex gap-4">
                                 <button
-                                    onClick={() => saveConfig({ ...config, interstitialSource: 'admob' })}
+                                    onClick={async () => {
+                                        const newConfig = { ...config, interstitialSource: 'admob' };
+                                        setConfig(newConfig);
+                                        await saveConfig(newConfig);
+                                    }}
                                     className={`flex-1 py-4 rounded-xl border-2 font-bold transition-all flex flex-col items-center gap-1 ${config.interstitialSource === 'admob' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
                                 >
-                                    <span>AdMob (앱 광고)</span>
-                                    <span className="text-xs font-normal opacity-70">수익 창출 가능</span>
+                                    <span className="text-xl">📱</span>
+                                    <span>AdMob 사용</span>
                                 </button>
                                 <button
-                                    onClick={() => saveConfig({ ...config, interstitialSource: 'youtube' })}
+                                    onClick={async () => {
+                                        const newConfig = { ...config, interstitialSource: 'youtube' };
+                                        setConfig(newConfig);
+                                        await saveConfig(newConfig);
+                                    }}
                                     className={`flex-1 py-4 rounded-xl border-2 font-bold transition-all flex flex-col items-center gap-1 ${config.interstitialSource === 'youtube' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}
                                 >
-                                    <span>자체영상</span>
-                                    <span className="text-xs font-normal opacity-70">정보제공 / 홍보용</span>
+                                    <span className="text-xl">🎬</span>
+                                    <span>자체 영상 사용</span>
                                 </button>
                             </div>
                         </div>

@@ -16,6 +16,7 @@ import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-log
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 import { SignInWithApple, SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
 import { AppTrackingTransparency } from 'capacitor-plugin-app-tracking-transparency';
+import { jwtDecode } from "jwt-decode";
 
 import { PushNotifications } from '@capacitor/push-notifications'; // Keep for type if needed, but logic uses FirebaseMessaging
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
@@ -1351,7 +1352,20 @@ export default function App() {
             console.log('Apple Sign In Result:', result);
 
             const email = result.response.email;
-            const appleUserId = result.response.user;
+            let appleUserId = result.response.user;
+
+            // FALLBACK: If 'user' field is missing (sometimes happens entirely), extract 'sub' from identityToken
+            if (!appleUserId && result.response.identityToken) {
+                try {
+                    const decoded: any = jwtDecode(result.response.identityToken);
+                    if (decoded && decoded.sub) {
+                        appleUserId = decoded.sub;
+                        console.log("Extracted Apple ID from JWT:", appleUserId);
+                    }
+                } catch (jwtErr) {
+                    console.error("JWT Decode Error:", jwtErr);
+                }
+            }
 
             // Default to UNISEX/MALE as Apple doesn't typically provide gender
             // Pass appleUserId as stableId to handle cases where email is missing on re-login

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { AdConfig, DailyStats, CustomBannerType } from '../../types';
 import { dbSupabase as db } from '../../services/db_supabase';
@@ -162,15 +162,27 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
             loadConfig();
         }, [refreshTrigger]);
 
-        // Generic Save
+        // Generic Save with Debounce
+        const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
         const saveConfig = async (newConfig: AdConfig) => {
             setConfig(newConfig);
-            try {
-                await db.saveAdConfig(newConfig);
-            } catch (e: any) {
-                console.error("Failed to save ad config", e);
-                alert('설정 저장 중 오류가 발생했습니다. (이미지 용량 초과 등)\n' + (e.message || e));
+
+            // Clear existing timeout
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
             }
+
+            // Debounce: wait 1 second after last change
+            saveTimeoutRef.current = setTimeout(async () => {
+                try {
+                    await db.saveAdConfig(newConfig);
+                    console.log('✅ Config saved');
+                } catch (e: any) {
+                    console.error("Failed to save ad config", e);
+                    alert('설정 저장 중 오류가 발생했습니다.\\n' + (e.message || e));
+                }
+            }, 1000);
         };
 
         const handleYoutubeUrlChange = (index: number, url: string) => {

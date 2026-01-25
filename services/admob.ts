@@ -74,14 +74,14 @@ class AdMobService {
         const platform = this.platform;
 
         if (platform === 'ios') {
-            const ids = this.adConfig.adMobIdsIOS || {};
+            const ids = this.adConfig.adMobIdsIOS || {} as any;
             return {
                 banner: ids.banner || '',
                 interstitial: ids.interstitial || '',
                 reward: ids.reward || ''
             };
         } else if (platform === 'android') {
-            const ids = this.adConfig.adMobIdsAndroid || {};
+            const ids = this.adConfig.adMobIdsAndroid || {} as any;
             return {
                 banner: ids.banner || '',
                 interstitial: ids.interstitial || '',

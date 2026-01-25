@@ -169,6 +169,9 @@ class AdMobService {
             console.log('[AdMob] Banner removed');
         } catch (error) {
             console.error('[AdMob] Remove banner failed:', error);
+            console.log('[AdMobService] ✅ Banner removed');
+        } catch (error) {
+            console.error('[AdMobService] ❌ Remove banner failed:', error);
         }
     }
 
@@ -176,11 +179,15 @@ class AdMobService {
      * Prepare (preload) interstitial ad
      */
     async prepareInterstitial(): Promise<void> {
-        if (this.platform === 'web') return;
+        console.log('[AdMobService] 📺 prepareInterstitial called');
+        if (this.platform === 'web') {
+            console.log('[AdMobService] Web platform, skipping prepare interstitial.');
+            return;
+        }
 
         const ids = this.getAdUnitIds();
         if (!ids?.interstitial) {
-            console.warn('[AdMob] No interstitial ID configured for', this.platform);
+            console.warn('[AdMobService] No interstitial ID configured for', this.platform);
             return;
         }
 
@@ -189,11 +196,11 @@ class AdMobService {
                 adId: ids.interstitial,
                 isTesting: this.adConfig?.testMode || false
             };
-
+            console.log('[AdMobService] Preparing interstitial with options:', options);
             await AdMob.prepareInterstitial(options);
-            console.log('[AdMob] Interstitial prepared', { adId: ids.interstitial });
+            console.log('[AdMobService] ✅ Interstitial prepared', { adId: ids.interstitial });
         } catch (error) {
-            console.error('[AdMob] Prepare interstitial failed:', error);
+            console.error('[AdMobService] ❌ Prepare interstitial failed:', error);
         }
     }
 
@@ -202,14 +209,18 @@ class AdMobService {
      * @returns true if ad was shown, false otherwise
      */
     async showInterstitial(): Promise<boolean> {
-        if (this.platform === 'web') return false;
+        console.log('[AdMobService] 📺 showInterstitial called');
+        if (this.platform === 'web') {
+            console.log('[AdMobService] Web platform, skipping show interstitial.');
+            return false;
+        }
 
         try {
             await AdMob.showInterstitial();
-            console.log('[AdMob] Interstitial shown');
+            console.log('[AdMobService] ✅ Interstitial shown');
             return true;
         } catch (error) {
-            console.error('[AdMob] Show interstitial failed:', error);
+            console.error('[AdMobService] ❌ Show interstitial failed:', error);
             return false;
         }
     }
@@ -218,11 +229,15 @@ class AdMobService {
      * Prepare (preload) rewarded video ad
      */
     async prepareRewardVideo(): Promise<void> {
-        if (this.platform === 'web') return;
+        console.log('[AdMobService] 📺 prepareRewardVideo called');
+        if (this.platform === 'web') {
+            console.log('[AdMobService] Web platform, skipping prepare reward video.');
+            return;
+        }
 
         const ids = this.getAdUnitIds();
         if (!ids?.reward) {
-            console.warn('[AdMob] No reward ID configured for', this.platform);
+            console.warn('[AdMobService] No reward ID configured for', this.platform);
             return;
         }
 
@@ -231,11 +246,11 @@ class AdMobService {
                 adId: ids.reward,
                 isTesting: this.adConfig?.testMode || false
             };
-
+            console.log('[AdMobService] Preparing reward ad with options:', options);
             await AdMob.prepareRewardVideoAd(options);
-            console.log('[AdMob] Reward video prepared', { adId: ids.reward });
+            console.log('[AdMobService] ✅ Reward video prepared', { adId: ids.reward });
         } catch (error) {
-            console.error('[AdMob] Prepare reward video failed:', error);
+            console.error('[AdMobService] ❌ Prepare reward video failed:', error);
         }
     }
 

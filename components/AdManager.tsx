@@ -238,8 +238,8 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 } else {
                     // No videos configured
                     console.log('[AdManager] ⚠️ No videos found');
-                    if (source === 'admob') {
-                        // Only fallback if user explicitly chose AdMob
+                    if (source !== 'youtube') {
+                        // Only fallback if user did not explicitly choose self-hosted videos
                         console.log('[AdManager] Falling back to AdMob');
                         handleAdMobFallback(cfg.testMode);
                     } else {
@@ -325,9 +325,9 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             networkState: videoRef.current?.networkState
         });
 
-        // Only fallback to AdMob if user explicitly chose AdMob as source
+        // Only fallback to AdMob if user did not explicitly choose self-hosted videos
         const source = config?.interstitialSource || 'admob';
-        if (source === 'admob') {
+        if (source !== 'youtube') {
             console.log('[AdManager] Falling back to AdMob after MP4 error');
             handleAdMobFallback(config?.testMode || true);
         } else {

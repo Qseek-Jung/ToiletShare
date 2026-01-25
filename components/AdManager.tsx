@@ -236,9 +236,17 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     }
                     setIsLoading(false);
                 } else {
-                    // No videos configured - fallback to AdMob
-                    console.log('[AdManager] ⚠️ No videos found, falling back to AdMob');
-                    handleAdMobFallback(cfg.testMode);
+                    // No videos configured
+                    console.log('[AdManager] ⚠️ No videos found');
+                    if (source === 'admob') {
+                        // Only fallback if user explicitly chose AdMob
+                        console.log('[AdManager] Falling back to AdMob');
+                        handleAdMobFallback(cfg.testMode);
+                    } else {
+                        // User chose self-hosted but no videos - just close
+                        console.log('[AdManager] Self-hosted videos not configured, closing without AdMob');
+                        onClose();
+                    }
                 }
             } else {
                 console.log('[AdManager] Source is AdMob, using AdMob directly');
@@ -316,7 +324,16 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             readyState: videoRef.current?.readyState,
             networkState: videoRef.current?.networkState
         });
-        handleAdMobFallback(config?.testMode || true);
+
+        // Only fallback to AdMob if user explicitly chose AdMob as source
+        const source = config?.interstitialSource || 'admob';
+        if (source === 'admob') {
+            console.log('[AdManager] Falling back to AdMob after MP4 error');
+            handleAdMobFallback(config?.testMode || true);
+        } else {
+            console.log('[AdManager] MP4 error but user chose self-hosted only, closing without AdMob');
+            onClose();
+        }
     };
 
     const handleMP4LoadStart = () => {

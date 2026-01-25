@@ -70,100 +70,125 @@ class AdMobService {
         console.log('[AdMobService] adConfig:', this.adConfig);
 
         if (!this.adConfig) {
-
-            return null;
+            console.warn('[AdMobService] ⚠️ No config!');
+            return { banner: '', interstitial: '', reward: '' };
         }
+
+        const platform = this.platform;
+        console.log('[AdMobService] Platform:', platform);
+
+        if (platform === 'ios') {
+            const ids = this.adConfig.adMobIdsIOS || {};
+            console.log('[AdMobService] 🍎 iOS IDs:', ids);
+            return {
+                banner: ids.banner || '',
+                interstitial: ids.interstitial || '',
+                reward: ids.reward || ''
+            };
+        } else if (platform === 'android') {
+            const ids = this.adConfig.adMobIdsAndroid || {};
+            console.log('[AdMobService] 🤖 Android IDs:', ids);
+            return {
+                banner: ids.banner || '',
+                interstitial: ids.interstitial || '',
+                reward: ids.reward || ''
+            };
+        }
+
+        console.warn('[AdMobService] ⚠️ Falling back to legacy adMobIds');
+        return this.adConfig.adMobIds || { banner: '', interstitial: '', reward: '' };
+    }
 
     /**
      * Show banner ad at bottom center (default)
      */
-    async showBottomBanner(): Promise < void> {
-            if(this.platform === 'web') return;
+    async showBottomBanner(): Promise<void> {
+        if (this.platform === 'web') return;
 
-            const ids = this.getAdUnitIds();
-            if(!ids?.banner) {
-                console.warn('[AdMob] No banner ID configured for', this.platform);
-                return;
-            }
+        const ids = this.getAdUnitIds();
+        if (!ids?.banner) {
+            console.warn('[AdMob] No banner ID configured for', this.platform);
+            return;
+        }
 
         try {
-                const options: BannerAdOptions = {
-                    adId: ids.banner,
-                    adSize: BannerAdSize.ADAPTIVE_BANNER,
-                    position: BannerAdPosition.BOTTOM_CENTER,
-                    margin: 0,
-                    isTesting: this.adConfig?.testMode || false
-                };
+            const options: BannerAdOptions = {
+                adId: ids.banner,
+                adSize: BannerAdSize.ADAPTIVE_BANNER,
+                position: BannerAdPosition.BOTTOM_CENTER,
+                margin: 0,
+                isTesting: this.adConfig?.testMode || false
+            };
 
-                await AdMob.showBanner(options);
-                console.log('[AdMob] Banner shown', { adId: ids.banner });
-            } catch(error) {
-                console.error('[AdMob] Show banner failed:', error);
-            }
+            await AdMob.showBanner(options);
+            console.log('[AdMob] Banner shown', { adId: ids.banner });
+        } catch (error) {
+            console.error('[AdMob] Show banner failed:', error);
         }
+    }
 
     /**
      * Show banner ad at specified position
      */
-    async showBanner(position: BannerAdPosition, options ?: { margin?: number }): Promise < void> {
-            if(this.platform === 'web') return;
+    async showBanner(position: BannerAdPosition, options?: { margin?: number }): Promise<void> {
+        if (this.platform === 'web') return;
 
-            const ids = this.getAdUnitIds();
-            if(!ids?.banner) {
-                console.warn('[AdMob] No banner ID configured for', this.platform);
-                return;
-            }
+        const ids = this.getAdUnitIds();
+        if (!ids?.banner) {
+            console.warn('[AdMob] No banner ID configured for', this.platform);
+            return;
+        }
 
         try {
-                const bannerOptions: BannerAdOptions = {
-                    adId: ids.banner,
-                    adSize: BannerAdSize.ADAPTIVE_BANNER,
-                    position,
-                    margin: options?.margin || 0,
-                    isTesting: this.adConfig?.testMode || false
-                };
+            const bannerOptions: BannerAdOptions = {
+                adId: ids.banner,
+                adSize: BannerAdSize.ADAPTIVE_BANNER,
+                position,
+                margin: options?.margin || 0,
+                isTesting: this.adConfig?.testMode || false
+            };
 
-                await AdMob.showBanner(bannerOptions);
-                console.log('[AdMob] Banner shown', { position, adId: ids.banner });
-            } catch(error) {
-                console.error('[AdMob] Show banner failed:', error);
-            }
+            await AdMob.showBanner(bannerOptions);
+            console.log('[AdMob] Banner shown', { position, adId: ids.banner });
+        } catch (error) {
+            console.error('[AdMob] Show banner failed:', error);
         }
+    }
 
     /**
      * Hide banner ad
      */
-    async hideBanner(): Promise < void> {
-            if(this.platform === 'web') return;
+    async hideBanner(): Promise<void> {
+        if (this.platform === 'web') return;
 
-            try {
-                await AdMob.hideBanner();
-                console.log('[AdMob] Banner hidden');
-            } catch(error) {
-                console.error('[AdMob] Hide banner failed:', error);
-            }
+        try {
+            await AdMob.hideBanner();
+            console.log('[AdMob] Banner hidden');
+        } catch (error) {
+            console.error('[AdMob] Hide banner failed:', error);
         }
+    }
 
     /**
      * Remove banner ad
      */
-    async removeBanner(): Promise < void> {
-            if(this.platform === 'web') return;
+    async removeBanner(): Promise<void> {
+        if (this.platform === 'web') return;
 
-            try {
-                await AdMob.removeBanner();
-                console.log('[AdMobService] ✅ Banner removed');
-            } catch(error) {
-                console.error('[AdMobService] ❌ Remove banner failed:', error);
-            }
+        try {
+            await AdMob.removeBanner();
+            console.log('[AdMobService] ✅ Banner removed');
+        } catch (error) {
+            console.error('[AdMobService] ❌ Remove banner failed:', error);
         }
+    }
 
     /**
      * Prepare (preload) interstitial ad
      */
-    async prepareInterstitial(): Promise < void> {
-            console.log('[AdMobService] 📺 prepareInterstitial called');
-            if(this.platform === 'web') {
+    async prepareInterstitial(): Promise<void> {
+        console.log('[AdMobService] 📺 prepareInterstitial called');
+        if (this.platform === 'web') {
             console.log('[AdMobService] Web platform, skipping prepare interstitial.');
             return;
         }

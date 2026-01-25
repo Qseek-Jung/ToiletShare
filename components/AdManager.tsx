@@ -165,6 +165,12 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     // iOS: Use MP4 videos
                     const ios = cfg.interstitialIOS || { videoUrls: [], clickUrls: [], durationUnlock: 15, durationPoint: 15, durationNavigation: 5 };
                     console.log('[AdManager] iOS config:', ios);
+
+                    // DEBUG ALERT
+                    if (!ios.videoUrls || ios.videoUrls.length === 0) {
+                        alert(`🐛 DEBUG: iOS 동영상 없음!\n\ninterstitialIOS: ${JSON.stringify(ios, null, 2)}`);
+                    }
+
                     const duration = triggerType === 'unlock' ? (ios.durationUnlock || 15) :
                         triggerType === 'point' ? (ios.durationPoint || 15) :
                             (ios.durationNavigation || 5);

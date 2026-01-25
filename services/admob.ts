@@ -66,20 +66,15 @@ class AdMobService {
      * Get platform-specific ad unit IDs
      */
     private getAdUnitIds() {
-        console.log('[AdMobService] 🔍 getAdUnitIds called', { platform: this.platform });
-        console.log('[AdMobService] adConfig:', this.adConfig);
-
         if (!this.adConfig) {
             console.warn('[AdMobService] ⚠️ No config!');
             return { banner: '', interstitial: '', reward: '' };
         }
 
         const platform = this.platform;
-        console.log('[AdMobService] Platform:', platform);
 
         if (platform === 'ios') {
             const ids = this.adConfig.adMobIdsIOS || {};
-            console.log('[AdMobService] 🍎 iOS IDs:', ids);
             return {
                 banner: ids.banner || '',
                 interstitial: ids.interstitial || '',
@@ -87,7 +82,6 @@ class AdMobService {
             };
         } else if (platform === 'android') {
             const ids = this.adConfig.adMobIdsAndroid || {};
-            console.log('[AdMobService] 🤖 Android IDs:', ids);
             return {
                 banner: ids.banner || '',
                 interstitial: ids.interstitial || '',

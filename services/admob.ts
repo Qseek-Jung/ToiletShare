@@ -166,9 +166,6 @@ class AdMobService {
 
         try {
             await AdMob.removeBanner();
-            console.log('[AdMob] Banner removed');
-        } catch (error) {
-            console.error('[AdMob] Remove banner failed:', error);
             console.log('[AdMobService] ✅ Banner removed');
         } catch (error) {
             console.error('[AdMobService] ❌ Remove banner failed:', error);

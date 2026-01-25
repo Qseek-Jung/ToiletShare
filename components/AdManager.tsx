@@ -147,19 +147,24 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     const loadAdConfig = async () => {
         try {
+            console.log('[AdManager] 🎬 Loading ad config...');
             const cfg = await dbSupabase.getAdConfig();
+            console.log('[AdManager] Config loaded:', { interstitialSource: cfg.interstitialSource, testMode: cfg.testMode });
             setConfig(cfg);
 
             const platform = Capacitor.getPlatform(); // 'ios' | 'android' | 'web'
             const source = cfg.interstitialSource || 'admob';
+            console.log('[AdManager] Platform:', platform, 'Source:', source, 'TriggerType:', triggerType);
 
             // Determine platform-specific config
             let platformConfig: { urls: string[], clicks: string[], duration: number } | null = null;
 
             if (source === 'youtube') {
+                console.log('[AdManager] Using self-hosted videos');
                 if (platform === 'ios') {
                     // iOS: Use MP4 videos
                     const ios = cfg.interstitialIOS || { videoUrls: [], clickUrls: [], durationUnlock: 15, durationPoint: 15, durationNavigation: 5 };
+                    console.log('[AdManager] iOS config:', ios);
                     const duration = triggerType === 'unlock' ? (ios.durationUnlock || 15) :
                         triggerType === 'point' ? (ios.durationPoint || 15) :
                             (ios.durationNavigation || 5);
@@ -168,6 +173,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                         clicks: ios.clickUrls || [],
                         duration
                     };
+                    console.log('[AdManager] iOS platformConfig:', platformConfig);
                 } else {
                     // Android/Web: Use YouTube
                     const android = cfg.interstitialAndroid || { youtubeUrls: cfg.youtubeUrls || [], clickUrls: [], durationUnlock: 15, durationPoint: 15, durationNavigation: 5 };
@@ -190,16 +196,20 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                 }
 
                 if (platformConfig && platformConfig.urls.length > 0) {
+                    console.log('[AdManager] ✅ Videos found:', platformConfig.urls.length);
                     if (platform === 'ios') {
                         // iOS: Select only 1 random video (to minimize R2 traffic - cached once, looped)
                         const randomIndex = Math.floor(Math.random() * platformConfig.urls.length);
-                        setPlaylistIds([platformConfig.urls[randomIndex]]); // Single video
+                        const selectedVideo = platformConfig.urls[randomIndex];
+                        console.log('[AdManager] iOS selected video:', selectedVideo);
+                        setPlaylistIds([selectedVideo]); // Single video
                         setClickUrls([platformConfig.clicks[randomIndex] || '']);
-                        playlistIdsRef.current = [platformConfig.urls[randomIndex]];
+                        playlistIdsRef.current = [selectedVideo];
                         setCurrentVideoIndex(0);
                     } else {
                         // Android: Shuffle entire playlist (cycle through multiple videos)
                         const shuffled = [...platformConfig.urls].sort(() => Math.random() - 0.5);
+                        console.log('[AdManager] Android playlist:', shuffled);
                         setPlaylistIds(shuffled);
                         setClickUrls(platformConfig.clicks);
                         playlistIdsRef.current = shuffled;
@@ -209,18 +219,23 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     setTimeLeft(platformConfig.duration);
                     initialTimeRef.current = platformConfig.duration;
                     timeLeftRef.current = platformConfig.duration;
+                    console.log('[AdManager] Duration set to:', platformConfig.duration);
 
                     if (platform === 'ios') {
+                        console.log('[AdManager] 🎥 Showing MP4 player');
                         setShowMP4(true);
                     } else {
+                        console.log('[AdManager] 🎬 Showing YouTube player');
                         setShowYoutube(true);
                     }
                     setIsLoading(false);
                 } else {
                     // No videos configured - fallback to AdMob
+                    console.log('[AdManager] ⚠️ No videos found, falling back to AdMob');
                     handleAdMobFallback(cfg.testMode);
                 }
             } else {
+                console.log('[AdManager] Source is AdMob, using AdMob directly');
                 handleAdMobFallback(cfg.testMode);
             }
         } catch (e) {

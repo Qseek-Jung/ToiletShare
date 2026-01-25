@@ -309,122 +309,126 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                 </section>
 
                 {/* SECTION 0.1: AdMob IDs (Production) - Platform Specific */}
-                {!config.testMode && (
-                    <section className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2 border-b pb-2 border-gray-200">
-                            <h2 className="text-xl font-black text-gray-900">0.1. 광고 단위 ID 설정 (플랫폼별)</h2>
+                <section className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2 border-b pb-2 border-gray-200">
+                        <h2 className="text-xl font-black text-gray-900">0.1. 광고 단위 ID 설정 (플랫폼별)</h2>
+                    </div>
+                    {config.testMode && (
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-700">
+                            💡 테스트 모드가 켜져 있어도 광고 ID는 입력해두세요. 테스트 완료 후 테스트 모드만 끄면 바로 실제 광고가 나옵니다.
+                        </div>
+                    )}
+
+                    {/* Platform Tabs */}
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+                        <div className="flex gap-3 mb-6">
+                            <button
+                                onClick={() => setSelectedPlatform('ios')}
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all ${selectedPlatform === 'ios' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                🍎 iOS
+                            </button>
+                            <button
+                                onClick={() => setSelectedPlatform('android')}
+                                className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all ${selectedPlatform === 'android' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                🤖 Android
+                            </button>
                         </div>
 
-                        {/* Platform Tabs */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-                            <div className="flex gap-3 mb-6">
-                                <button
-                                    onClick={() => setSelectedPlatform('ios')}
-                                    className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all ${selectedPlatform === 'ios' ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                >
-                                    🍎 iOS
-                                </button>
-                                <button
-                                    onClick={() => setSelectedPlatform('android')}
-                                    className={`flex-1 py-3 px-6 rounded-lg font-bold transition-all ${selectedPlatform === 'android' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                                >
-                                    🤖 Android
-                                </button>
-                            </div>
+                        {/* iOS Settings */}
+                        {selectedPlatform === 'ios' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h4 className="font-bold text-sm text-blue-900 mb-2">대똥단결 iOS App - 동영상 광고만</h4>
+                                    <p className="text-xs text-blue-700">App ID: ca-app-pub-8142649369272916~9190025429</p>
+                                    <p className="text-xs text-blue-600 mt-1">※ 배너는 커스텀 배너 사용</p>
+                                </div>
 
-                            {/* iOS Settings */}
-                            {selectedPlatform === 'ios' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                        <h4 className="font-bold text-sm text-blue-900 mb-2">대똥단결 iOS App - 동영상 광고만</h4>
-                                        <p className="text-xs text-blue-700">App ID: ca-app-pub-8142649369272916~9190025429</p>
-                                        <p className="text-xs text-blue-600 mt-1">※ 배너는 커스텀 배너 사용</p>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">App ID</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsIOS?.appId || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, appId: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916~9190025429"
+                                        />
                                     </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">App ID</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsIOS?.appId || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, appId: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916~9190025429"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">IOS_Interstitial_Navi (길찾기 종료)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsIOS?.interstitial || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, interstitial: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/7259536047"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">IOS_Reward_Charge (무료충전소)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsIOS?.reward || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, reward: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/3994421919"
-                                            />
-                                        </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">IOS_Interstitial_Navi (길찾기 종료)</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsIOS?.interstitial || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, interstitial: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916/7259536047"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">IOS_Reward_Charge (무료충전소)</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsIOS?.reward || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsIOS: { ...config.adMobIdsIOS, reward: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-blue-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916/3994421919"
+                                        />
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {/* Android Settings */}
-                            {selectedPlatform === 'android' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
-                                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                        <h4 className="font-bold text-sm text-green-900 mb-2">대똥단결 Android App - 동영상 광고만</h4>
-                                        <p className="text-xs text-green-700">App ID: ca-app-pub-8142649369272916~9342907044</p>
-                                        <p className="text-xs text-green-600 mt-1">※ 배너는 커스텀 배너 사용</p>
+                        {/* Android Settings */}
+                        {selectedPlatform === 'android' && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
+                                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                    <h4 className="font-bold text-sm text-green-900 mb-2">대똥단결 Android App - 동영상 광고만</h4>
+                                    <p className="text-xs text-green-700">App ID: ca-app-pub-8142649369272916~9342907044</p>
+                                    <p className="text-xs text-green-600 mt-1">※ 배너는 커스텀 배너 사용</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">App ID</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsAndroid?.appId || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, appId: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916~9342907044"
+                                        />
                                     </div>
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">App ID</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsAndroid?.appId || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, appId: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916~9342907044"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">Android_Interstitial_Navi (길찾기 종료)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsAndroid?.interstitial || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, interstitial: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/6481640998"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700">Android_Reward_Charge (무료충전소)</label>
-                                            <input
-                                                type="text"
-                                                value={config.adMobIdsAndroid?.reward || ''}
-                                                onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, reward: e.target.value } })}
-                                                className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                                placeholder="ca-app-pub-8142649369272916/1560486806"
-                                            />
-                                        </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">Android_Interstitial_Navi (길찾기 종료)</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsAndroid?.interstitial || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, interstitial: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916/6481640998"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">Android_Reward_Charge (무료충전소)</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsAndroid?.reward || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, reward: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
+                                            placeholder="ca-app-pub-8142649369272916/1560486806"
+                                        />
                                     </div>
                                 </div>
-                            )}
-
-                            <div className="mt-6 flex justify-end">
-                                <button onClick={() => saveConfig(config)} className="px-6 py-3 bg-gray-800 text-white rounded-lg font-bold text-sm hover:bg-gray-900 transition-colors">설정 저장</button>
                             </div>
+                        )}
+
+                        <div className="mt-6 flex justify-end">
+                            <button onClick={() => saveConfig(config)} className="px-6 py-3 bg-gray-800 text-white rounded-lg font-bold text-sm hover:bg-gray-900 transition-colors">설정 저장</button>
                         </div>
-                    </section>
+                    </div>
+                </section>
                 )}
 
                 {/* SECTION 0.5: Global Banner Toggle */}

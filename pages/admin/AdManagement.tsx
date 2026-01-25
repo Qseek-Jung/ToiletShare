@@ -429,7 +429,6 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                         </div>
                     </div>
                 </section>
-                )}
 
                 {/* SECTION 0.5: Global Banner Toggle */}
                 <section className="space-y-4">

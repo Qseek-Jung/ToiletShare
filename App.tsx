@@ -51,6 +51,9 @@ import { adMobService } from './services/admob';
 import { AppInfoPage } from './pages/AppInfoPage';
 import SettingsPage from './pages/SettingsPage';
 import NoticePage from './pages/NoticePage';
+// Safari View Controller OAuth Services  
+import { KakaoOAuthService } from './services/kakaoOAuth';
+import { NaverOAuthService } from './services/naverOAuth';
 import DownloadPage from './pages/DownloadPage';
 
 
@@ -1512,235 +1515,117 @@ export default function App() {
     const performNaverLogin = async () => {
         try {
             setLoginLoading(true);
+            console.log('=== NAVER OAUTH LOGIN (Safari View Controller) ===');
 
-            if (Capacitor.isNativePlatform()) {
-                console.log("=== STEP 1: 네이버 로그인 (Native) 시작 ===");
+            // Use Safari View Controller OAuth (App Store compliant)
+            const result = await NaverOAuthService.login();
+            console.log('[Naver] Login successful:', result);
 
-                const result: any = await Naver.login();
-                console.log("=== STEP 2: 로그인 완료 ===");
-                console.log('Naver login result:', JSON.stringify(result));
+            const { email, gender: genderRaw, name } = result;
 
-                // Inspect result for token in various possible locations
-                const accessToken =
-                    result?.accessToken?.accessToken ??
-                    result?.accessToken ??
-                    result?.access_token;
-
-                console.log("=== STEP 3: 토큰 추출 ===");
-                console.log("Access Token:", accessToken ? `${accessToken.substring(0, 20)}...` : "NULL");
-
-                if (accessToken) {
-                    console.log("=== STEP 4: 프로필 API 호출 시작 ===");
-
-                    // Use CapacitorHttp instead of fetch to bypass CORS
-                    const profileResponse = await CapacitorHttp.request({
-                        url: 'https://openapi.naver.com/v1/nid/me',
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${accessToken}`
-                        }
-                    });
-
-                    console.log("=== STEP 5: 프로필 API 응답 수신 ===");
-                    console.log("Response Status:", profileResponse.status);
-
-                    const profileData = profileResponse.data;
-                    console.log("=== STEP 6: 프로필 데이터 파싱 ===");
-                    console.log("Profile Data:", JSON.stringify(profileData));
-
-                    if (profileData.resultcode === '00') {
-                        const { email, name, id, gender } = profileData.response;
-
-                        if (!email) {
-                            alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
-                            return;
-                        }
-
-                        // Check/Create User
-                        let targetUser = await db.getUserByEmail(email);
-
-                        if (!targetUser) {
-                            // Register
-                            const newUser: User = {
-                                id: 'naver_' + id, // Use Naver ID
-                                email: email,
-                                nickname: name || 'Naver User',
-                                gender: gender === 'M' ? Gender.MALE : (gender === 'F' ? Gender.FEMALE : Gender.UNISEX),
-                                role: UserRole.USER,
-                                credits: 50,
-                                signupProvider: 'naver',
-                            };
-                            setPendingUser(newUser);
-                            setShowLoginModal(false);
-                            setShowGenderSelectModal(true);
-                        } else {
-                            // Login
-                            if (targetUser.status === 'banned') {
-                                setShowBannedModal(true);
-                                setLoginLoading(false);
-                                return;
-                            }
-                            if (targetUser.status === UserStatus.WITHDRAWN) {
-                                targetUser.status = UserStatus.ACTIVE;
-                                targetUser.deletedAt = undefined;
-                                await db.saveUser(targetUser);
-                                alert("계정이 복구되었습니다.");
-                            }
-
-                            setUser(targetUser);
-                            localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                            setShowLoginModal(false);
-                            window.location.hash = '#/';
-                        }
-
-                    } else {
-                        alert("네이버 프로필 정보를 가져오는데 실패했습니다.\n" + JSON.stringify(profileData));
-                    }
-
-                } else {
-                    alert("네이버 로그인 결과 이상 (토큰 없음):\n" + JSON.stringify(result));
-                }
-            } else {
-                // --- WEB LOGIN ---
-                alert("네이버 웹 로그인(웹사이트)은 현재 준비중입니다. 구글 또는 카카오 로그인을 이용해주세요.");
+            if (!email) {
+                alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
                 setLoginLoading(false);
-                // Implementation Note: Naver Web Login requires callback handling which is complex to add in this quick fix.
-                // Prioritizing Kakao as requested.
+                return;
             }
+
+            // Check/Create User
+            let targetUser = await db.getUserByEmail(email);
+
+            if (!targetUser) {
+                // Register new user
+                const newUser: User = {
+                    id: 'naver_' + email.split('@')[0],
+                    email: email,
+                    nickname: name || 'Naver User',
+                    gender: genderRaw === 'MALE' ? Gender.MALE : (genderRaw === 'FEMALE' ? Gender.FEMALE : Gender.UNISEX),
+                    role: UserRole.USER,
+                    credits: 50,
+                    signupProvider: 'naver',
+                };
+                setPendingUser(newUser);
+                setShowLoginModal(false);
+                setShowGenderSelectModal(true);
+            } else {
+                // Login existing user
+                if (targetUser.status === 'banned') {
+                    setShowBannedModal(true);
+                    setLoginLoading(false);
+                    return;
+                }
+                if (targetUser.status === UserStatus.WITHDRAWN) {
+                    targetUser.status = UserStatus.ACTIVE;
+                    targetUser.deletedAt = undefined;
+                    await db.saveUser(targetUser);
+                    alert("계정이 복구되었습니다.");
+                }
+
+                setUser(targetUser);
+                localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                setShowLoginModal(false);
+                window.location.hash = '#/';
+            }
+
+            setLoginLoading(false);
 
         } catch (error: any) {
-            // === ENHANCED DIAGNOSTIC LOGGING ===
-            console.error("=== NAVER LOGIN FULL ERROR ===");
-            console.error("Type:", typeof error);
-            console.error("Constructor:", error?.constructor?.name);
-            console.error("Keys:", Object.keys(error));
-            console.error("Message:", error?.message);
-            console.error("Code:", error?.code);
-            console.error("Stack:", error?.stack);
-            console.error("Raw:", error);
+            console.error('Naver Login Error:', error);
 
-            // Extracted cancel check
-            const isCancel = error?.message === 'user_cancel' || error?.code === '-1' || error?.code === -1;
-
-            if (isCancel) {
-                console.log("Naver login cancelled by user.");
-            } else {
-                let errorMessage = "네이버 로그인 실패\n\n";
-
-                // Try to extract any available info
-                if (error?.message) errorMessage += `Message: ${error.message}\n`;
-                if (error?.code) errorMessage += `Code: ${error.code}\n`;
-                if (error?.constructor?.name && error.constructor.name !== 'Object') {
-                    errorMessage += `Type: ${error.constructor.name}\n`;
-                }
-
-                // Only alert if NOT cancelled
-                alert(errorMessage);
+            // User cancelled
+            if (error.message?.includes('cancelled')) {
+                console.log('[Naver] Login cancelled by user');
+                setLoginLoading(false);
+                return;
             }
-        } finally {
+
+            // Enhanced error logging
+            let errorMsg = "❌ 네이버 로그인 실패\n\n";
+            if (error.message) errorMsg += `Message: ${error.message}\n`;
+            if (error.code) errorMsg += `Code: ${error.code}\n`;
+
+            alert(errorMsg);
             setLoginLoading(false);
         }
-
-        // Capture ALL properties including non-enumerable
-
     };
     const performKakaoLogin = async () => {
         try {
             setLoginLoading(true);
+            console.log('=== KAKAO OAUTH LOGIN (Safari View Controller) ===');
 
-            if (Capacitor.isNativePlatform()) {
-                // --- NATIVE APP LOGIN ---
-                // Use Native Plugin instead of JavaScript SDK
-                const loginResult = await KakaoLoginPlugin.goLogin();
-                console.log('Kakao native login result:', loginResult);
+            // Use Safari View Controller OAuth (App Store compliant)
+            const result = await KakaoOAuthService.login();
+            console.log('[Kakao] Login successful:', result);
 
-                // Get user info from native plugin
-                const userInfo = await KakaoLoginPlugin.getUserInfo();
-                console.log('Kakao user info:', userInfo);
+            const { email, gender: genderRaw } = result;
 
-                const email = userInfo?.value?.kakaoAccount?.email || userInfo?.value?.email;
-                const kakaoGender = userInfo?.value?.kakaoAccount?.gender || userInfo?.value?.gender;
+            let hasGenderInfo = false;
+            let gender = Gender.MALE;
 
-                // Kakao gender: 'FEMALE' or 'MALE' or undefined (native plugin format)
-                let hasGenderInfo = false;
-                let gender = Gender.MALE; // Default
-
-                if (kakaoGender === 'FEMALE') {
-                    gender = Gender.FEMALE;
-                    hasGenderInfo = true;
-                } else if (kakaoGender === 'MALE') {
-                    gender = Gender.MALE;
-                    hasGenderInfo = true;
-                }
-
-                if (!email) {
-                    alert("❌ 이메일 정보를 가져올 수 없습니다.");
-                    setLoginLoading(false);
-                    return;
-                }
-
-                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
-
-            } else {
-                // --- WEB LOGIN ---
-                console.log("Starting Kakao Web Login");
-                const Kakao = (window as any).Kakao;
-
-                if (!Kakao) {
-                    alert("카카오 SDK가 로드되지 않았습니다.");
-                    setLoginLoading(false);
-                    return;
-                }
-
-                if (!Kakao.isInitialized()) {
-                    Kakao.init(KAKAO_JAVASCRIPT_KEY);
-                }
-
-                Kakao.Auth.login({
-                    success: function (authObj: any) {
-                        Kakao.API.request({
-                            url: '/v2/user/me',
-                            success: async function (res: any) {
-                                console.log('Kakao Web User:', res);
-                                const email = res.kakao_account?.email;
-                                const genderRaw = res.kakao_account?.gender; // 'female' | 'male'
-
-                                let hasGenderInfo = false;
-                                let gender = Gender.MALE;
-
-                                if (genderRaw === 'female') {
-                                    gender = Gender.FEMALE;
-                                    hasGenderInfo = true;
-                                } else if (genderRaw === 'male') {
-                                    gender = Gender.MALE;
-                                    hasGenderInfo = true;
-                                }
-
-                                if (!email) {
-                                    alert("이메일 정보가 없습니다. (Kakao Web)");
-                                    setLoginLoading(false);
-                                    return;
-                                }
-
-                                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
-                            },
-                            fail: function (error: any) {
-                                console.error('Kakao API Error', error);
-                                alert('카카오 사용자 정보 요청 실패: ' + JSON.stringify(error));
-                                setLoginLoading(false);
-                            }
-                        });
-                    },
-                    fail: function (err: any) {
-                        console.error('Kakao Auth Error', err);
-                        alert('카카오 로그인 실패: ' + JSON.stringify(err));
-                        setLoginLoading(false);
-                    },
-                });
+            if (genderRaw === 'FEMALE') {
+                gender = Gender.FEMALE;
+                hasGenderInfo = true;
+            } else if (genderRaw === 'MALE') {
+                gender = Gender.MALE;
+                hasGenderInfo = true;
             }
+
+            if (!email) {
+                alert("❌ 이메일 정보를 가져올 수 없습니다.");
+                setLoginLoading(false);
+                return;
+            }
+
+            await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
 
         } catch (error: any) {
             console.error('Kakao Login Error:', error);
+
+            // User cancelled
+            if (error.message?.includes('cancelled')) {
+                console.log('[Kakao] Login cancelled by user');
+                setLoginLoading(false);
+                return;
+            }
 
             // Enhanced error logging
             let errorMsg = "❌ 카카오 로그인 실패\n\n";

@@ -5,6 +5,9 @@ interface DownloadPageProps {
     referrerCode: string | null;
 }
 
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.toiletshare.app';
+const APP_STORE_URL = 'https://apps.apple.com/app/id6740177708';
+
 const SCREENSHOTS = [
     { src: '/images/Screenshot/Main(IOS-phone).png', label: '주변 화장실 찾기' },
     { src: '/images/Screenshot/toilet_detail(IOS-phone).png', label: '상세 정보 및 리뷰' },
@@ -36,16 +39,16 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
             try {
                 await navigator.clipboard.writeText(referrerCode);
                 setCopied(true);
-                alert(`추천인 코드 [${referrerCode}]가 복사되었습니다!\n앱 설치 후 로그인하면 혜택이 적용됩니다.`);
-                setTimeout(() => {
-                    if (storeUrl !== '#') window.location.href = storeUrl;
-                }, 500);
+                // Removed alert() as it blocks the UI and can prevent automatic redirection in some browsers
+                console.log(`[DownloadPage] Referral code [${referrerCode}] copied.`);
             } catch (err) {
                 console.error('Clipboard write failed', err);
-                if (storeUrl !== '#') window.location.href = storeUrl;
             }
-        } else {
-            if (storeUrl !== '#') window.location.href = storeUrl;
+        }
+
+        // Redirect immediately or after a very short delay for the copy state to reflect
+        if (storeUrl !== '#') {
+            window.location.href = storeUrl;
         }
     };
 
@@ -87,7 +90,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
                         <span className="font-bold text-lg tracking-tight text-gray-900">대똥단결</span>
                     </div>
                     <button
-                        onClick={() => handleCopyAndRedirect('#')}
+                        onClick={() => handleCopyAndRedirect(PLAY_STORE_URL)}
                         className="bg-gray-900 text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-black transition-colors"
                     >
                         앱 다운로드
@@ -296,7 +299,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t border-gray-200 z-50">
                 <div className="max-w-md mx-auto grid grid-cols-2 gap-3">
                     <button
-                        onClick={() => handleCopyAndRedirect('#')}
+                        onClick={() => handleCopyAndRedirect(PLAY_STORE_URL)}
                         className="h-14 flex flex-col items-center justify-center bg-gray-100 text-gray-900 rounded-xl hover:bg-gray-200 transition-colors"
                     >
                         <span className="text-[10px] font-bold text-gray-500 uppercase">Android</span>
@@ -305,7 +308,7 @@ const DownloadPage: React.FC<DownloadPageProps> = ({ referrerCode }) => {
                         </div>
                     </button>
                     <button
-                        onClick={() => handleCopyAndRedirect('#')}
+                        onClick={() => handleCopyAndRedirect(APP_STORE_URL)}
                         className="h-14 flex flex-col items-center justify-center bg-gray-900 text-white rounded-xl shadow-lg shadow-gray-200 hover:bg-black transition-colors"
                     >
                         <span className="text-[10px] font-bold text-gray-400 uppercase">iOS</span>

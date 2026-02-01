@@ -312,6 +312,15 @@ export default function App() {
             console.log('[NativeInit] 4. Starting Private Service Init...');
             await notificationService.initialize();
 
+            console.log('[NativeInit] 5. Initializing AdMob Service...');
+            const fetchedAdConfig = await db.getAdConfig();
+            setAdConfig(fetchedAdConfig);
+            await adMobService.initialize(fetchedAdConfig);
+
+            // Eagerly pre-load ads so they are ready when needed
+            adMobService.prepareInterstitial().catch(e => console.warn('[NativeInit] ⚠️ Pre-load Interstitial failed:', e));
+            adMobService.prepareRewardVideo().catch(e => console.warn('[NativeInit] ⚠️ Pre-load Reward failed:', e));
+
             // Tiny delay before fetch
             setTimeout(() => {
                 triggerLocationFetch();
@@ -574,7 +583,8 @@ export default function App() {
 
     // AdManager State
     const [showAd, setShowAd] = useState(false);
-    const [adRewardType, setAdRewardType] = useState<'credit' | 'unlock'>('credit');
+    const [adRewardType, setAdRewardType] = useState<'credit' | 'unlock' | 'exit' | 'point' | 'custom'>('credit');
+    const [adConfig, setAdConfig] = useState<any>(null);
 
     // BUILD 111: Dynamic Background Sync for iOS White Gap
     const syncBackground = useCallback(() => {
@@ -724,7 +734,9 @@ export default function App() {
         // Detailed Page: User requested to keep banner.
         // We ensure showBottomBanner is called.
         // DetailPage needs padding-bottom to avoid overlap.
-        adMobService.showBottomBanner();
+        if (Capacitor.isNativePlatform()) {
+            adMobService.showBottomBanner().catch(() => { });
+        }
     }, [currentHash]);
 
     // Reward Success Modal State
@@ -739,11 +751,20 @@ export default function App() {
         setShowAd(true);
     };
 
+    const handleExitWithAd = () => {
+        setAdRewardType('exit');
+        setShowAd(true);
+        setShowExitModal(false);
+    };
+
     const handleAdReward = async () => {
         if (adCallback) {
             adCallback();
             setAdCallback(null);
             setShowAd(false); // Close immediately
+        } else if (adRewardType === 'exit') {
+            setShowAd(false);
+            CapApp.exitApp();
         } else if (adRewardType === 'credit') {
             // Optimistic UI Close
             setShowAd(false);
@@ -2291,7 +2312,7 @@ export default function App() {
                                         {t('exit_modal_cancel', '취소')}
                                     </button>
                                     <button
-                                        onClick={() => CapApp.exitApp()}
+                                        onClick={handleExitWithAd}
                                         className="flex-1 py-3 bg-primary-500 text-white rounded-xl font-bold hover:bg-primary-600 shadow-lg shadow-primary-500/30 transition-all hover:scale-[1.02] active:scale-95"
                                     >
                                         {t('exit_modal_confirm', '종료')}
@@ -2435,7 +2456,8 @@ export default function App() {
                     isOpen={showAd}
                     onClose={() => setShowAd(false)}
                     onReward={handleAdReward}
-                    triggerType={adRewardType === 'unlock' ? 'unlock' : 'point'}
+                    triggerType={adRewardType === 'unlock' ? 'unlock' : (adRewardType === 'exit' ? 'exit' : 'point')}
+                    config={adConfig}
                 />
 
                 {/* WELCOME MODAL */}

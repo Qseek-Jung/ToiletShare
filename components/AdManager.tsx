@@ -16,12 +16,12 @@ declare global {
 interface AdManagerProps {
     isOpen: boolean;
     onClose: () => void; // Called when ad is finished/skipped/closed
-    onReward?: () => void; // Only for Rewarded Ads
     adType?: 'reward' | 'interstitial';
-    triggerType?: 'unlock' | 'point' | 'navigation'; // New Trigger Type
+    triggerType?: 'unlock' | 'point' | 'navigation' | 'exit'; // New Trigger Type
+    config?: any; // NEW: Passed from App.tsx to skip network call
 }
 
-export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward', triggerType = 'unlock' }) => {
+export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward, adType = 'reward', triggerType = 'unlock', config: passedConfig }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [showYoutube, setShowYoutube] = useState(false);
     const [showMP4, setShowMP4] = useState(false); // NEW: iOS MP4 player
@@ -42,6 +42,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     // Config State
     const [config, setConfig] = useState<any>(null);
+    const configRef = useRef<any>(null); // NEW: Ref for stable access in callbacks
 
     const initialTimeRef = useRef(15);
     const timeLeftRef = useRef(15);
@@ -147,10 +148,13 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
     const loadAdConfig = async () => {
         try {
-            console.log('[AdManager] 🎬 Loading ad config...');
-            const cfg = await dbSupabase.getAdConfig();
-            console.log('[AdManager] Config loaded:', { interstitialSource: cfg.interstitialSource, testMode: cfg.testMode });
+            console.log('[AdManager] 🎬 Loading ad config...', passedConfig ? '(using prop)' : '(fetching)');
+
+            const cfg = passedConfig || await dbSupabase.getAdConfig();
+            console.log('[AdManager] Config loaded:', { source: cfg.interstitialSource, testMode: cfg.testMode });
+
             setConfig(cfg);
+            configRef.current = cfg;
 
             const platform = Capacitor.getPlatform(); // 'ios' | 'android' | 'web'
             const source = cfg.interstitialSource || 'admob';
@@ -168,7 +172,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
                     // DEBUG ALERT
                     if (!ios.videoUrls || ios.videoUrls.length === 0) {
-                        alert(`🐛 DEBUG: iOS 동영상 없음!\n\ninterstitialIOS: ${JSON.stringify(ios, null, 2)}`);
+                        console.warn('📽️ [AdManager] iOS video URLs are missing');
                     }
 
                     const duration = triggerType === 'unlock' ? (ios.durationUnlock || 15) :
@@ -203,6 +207,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
 
                 if (platformConfig && platformConfig.urls.length > 0) {
                     console.log('[AdManager] ✅ Videos found:', platformConfig.urls.length);
+                    // ... (omitted for brevity, assume unchanged logic inside)
                     if (platform === 'ios') {
                         // iOS: Select only 1 random video (to minimize R2 traffic - cached once, looped)
                         const randomIndex = Math.floor(Math.random() * platformConfig.urls.length);
@@ -241,58 +246,66 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     if (source !== 'youtube') {
                         // Only fallback if user did not explicitly choose self-hosted videos
                         console.log('[AdManager] Falling back to AdMob');
-                        handleAdMobFallback(cfg.testMode);
+                        handleAdMobFallback(cfg);
                     } else {
                         // User chose self-hosted but no videos - just close
-                        console.log('[AdManager] Self-hosted videos not configured, closing without AdMob');
+                        setIsLoading(false); // Close spinner on error
                         onClose();
                     }
                 }
             } else {
                 console.log('[AdManager] Source is AdMob, using AdMob directly');
-                handleAdMobFallback(cfg.testMode);
+                handleAdMobFallback(cfg);
             }
         } catch (e) {
             console.error("Ad Decision Failed", e);
+            setIsLoading(false);
             onClose();
         }
     };
 
-    const handleAdMobFallback = async (testMode: boolean) => {
+    const handleAdMobFallback = async (currentConfig: any) => {
         try {
-            console.log('[AdManager] Starting AdMob fallback', { adType, testMode, config });
+            const finalConfig = currentConfig || config || configRef.current || { testMode: true };
+            console.log('[AdManager] Starting AdMob fallback', { adType, triggerType, testMode: finalConfig?.testMode });
+
+            // Ensure we hide the spinner if we move to native AdMob
+            setIsLoading(false);
 
             // Initialize AdMob with config first
-            await adMobService.initialize(config);
+            await adMobService.initialize(finalConfig);
             console.log('[AdManager] AdMob initialized');
 
-            if (adType === 'reward') {
+            if (adType === 'reward' && triggerType !== 'exit') {
                 // Prepare reward ad first
                 console.log('[AdManager] Preparing reward ad...');
                 await adMobService.prepareRewardVideo();
-                console.log('[AdManager] Reward ad prepared, waiting...');
-                // Wait a bit for ad to load
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 console.log('[AdManager] Showing reward ad...');
                 // Show reward ad
                 const result = await adMobService.showRewardVideo();
                 console.log('[AdManager] Reward ad result:', result);
-                if (result && onReward) onReward();
+
+                if (result) {
+                    if (onReward) onReward();
+                }
             } else {
                 // Prepare interstitial ad first
                 console.log('[AdManager] Preparing interstitial ad...');
                 await adMobService.prepareInterstitial();
-                console.log('[AdManager] Interstitial ad prepared, waiting...');
-                // Wait a bit for ad to load
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 console.log('[AdManager] Showing interstitial ad...');
                 // Show interstitial
                 await adMobService.showInterstitial();
                 console.log('[AdManager] Interstitial ad shown');
+
+                // Trigger reward callback for interstitial flow (used for Exit/Unlock)
+                if (onReward) onReward();
             }
-        } catch (error) {
-            console.error("❌ [AdManager] AdMob Playback Failed:", error);
-            alert(`AdMob 오류: ${error.message || error}`);
+        } catch (error: any) {
+            // Suppress noise if banner wasn't shown
+            if (!error?.message?.includes('never shown')) {
+                console.error("❌ [AdManager] AdMob Playback Failed:", error);
+            }
+            // Silently close on error for better UX, or log to server
         } finally {
             onClose();
         }
@@ -329,7 +342,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
         const source = config?.interstitialSource || 'admob';
         if (source !== 'youtube') {
             console.log('[AdManager] Falling back to AdMob after MP4 error');
-            handleAdMobFallback(config?.testMode || true);
+            handleAdMobFallback(config || { testMode: true });
         } else {
             console.log('[AdManager] MP4 error but user chose self-hosted only, closing without AdMob');
             onClose();
@@ -439,7 +452,7 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
                     },
                     'onError': (e: any) => {
                         console.error("YT Player Error", e);
-                        handleAdMobFallback(config?.testMode);
+                        handleAdMobFallback(configRef.current);
                     }
                 }
             });
@@ -453,7 +466,13 @@ export const AdManager: React.FC<AdManagerProps> = ({ isOpen, onClose, onReward,
             setCanClose(true);
         }, safetyDuration);
 
-        return () => clearTimeout(safetyTimer);
+        return () => {
+            if (safetyTimer) clearTimeout(safetyTimer);
+            if (playerRef.current) {
+                try { playerRef.current.destroy(); } catch (e) { }
+                playerRef.current = null;
+            }
+        };
     }, [showYoutube, playlistIds]);
 
     if (!isOpen) return null;

@@ -6,13 +6,13 @@ interface TextLayoutProps {
 }
 
 export const TextLayout: React.FC<TextLayoutProps & { noPadding?: boolean }> = ({ children, className = '', noPadding = false }) => (
-    <div className="absolute inset-0 w-full h-full bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="absolute inset-0 w-full h-full overflow-hidden">
         {/* Centralized Safe Area Handling:
             - If noPadding is false (default): Application applies standard safe-area padding.
             - If noPadding is true: Child component handles padding/structure (e.g. for sticky headers).
         */}
         <div
-            className={`w-full max-w-md mx-auto bg-white dark:bg-gray-800 h-full overflow-y-auto no-scrollbar shadow-2xl ${noPadding ? '' : 'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
+            className={`relative w-full max-w-md mx-auto bg-white dark:bg-gray-800 h-full overflow-y-auto no-scrollbar shadow-2xl ${noPadding ? '' : 'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]'
                 } ${className}`}
             style={{ WebkitOverflowScrolling: 'touch' }}
             ref={(el) => {

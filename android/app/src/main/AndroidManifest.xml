@@ -51,7 +51,7 @@
         </provider>
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ADMOB_APP_ID_PLACEHOLDER"/>
+            android:value="ca-app-pub-8142649369272916~9342907044"/>
 
         <!-- Google Maps API Key -->
         <meta-data

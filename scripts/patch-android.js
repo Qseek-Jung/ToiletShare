@@ -24,7 +24,7 @@ const Config = {
             androidKey: env.VITE_GOOGLE_MAPS_API_KEY_ANDROID || '',
         },
         admob: {
-            appId: env.VITE_ADMOB_APP_ID_ANDROID || env.VITE_ADSENSE_PUB_ID || '',
+            appId: env.VITE_ADMOB_APP_ID_ANDROID || 'ca-app-pub-8142649369272916~9342907044',
         }
     }
 };

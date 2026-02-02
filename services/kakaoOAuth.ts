@@ -4,7 +4,7 @@ import { App, URLOpenListenerEvent } from '@capacitor/app';
 /**
  * Kakao OAuth Configuration
  */
-const KAKAO_REST_API_KEY = '954f8caae336cb83506cad28e1de2e19';
+const KAKAO_REST_API_KEY = 'd5a9498cedf6ffb73e6d6ca18ac82abf';
 const KAKAO_REDIRECT_URI = 'toiletsharekakao://oauth';
 
 /**

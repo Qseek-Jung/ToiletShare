@@ -1,5 +1,6 @@
 import React from 'react';
 import { Smartphone, AlertTriangle, ArrowRight, X } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
 
 interface UpdateModalProps {
     type: 'force' | 'optional';
@@ -9,8 +10,8 @@ interface UpdateModalProps {
 }
 
 export const UpdateModal: React.FC<UpdateModalProps> = ({ type, storeUrl, message, onClose }) => {
-    const handleUpdate = () => {
-        window.open(storeUrl, '_system');
+    const handleUpdate = async () => {
+        await Browser.open({ url: storeUrl });
     };
 
     return (

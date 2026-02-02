@@ -1536,125 +1536,191 @@ export default function App() {
     const performNaverLogin = async () => {
         try {
             setLoginLoading(true);
-            console.log('=== NAVER OAUTH LOGIN (Safari View Controller) ===');
 
-            // Use Safari View Controller OAuth (App Store compliant)
-            const result = await NaverOAuthService.login();
-            console.log('[Naver] Login successful:', result);
+            if (Capacitor.isNativePlatform()) {
+                console.log('=== NAVER NATIVE LOGIN START ===');
+                const result: any = await Naver.login();
+                console.log('Naver native login result:', JSON.stringify(result));
 
-            const { email, gender: genderRaw, name } = result;
+                const accessToken = result?.accessToken?.accessToken ?? result?.accessToken ?? result?.access_token;
 
-            if (!email) {
-                alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
-                setLoginLoading(false);
-                return;
-            }
+                if (accessToken) {
+                    // Use CapacitorHttp to bypass CORS
+                    const profileResponse = await CapacitorHttp.request({
+                        url: 'https://openapi.naver.com/v1/nid/me',
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`
+                        }
+                    });
 
-            // Check/Create User
-            let targetUser = await db.getUserByEmail(email);
+                    const profileData = profileResponse.data;
+                    console.log('Naver profile data:', JSON.stringify(profileData));
 
-            if (!targetUser) {
-                // Register new user
-                const newUser: User = {
-                    id: 'naver_' + email.split('@')[0],
-                    email: email,
-                    nickname: name || 'Naver User',
-                    gender: genderRaw === 'MALE' ? Gender.MALE : (genderRaw === 'FEMALE' ? Gender.FEMALE : Gender.UNISEX),
-                    role: UserRole.USER,
-                    credits: 50,
-                    signupProvider: 'naver',
-                };
-                setPendingUser(newUser);
-                setShowLoginModal(false);
-                setShowGenderSelectModal(true);
+                    if (profileData.resultcode === '00') {
+                        const { email, name, id: naverId, gender: genderRaw } = profileData.response;
+
+                        if (!email) {
+                            alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
+                            setLoginLoading(false);
+                            return;
+                        }
+
+                        // Check/Create User
+                        let targetUser = await db.getUserByEmail(email);
+
+                        if (!targetUser) {
+                            const newUser: User = {
+                                id: 'naver_' + (naverId || Date.now()),
+                                email: email,
+                                nickname: name || 'Naver User',
+                                gender: genderRaw === 'M' ? Gender.MALE : (genderRaw === 'F' ? Gender.FEMALE : Gender.UNISEX),
+                                role: UserRole.USER,
+                                credits: 50,
+                                signupProvider: 'naver',
+                            };
+                            setPendingUser(newUser);
+                            setShowLoginModal(false);
+                            setShowGenderSelectModal(true);
+                        } else {
+                            if (targetUser.status === 'banned') {
+                                setShowBannedModal(true);
+                                setLoginLoading(false);
+                                return;
+                            }
+                            if (targetUser.status === UserStatus.WITHDRAWN) {
+                                targetUser.status = UserStatus.ACTIVE;
+                                targetUser.deletedAt = undefined;
+                                await db.saveUser(targetUser);
+                                alert("계정이 복구되었습니다.");
+                            }
+
+                            setUser(targetUser);
+                            localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                            setShowLoginModal(false);
+                            window.location.hash = '#/';
+                        }
+                    } else {
+                        alert("네이버 프로필 정보를 가져오는데 실패했습니다.");
+                    }
+                } else {
+                    console.log('Naver login token missing');
+                }
             } else {
-                // Login existing user
-                if (targetUser.status === 'banned') {
-                    setShowBannedModal(true);
+                console.log('=== NAVER BROWSER LOGIN START ===');
+                // Safari View Controller for iOS browser flow or Web fallback
+                const result = await NaverOAuthService.login();
+                const { email, gender: genderRaw, name } = result;
+
+                if (!email) {
+                    alert("이메일 정보가 없습니다. 개인정보 제공에 동의해주세요.");
                     setLoginLoading(false);
                     return;
                 }
-                if (targetUser.status === UserStatus.WITHDRAWN) {
-                    targetUser.status = UserStatus.ACTIVE;
-                    targetUser.deletedAt = undefined;
-                    await db.saveUser(targetUser);
-                    alert("계정이 복구되었습니다.");
+
+                let targetUser = await db.getUserByEmail(email);
+
+                if (!targetUser) {
+                    const newUser: User = {
+                        id: 'naver_' + email.split('@')[0],
+                        email: email,
+                        nickname: name || 'Naver User',
+                        gender: genderRaw === 'MALE' ? Gender.MALE : (genderRaw === 'FEMALE' ? Gender.FEMALE : Gender.UNISEX),
+                        role: UserRole.USER,
+                        credits: 50,
+                        signupProvider: 'naver',
+                    };
+                    setPendingUser(newUser);
+                    setShowLoginModal(false);
+                    setShowGenderSelectModal(true);
+                } else {
+                    if (targetUser.status === 'banned') {
+                        setShowBannedModal(true);
+                        setLoginLoading(false);
+                        return;
+                    }
+                    if (targetUser.status === UserStatus.WITHDRAWN) {
+                        targetUser.status = UserStatus.ACTIVE;
+                        targetUser.deletedAt = undefined;
+                        await db.saveUser(targetUser);
+                        alert("계정이 복구되었습니다.");
+                    }
+
+                    setUser(targetUser);
+                    localStorage.setItem('currentUser', JSON.stringify(targetUser));
+                    setShowLoginModal(false);
+                    window.location.hash = '#/';
                 }
-
-                setUser(targetUser);
-                localStorage.setItem('currentUser', JSON.stringify(targetUser));
-                setShowLoginModal(false);
-                window.location.hash = '#/';
             }
-
-            setLoginLoading(false);
-
         } catch (error: any) {
             console.error('Naver Login Error:', error);
-
-            // User cancelled
-            if (error.message?.includes('cancelled')) {
-                console.log('[Naver] Login cancelled by user');
-                setLoginLoading(false);
-                return;
+            if (!error.message?.includes('cancelled') && !error.message?.includes('cancel')) {
+                alert("❌ 네이버 로그인 실패\n" + (error.message || JSON.stringify(error)));
             }
-
-            // Enhanced error logging
-            let errorMsg = "❌ 네이버 로그인 실패\n\n";
-            if (error.message) errorMsg += `Message: ${error.message}\n`;
-            if (error.code) errorMsg += `Code: ${error.code}\n`;
-
-            alert(errorMsg);
+        } finally {
             setLoginLoading(false);
         }
     };
+
     const performKakaoLogin = async () => {
         try {
             setLoginLoading(true);
-            console.log('=== KAKAO OAUTH LOGIN (Safari View Controller) ===');
 
-            // Use Safari View Controller OAuth (App Store compliant)
-            const result = await KakaoOAuthService.login();
-            console.log('[Kakao] Login successful:', result);
+            if (Capacitor.isNativePlatform()) {
+                console.log('=== KAKAO NATIVE LOGIN START ===');
+                await KakaoLoginPlugin.goLogin();
+                const userInfo = await KakaoLoginPlugin.getUserInfo();
+                console.log('Kakao native user info:', JSON.stringify(userInfo));
 
-            const { email, gender: genderRaw } = result;
+                const email = userInfo?.value?.kakaoAccount?.email || userInfo?.value?.email;
+                const genderRaw = userInfo?.value?.kakaoAccount?.gender || userInfo?.value?.gender;
 
-            let hasGenderInfo = false;
-            let gender = Gender.MALE;
+                if (!email) {
+                    alert("❌ 이메일 정보를 가져올 수 없습니다.");
+                    setLoginLoading(false);
+                    return;
+                }
 
-            if (genderRaw === 'FEMALE') {
-                gender = Gender.FEMALE;
-                hasGenderInfo = true;
-            } else if (genderRaw === 'MALE') {
-                gender = Gender.MALE;
-                hasGenderInfo = true;
+                let gender = Gender.MALE;
+                let hasGenderInfo = false;
+                if (genderRaw === 'FEMALE' || genderRaw === 'female') {
+                    gender = Gender.FEMALE;
+                    hasGenderInfo = true;
+                } else if (genderRaw === 'MALE' || genderRaw === 'male') {
+                    gender = Gender.MALE;
+                    hasGenderInfo = true;
+                }
+
+                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
+            } else {
+                console.log('=== KAKAO BROWSER LOGIN START ===');
+                const result = await KakaoOAuthService.login();
+                const { email, gender: genderRaw } = result;
+
+                if (!email) {
+                    alert("❌ 이메일 정보를 가져올 수 없습니다.");
+                    setLoginLoading(false);
+                    return;
+                }
+
+                let gender = Gender.MALE;
+                let hasGenderInfo = false;
+                if (genderRaw === 'FEMALE') {
+                    gender = Gender.FEMALE;
+                    hasGenderInfo = true;
+                } else if (genderRaw === 'MALE') {
+                    gender = Gender.MALE;
+                    hasGenderInfo = true;
+                }
+
+                await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
             }
-
-            if (!email) {
-                alert("❌ 이메일 정보를 가져올 수 없습니다.");
-                setLoginLoading(false);
-                return;
-            }
-
-            await handleSocialLoginSuccess(email, gender, hasGenderInfo, 'kakao');
-
         } catch (error: any) {
             console.error('Kakao Login Error:', error);
-
-            // User cancelled
-            if (error.message?.includes('cancelled')) {
-                console.log('[Kakao] Login cancelled by user');
-                setLoginLoading(false);
-                return;
+            if (!error.message?.includes('cancelled') && !error.message?.includes('cancel')) {
+                alert("❌ 카카오 로그인 실패\n" + (error.message || JSON.stringify(error)));
             }
-
-            // Enhanced error logging
-            let errorMsg = "❌ 카카오 로그인 실패\n\n";
-            if (error.message) errorMsg += `Message: ${error.message}\n`;
-            if (error.code) errorMsg += `Code: ${error.code}\n`;
-            errorMsg += `\n상세: ${JSON.stringify(error)}`;
-
-            alert(errorMsg);
+        } finally {
             setLoginLoading(false);
         }
     };

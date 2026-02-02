@@ -7,6 +7,7 @@ import { ContactModal } from '../components/ContactModal';
 import { dbSupabase as db } from '../services/db_supabase';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import { Bell, RefreshCw } from 'lucide-react';
 
 interface AppInfoPageProps {
@@ -81,10 +82,10 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                                 <span className="text-xs font-bold text-primary">
                                     새로운 버전({latestVersion})이 있습니다
                                 </span>
-                                <a
-                                    href={storeUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
+                                <button
+                                    onClick={async () => {
+                                        await Browser.open({ url: storeUrl });
+                                    }}
                                     className={`px-4 py-2 rounded-full font-bold text-sm text-white shadow-lg active:scale-95 transition-all flex items-center gap-2 ${isIOS ? 'bg-black hover:bg-gray-800' : 'bg-[#00897B] hover:bg-[#00796B]'
                                         }`}
                                 >
@@ -100,7 +101,7 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
                                         </>
                                     )}
                                     <span>업데이트</span>
-                                </a>
+                                </button>
                             </div>
                         )}
                     </div>

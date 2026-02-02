@@ -1,5 +1,5 @@
-export const APP_VERSION = '1.0.7';
-export const LAST_UPDATE_DATE = '2026.01.09';
+export const APP_VERSION = '1.1.0';
+export const LAST_UPDATE_DATE = '2026.02.02';
 
 export const UPDATE_NOTES = [
     "지도 로딩 속도 및 위치 정확도 개선",

@@ -30,7 +30,15 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="kakao954f8caae336cb83506cad28e1de2e19" />
+                <data android:scheme="kakaod5a9498cedf6ffb73e6d6ca18ac82abf" />
+            </intent-filter>
+
+            <!-- Kakao OAuth Callback (Safari View Controller Service) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="toiletsharekakao" />
             </intent-filter>
 
             <!-- Naver Login Redirect -->
@@ -39,6 +47,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="naver44PTd3BMDQvsMLU_oLVy" />
+            </intent-filter>
+
+            <!-- Naver OAuth Callback (Safari View Controller Service) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="toiletsharenaver" />
             </intent-filter>
         </activity>
 

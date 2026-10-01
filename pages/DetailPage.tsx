@@ -299,36 +299,35 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
 
                     <div className={`absolute bottom-0 left-0 right-0 p-4 ${Capacitor.getPlatform() === 'android' ? 'pb-24' : 'pb-4 pb-safe'} bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center`}>
                         <div className="flex gap-4 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
-                            {isKorean ? (
-                                <>
-                                    <button
-                                        onClick={() => onNavigate('kakao')}
-                                        className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
-                                        aria-label={t('kakao_map', '카카오맵')}
-                                    >
-                                        <img
-                                            src="https://play-lh.googleusercontent.com/pPTTNz433EYFurg2j__bFU5ONdMoU_bs_-yS2JLZriua3iHrksGP6XBPF5VtDPlpGcW4=s64-rw"
-                                            alt="Kakao Map"
-                                            className="h-10 w-10 object-contain rounded-xl"
-                                        />
-                                    </button>
+                                <button
+                                    onClick={() => onNavigate('kakao')}
+                                    className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
+                                    aria-label={t('kakao_map', '카카오맵')}
+                                >
+                                    <img
+                                        src="https://play-lh.googleusercontent.com/pPTTNz433EYFurg2j__bFU5ONdMoU_bs_-yS2JLZriua3iHrksGP6XBPF5VtDPlpGcW4=s64-rw"
+                                        alt="Kakao Map"
+                                        className="h-10 w-10 object-contain rounded-xl"
+                                    />
+                                </button>
 
-                                    <button
-                                        onClick={() => onNavigate('naver')}
-                                        className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
-                                        aria-label={t('naver_map', '네이버지도')}
-                                    >
-                                        <img
-                                            src="https://play-lh.googleusercontent.com/FZCOcEqapjBkvBmv2RkIMlJ1mteGJh8eq4239jAm-4QgpzvCa9sBj4msNlUBsWvf3hX69-fJoTnFZR2pFdZdwxY=s64-rw"
-                                            alt="Naver Map"
-                                            className="h-10 w-10 object-contain rounded-xl"
-                                        />
-                                    </button>
-                                </>
-                            ) : (
+                                <button
+                                    onClick={() => onNavigate('naver')}
+                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
+                                    aria-label={t('naver_map', '네이버지도')}
+                                >
+                                    <img
+                                        src="https://play-lh.googleusercontent.com/FZCOcEqapjBkvBmv2RkIMlJ1mteGJh8eq4239jAm-4QgpzvCa9sBj4msNlUBsWvf3hX69-fJoTnFZR2pFdZdwxY=s64-rw"
+                                        alt="Naver Map"
+                                        className="h-10 w-10 object-contain rounded-xl"
+                                    />
+                                </button>
+                            
+                            {/* Foreign visitors: Google Maps as well (Naver Map also has an English UI) */}
+                            {!isKorean && (
                                 <button
                                     onClick={() => onNavigate('google')}
-                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200 gap-2"
+                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
                                     aria-label="Google Maps"
                                 >
                                     <img
@@ -336,7 +335,6 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                                         alt="Google Maps"
                                         className="h-8 w-8 object-contain"
                                     />
-                                    <span className="font-bold text-gray-700">{t('google_map', 'Google Maps')}</span>
                                 </button>
                             )}
                         </div>

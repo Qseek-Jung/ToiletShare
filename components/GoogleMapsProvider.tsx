@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Platform } from '../platform';
+import i18n from '../i18n';
 const MAPS_API_KEY = Platform.getGoogleMapsApiKey();
 
 interface GoogleMapsContextType {
@@ -13,6 +14,12 @@ const GoogleMapsContext = createContext<GoogleMapsContextType>({
 });
 
 export const useGoogleMaps = () => useContext(GoogleMapsContext);
+
+// Map labels follow the app language (foreign visitors see place names in their language)
+const mapsLanguage = (): string => {
+    const lng = i18n.resolvedLanguage || i18n.language || 'ko';
+    return ({ ko: 'ko', en: 'en', ja: 'ja', zh: 'zh-CN', 'zh-TW': 'zh-TW' } as Record<string, string>)[lng] || 'en';
+};
 
 interface GoogleMapsProviderProps {
     children: ReactNode;
@@ -52,7 +59,7 @@ export const GoogleMapsProvider: React.FC<GoogleMapsProviderProps> = ({ children
 
         // Add callback query param to ensure we know exactly when it's done
         // Add callback query param to ensure we know exactly when it's done
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&loading=async&libraries=${LIBRARIES.join(',')}&language=ko`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_API_KEY}&loading=async&libraries=${LIBRARIES.join(',')}&language=${mapsLanguage()}&region=KR`;
         script.async = true;
         script.defer = true;
 

@@ -21,11 +21,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack, darkMode, on
         { code: 'ko', label: '한국어' },
         { code: 'en', label: 'English' },
         { code: 'ja', label: '日本語' },
-        { code: 'zh', label: '中文' },
+        { code: 'zh', label: '简体中文' },
+        { code: 'zh-TW', label: '繁體中文' },
     ];
+    const flags: Record<string, string> = { ko: '🇰🇷', en: '🇺🇸', ja: '🇯🇵', zh: '🇨🇳', 'zh-TW': '🇹🇼' };
 
-    // Helper to check language match (handling region codes like en-US)
-    const isCurrentLang = (code: string) => i18n.language.startsWith(code);
+    const isCurrentLang = (code: string) => (i18n.resolvedLanguage || i18n.language) === code;
 
     const [nightlifeEnabled, setNightlifeEnabled] = React.useState(true);
 
@@ -85,7 +86,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack, darkMode, on
                                 className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
                             >
                                 <div className="flex items-center gap-3">
-                                    <span className="text-xl">{lang.code === 'ko' ? '🇰🇷' : lang.code === 'en' ? '🇺🇸' : lang.code === 'ja' ? '🇯🇵' : '🇨🇳'}</span>
+                                    <span className="text-xl">{flags[lang.code]}</span>
                                     <span className={`font-medium ${isCurrentLang(lang.code) ? 'text-primary' : 'text-gray-700 dark:text-gray-300'}`}>
                                         {lang.label}
                                     </span>

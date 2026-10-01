@@ -37,7 +37,7 @@ export function WelcomeModal({ open, onClose }: WelcomeModalProps) {
                     </p>
 
                     <div className="text-text-muted text-sm leading-relaxed mb-8 space-y-1">
-                        <p dangerouslySetInnerHTML={{ __html: t('welcome_bonus', '가입축하 뽀나스 <span className="text-urgency font-bold">50 크래딧</span> 드려요.') }} />
+                        <p dangerouslySetInnerHTML={{ __html: t('welcome_bonus', '가입축하 뽀나스 <span className="text-urgency font-bold">50 크레딧</span> 드려요.') }} />
                         <p>{t('welcome_msg_1', '급똥에 대비 잘 하시고,')}</p>
                         <p>{t('welcome_msg_2', '우리 서로 한 번씩만 도와보아요~')}</p>
                     </div>

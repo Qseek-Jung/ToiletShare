@@ -2328,9 +2328,18 @@ export default function App() {
             if (isSubmitMapOpen) { setIsSubmitMapOpen(false); return; }
             if (isHomeListOpen) { setIsHomeListOpen(false); return; }
 
-            // 3. Navigate back to Home if on sub-page
+            // 3. On a sub-page: go to the previous screen (fall back to Home)
             if (currentHash !== '' && currentHash !== '#/') {
-                window.location.hash = '#/';
+                const before = window.location.hash;
+                if (window.history.length > 1) {
+                    window.history.back();
+                    // If history didn't move (e.g. deep link entry), go Home
+                    setTimeout(() => {
+                        if (window.location.hash === before) window.location.hash = '#/';
+                    }, 300);
+                } else {
+                    window.location.hash = '#/';
+                }
                 return;
             }
 
@@ -2492,7 +2501,7 @@ export default function App() {
 
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
                                     광고 시청 완료!<br />
-                                    크래딧이 지급되었습니다.
+                                    크레딧이 지급되었습니다.
                                 </h3>
 
                                 <div className="my-6">

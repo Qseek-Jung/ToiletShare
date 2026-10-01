@@ -19,7 +19,7 @@ export enum Gender {
 
 export enum NotificationType {
   FAVORITE_UPDATE = 'favorite_update',           // 즐겨찾기 화장실 업데이트
-  CREDIT_AWARDED = 'credit_awarded',             // 크래딧 지급
+  CREDIT_AWARDED = 'credit_awarded',             // 크레딧 지급
   TOILET_REPORTED = 'toilet_reported',           // 내 화장실 신고됨
   NEARBY_TOILET = 'nearby_toilet',               // 근처 화장실 등록
   REVIEW_ADDED = 'review_added',                 // 내 화장실에 리뷰 작성됨

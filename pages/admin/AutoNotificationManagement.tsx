@@ -146,7 +146,7 @@ export const AutoNotificationManagement: React.FC = () => {
                 </div>
                 {renderInput('msg_milestone_reached', '조회수 달성 알림', '조회수 달성 시 (변수: [name], [count])', '축하합니다! [name] 화장실이 [count]명 돌파!')}
                 {renderInput('msg_level_up', '레벨 업 알림', '사용자 레벨 상승 시 (변수: [old], [new], [reward])', '축하합니다! [new] 등급이 되셨습니다!')}
-                {renderInput('msg_point_gift', '포인트 선물 알림', '관리자 포인트 지급 시 (변수: [amount], [reason])', '관리자로부터 [amount]크래딧 선물이 도착했습니다! (사유: [reason])')}
+                {renderInput('msg_point_gift', '포인트 선물 알림', '관리자 포인트 지급 시 (변수: [amount], [reason])', '관리자로부터 [amount]크레딧 선물이 도착했습니다! (사유: [reason])')}
                 {renderInput('msg_new_toilet_nearby', '주변 신규 화장실 알림', '주변에 새 화장실 등록 시 (변수: [radius], [count])', '내 주변 [radius]km 내에 [count]개의 새 화장실이!')}
             </div>
         </div>

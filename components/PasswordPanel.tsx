@@ -152,7 +152,7 @@ const PasswordPanel: React.FC<Props> = ({ toilet, user, onUnlock, isUnlocked }) 
                 </span>
                 {user.credits >= unlockCost && (
                   <span className="text-[10px] opacity-80 mt-1 font-medium">
-                    {t('credit_deduction', '{{cost}} 크래딧 차감 (보유: {{balance}})', { cost: unlockCost, balance: user.credits })}
+                    {t('credit_deduction', '{{cost}} 크레딧 차감 (보유: {{balance}})', { cost: unlockCost, balance: user.credits })}
                   </span>
                 )}
               </div>

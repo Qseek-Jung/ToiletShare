@@ -488,6 +488,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
         onUnlock(method);
     };
 
+    // Credits are changed on the server (RPCs); re-read the balance so the UI never drifts
+    const syncCreditsFromServer = () => {
+        db.getUserById(user.id)
+            .then(fresh => { if (fresh) onUserUpdate({ ...user, credits: fresh.credits }); })
+            .catch(err => console.warn('Failed to refresh credits', err));
+    };
+
     const handleShare = async () => {
         await shareService.shareToilet(toilet, user.id);
     };
@@ -520,46 +527,56 @@ const DetailPage: React.FC<DetailPageProps> = ({
     const [pendingNavType, setPendingNavType] = useState<'kakao' | 'naver' | 'google' | null>(null);
 
     const executeNavigation = (type: 'kakao' | 'naver' | 'google') => {
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (!toilet) return;
 
         const { lat, lng, name } = toilet;
         const myLat = myLocation?.lat || 0;
         const myLng = myLocation?.lng || 0;
         const hasLocation = myLat !== 0 && myLng !== 0;
+        const dName = encodeURIComponent(name);
+        const appName = encodeURIComponent('대똥단결');
+        const sName = encodeURIComponent('내위치');
 
+        let appUrl = '';
+        let webUrl = '';
         if (type === 'kakao') {
-            if (isMobile) {
-                if (hasLocation) {
-                    window.location.href = `kakaomap://route?sp=${myLat},${myLng}&ep=${lat},${lng}&by=foot`;
-                } else {
-                    window.location.href = `kakaomap://route?ep=${lat},${lng}&by=foot`;
-                }
-            } else {
-                if (hasLocation) {
-                    window.open(`https://map.kakao.com/link/from/내위치,${myLat},${myLng}/to/${name},${lat},${lng}`, '_blank');
-                } else {
-                    window.open(`https://map.kakao.com/link/to/${name},${lat},${lng}`, '_blank');
-                }
-            }
+            appUrl = hasLocation
+                ? `kakaomap://route?sp=${myLat},${myLng}&ep=${lat},${lng}&by=foot`
+                : `kakaomap://route?ep=${lat},${lng}&by=foot`;
+            webUrl = hasLocation
+                ? `https://map.kakao.com/link/from/${sName},${myLat},${myLng}/to/${dName},${lat},${lng}`
+                : `https://map.kakao.com/link/to/${dName},${lat},${lng}`;
         } else if (type === 'naver') {
-            if (isMobile) {
-                const appName = encodeURIComponent("대똥단결");
-                const dName = encodeURIComponent(name);
-                if (hasLocation) {
-                    const sName = encodeURIComponent("내위치");
-                    window.location.href = `nmap://route/walk?slat=${myLat}&slng=${myLng}&sname=${sName}&dlat=${lat}&dlng=${lng}&dname=${dName}&appname=${appName}`;
-                } else {
-                    window.location.href = `nmap://route/walk?dlat=${lat}&dlng=${lng}&dname=${dName}&appname=${appName}`;
-                }
-            } else {
-                if (hasLocation) {
-                    window.open(`https://map.naver.com/v5/directions/${myLng},${myLat},내위치/${lng},${lat},${name}/-/walk`, '_blank');
-                } else {
-                    window.open(`https://map.naver.com/v5/search/${encodeURIComponent(name)}`, '_blank');
-                }
-            }
+            appUrl = hasLocation
+                ? `nmap://route/walk?slat=${myLat}&slng=${myLng}&sname=${sName}&dlat=${lat}&dlng=${lng}&dname=${dName}&appname=${appName}`
+                : `nmap://route/walk?dlat=${lat}&dlng=${lng}&dname=${dName}&appname=${appName}`;
+            webUrl = hasLocation
+                ? `https://map.naver.com/v5/directions/${myLng},${myLat},${sName}/${lng},${lat},${dName}/-/walk`
+                : `https://map.naver.com/v5/search/${dName}`;
+        } else {
+            webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
         }
+
+        if (!Capacitor.isNativePlatform()) {
+            window.open(webUrl, '_blank');
+            return;
+        }
+
+        // Try the map app; if it isn't installed the app stays in the foreground,
+        // so fall back to the web map in the in-app browser.
+        const openWeb = () => import('@capacitor/browser').then(({ Browser }) => Browser.open({ url: webUrl }));
+        if (!appUrl) {
+            openWeb();
+            return;
+        }
+        let left = false;
+        const onHide = () => { if (document.visibilityState === 'hidden') left = true; };
+        document.addEventListener('visibilitychange', onHide);
+        window.location.href = appUrl;
+        setTimeout(() => {
+            document.removeEventListener('visibilitychange', onHide);
+            if (!left) openWeb();
+        }, 1500);
     };
 
     const handleNavigation = (type: 'kakao' | 'naver' | 'google') => {
@@ -689,6 +706,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 };
 
                 await db.addReview(newReview);
+                syncCreditsFromServer();
 
                 // Cancel pending reminder
                 notificationService.cancelReviewReminder(toilet.id);
@@ -704,7 +722,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     // VIP/Admin points are automatically awarded in db.addReview
                     setShowRewardModal({
                         show: true,
-                        message: t('review_thanks_vip_admin', '리뷰 작성 감사합니다!\n활동 크래딧이 지급되었습니다.'),
+                        message: t('review_thanks_vip_admin', '리뷰 작성 감사합니다!\n활동 크레딧이 지급되었습니다.'),
                         points: reviewRewardAmount
                     });
                 } else {
@@ -732,13 +750,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
             setReviews(prev => prev.map(r => r.id === pendingReviewId ? { ...r, rewarded: true } : r));
         }
 
-        setShowRewardModal({ show: true, message: t('ad_reward_message', '광고 시청 완료!\n크래딧이 지급되었습니다.'), points: points });
+        setShowRewardModal({ show: true, message: t('ad_reward_message', '광고 시청 완료!\n크레딧이 지급되었습니다.'), points: points });
 
         // 2. Background DB Updates (Non-blocking)
         Promise.all([
             db.recordAdView('review'),
             pendingReviewId ? db.rewardReviewAd(user.id, pendingReviewId, points) : Promise.resolve()
-        ]).catch(err => {
+        ]).then(() => syncCreditsFromServer()).catch(err => {
             console.error("Failed to sync ad reward to DB:", err);
             // Silent fail or toast? Usually silent + log is fine for ad rewards to avoid disrupting user flow, 
             // but ideally we'd rollback. For now, speed is priority.
@@ -752,7 +770,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         const shouldDeduct = review?.rewarded === true;
 
         const confirmMessage = shouldDeduct
-            ? t('review_delete_confirm', `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 {{amount}} 크래딧이 회수됩니다)`, { amount: reviewRewardAmount })
+            ? t('review_delete_confirm', `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 {{amount}} 크레딧이 회수됩니다)`, { amount: reviewRewardAmount })
             : t('review_delete_confirm_simple', "정말로 이 리뷰를 삭제하시겠습니까?");
 
         showConfirm(confirmMessage, () => {
@@ -768,10 +786,11 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     // Deduct Credits
                     const DEDUCTION_AMOUNT = -reviewRewardAmount;
 
-                    // Optimistic UI Update
+                    // Optimistic UI Update, then confirm with the server balance
                     const updatedUser = { ...user, credits: (user.credits || 0) + DEDUCTION_AMOUNT };
                     onUserUpdate(updatedUser);
-                    message = t('review_deleted_deducted', "리뷰가 삭제되었으며,\n지급된 크래딧이 차감되었습니다.");
+                    syncCreditsFromServer();
+                    message = t('review_deleted_deducted', "리뷰가 삭제되었으며,\n지급된 크레딧이 차감되었습니다.");
                 }
 
                 showAlert(message);

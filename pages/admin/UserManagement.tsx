@@ -204,7 +204,7 @@ const UserListView: React.FC<UserListViewProps> = ({ onRefresh }) => {
         } catch (error) {
             console.error(error);
             fetchData();
-            alert("크래딧 업데이트에 실패했습니다.");
+            alert("크레딧 업데이트에 실패했습니다.");
         } finally {
             setIsProcessing(false);
         }
@@ -373,7 +373,7 @@ const UserListView: React.FC<UserListViewProps> = ({ onRefresh }) => {
                                 </div>
                                 <div className="text-right shrink-0">
                                     <div className="text-sm font-bold text-amber-500">{u.credits}</div>
-                                    <div className="text-xs text-gray-400">크래딧</div>
+                                    <div className="text-xs text-gray-400">크레딧</div>
                                 </div>
                             </div>
                         ))}

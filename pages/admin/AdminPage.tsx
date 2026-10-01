@@ -125,7 +125,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                                     )}
                                     {activeSection === 'version' && '📱 앱 버전 관리'}
                                     {activeSection === 'credit-management' && (
-                                        subSection === 'credit-stats' ? '📊 크래딧 통계' : '💰 크래딧 정책'
+                                        subSection === 'credit-stats' ? '📊 크레딧 통계' : '💰 크레딧 정책'
                                     )}
                                     {activeSection === 'data' && '💾 데이터 관리'}
                                 </span>

@@ -465,13 +465,13 @@ export const ReviewManagement: React.FC<ReviewManagementProps> = ({ onRefresh, o
                             <div className="bg-red-50 rounded-lg p-3 mb-6 border border-red-100">
                                 <p className="text-xs text-red-700 text-center font-bold break-keep">
                                     ⚠️ 광고 시청으로 보상이 지급된 리뷰입니다.<br />
-                                    삭제 시 작성자에게서 지급된 크래딧이 회수됩니다.
+                                    삭제 시 작성자에게서 지급된 크레딧이 회수됩니다.
                                 </p>
                             </div>
                         ) : (
                             <div className="bg-gray-50 rounded-lg p-3 mb-6">
                                 <p className="text-xs text-gray-500 text-center">
-                                    이 리뷰는 보상이 지급되지 않았으므로,<br />크래딧이 차감되지 않습니다.
+                                    이 리뷰는 보상이 지급되지 않았으므로,<br />크레딧이 차감되지 않습니다.
                                 </p>
                             </div>
                         )}

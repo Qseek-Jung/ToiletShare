@@ -169,7 +169,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
             setShowCreditModal(false);
             setCreditAdjustAmount(0);
             setCreditAdjustReason('');
-            alert('크래딧이 조정되었습니다.');
+            alert('크레딧이 조정되었습니다.');
         } catch (e) {
             console.error(e);
             alert('오류가 발생했습니다.');
@@ -339,7 +339,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                         onClick={() => setShowCreditModal(true)}
                         className="bg-white p-4 rounded-xl border shadow-sm cursor-pointer hover:bg-amber-50 hover:border-amber-200 transition-all group"
                     >
-                        <div className="text-gray-400 text-xs font-bold mb-1 group-hover:text-amber-600 transition-colors">보유 크래딧 (클릭하여 조정)</div>
+                        <div className="text-gray-400 text-xs font-bold mb-1 group-hover:text-amber-600 transition-colors">보유 크레딧 (클릭하여 조정)</div>
                         <div className="text-2xl font-black text-amber-500 group-hover:scale-105 transition-transform origin-left">{user.credits}</div>
                     </div>
                     <div className="bg-white p-4 rounded-xl border shadow-sm">
@@ -426,7 +426,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                                                 {item.type === 'score_change' ? (
                                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600">활동 점수</span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-600">크래딧</span>
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-600">크레딧</span>
                                                 )}
                                                 <div className="text-[10px] text-gray-400 mt-0.5 font-normal">{item.type}</div>
                                             </td>
@@ -533,7 +533,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
                         <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl animate-in zoom-in-95">
                             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                <span className="text-amber-500">💰</span> 크래딧 조정
+                                <span className="text-amber-500">💰</span> 크레딧 조정
                             </h3>
 
                             <div className="space-y-4">
@@ -557,8 +557,8 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                                             <button onClick={() => setCreditAdjustAmount(prev => prev - 100)} className="px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-bold hover:bg-red-100">-100</button>
                                         </div>
                                         <p className="text-center text-xs text-gray-400">
-                                            {creditAdjustAmount > 0 ? '사용자에게 크래딧을 지급합니다.' :
-                                                creditAdjustAmount < 0 ? '사용자의 크래딧을 차감합니다.' : '금액을 입력해주세요.'}
+                                            {creditAdjustAmount > 0 ? '사용자에게 크레딧을 지급합니다.' :
+                                                creditAdjustAmount < 0 ? '사용자의 크레딧을 차감합니다.' : '금액을 입력해주세요.'}
                                         </p>
                                     </div>
                                 </div>

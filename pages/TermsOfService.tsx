@@ -134,10 +134,10 @@ export default function TermsOfService() {
                     </section>
 
                     <section>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t('tos_article_8_title', '제8조 (크래딧 제도)')}</h2>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t('tos_article_8_title', '제8조 (크레딧 제도)')}</h2>
                         <div className="space-y-4">
                             <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_1_title', '1. 크래딧 획득')}</h3>
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_1_title', '1. 크레딧 획득')}</h3>
                                 <p className="text-gray-700 dark:text-gray-300 mb-2">{t('tos_article_8_sub_1_content')}</p>
                                 <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-1">
                                     <li>{t('tos_article_8_sub_1_li_1')}</li>
@@ -147,11 +147,11 @@ export default function TermsOfService() {
                                 </ul>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_2_title', '2. 크래딧 사용')}</h3>
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_2_title', '2. 크레딧 사용')}</h3>
                                 <p className="text-gray-700 dark:text-gray-300">{t('tos_article_8_sub_2_content')}</p>
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_3_title', '3. 크래딧의 환급 불가')}</h3>
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">{t('tos_article_8_sub_3_title', '3. 크레딧의 환급 불가')}</h3>
                                 <p className="text-gray-700 dark:text-gray-300">{t('tos_article_8_sub_3_content')}</p>
                             </div>
                         </div>

@@ -75,10 +75,10 @@ export const AdminMenu: React.FC<AdminMenuProps> = ({
         {
             id: 'credit-management',
             icon: Coins,
-            label: '크래딧 관리',
+            label: '크레딧 관리',
             subItems: [
-                { id: 'policy-settings', label: '크래딧 정책' },
-                { id: 'credit-stats', label: '크래딧 통계' },
+                { id: 'policy-settings', label: '크레딧 정책' },
+                { id: 'credit-stats', label: '크레딧 통계' },
             ]
         },
         { id: 'data', icon: Settings, label: '데이터 관리', subItems: null },

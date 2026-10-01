@@ -500,7 +500,7 @@ const ToiletListView = ({ onEdit, onDelete }: { onEdit: (t: Toilet) => void, onD
                                 </p>
                                 <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 text-left">
                                     <span className="font-bold block mb-1">📢 알림</span>
-                                    리뷰도 함께 삭제되지만, 리뷰 작성자에게 지급된 <span className="font-bold underline">크래딧은 차감되지 않습니다.</span>
+                                    리뷰도 함께 삭제되지만, 리뷰 작성자에게 지급된 <span className="font-bold underline">크레딧은 차감되지 않습니다.</span>
                                 </div>
                             </div>
                             <div className="flex gap-2">

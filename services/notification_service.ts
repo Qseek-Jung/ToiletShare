@@ -47,7 +47,7 @@ class NotificationService {
             // System Setting for Message
             const settingMsg = await db.getSystemSetting(
                 'msg_review_reminder',
-                '방금 이용하신 [name] 화장실은 어떠셨나요? 1분 만에 리뷰 남기고 크래딧 받으세요! 📝'
+                '방금 이용하신 [name] 화장실은 어떠셨나요? 1분 만에 리뷰 남기고 크레딧 받으세요! 📝'
             );
             const msg = settingMsg.replace('[name]', toiletName);
 
@@ -239,7 +239,7 @@ class NotificationService {
                     // Trigger Notification!
                     // Dynamic Message based on Day
                     const dayKeys = ['msg_nightlife_sun', 'msg_nightlife_mon', 'msg_nightlife_tue', 'msg_nightlife_wed', 'msg_nightlife_thu', 'msg_nightlife_fri', 'msg_nightlife_sat'];
-                    const defaultMsg = '주변 화장실 비밀번호 공유하고 크래딧 받으세요!';
+                    const defaultMsg = '주변 화장실 비밀번호 공유하고 크레딧 받으세요!';
 
                     const msg = await db.getSystemSetting(
                         dayKeys[day] || 'msg_nightlife_smart',

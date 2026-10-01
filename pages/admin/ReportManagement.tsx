@@ -626,9 +626,9 @@ export const ReportManagement: React.FC<ReportManagementProps> = ({ setRefreshTr
 
                             {/* Credit Management */}
                             <div className="mb-6">
-                                <label className="block text-sm font-bold mb-3">크래딧 관리</label>
+                                <label className="block text-sm font-bold mb-3">크레딧 관리</label>
                                 <div className="bg-amber-50 rounded-xl p-4 mb-3 text-center">
-                                    <div className="text-xs text-gray-500 mb-1">현재 크래딧</div>
+                                    <div className="text-xs text-gray-500 mb-1">현재 크레딧</div>
                                     <div className="text-3xl font-black text-amber-600">{selectedUser.credits}</div>
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">

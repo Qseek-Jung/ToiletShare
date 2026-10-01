@@ -8,6 +8,7 @@ import { dbSupabase as db } from '../services/db_supabase';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { compareVersions } from '../utils';
 import { Bell, RefreshCw } from 'lucide-react';
 
 interface AppInfoPageProps {
@@ -42,7 +43,7 @@ export const AppInfoPage: React.FC<AppInfoPageProps> = ({ user, onBack }) => {
         checkUpdate();
     }, []);
 
-    const isUpdateAvailable = latestVersion && latestVersion !== APP_VERSION;
+    const isUpdateAvailable = !!latestVersion && compareVersions(latestVersion, APP_VERSION) > 0;
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return (

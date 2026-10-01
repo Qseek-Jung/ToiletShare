@@ -1459,7 +1459,7 @@ export class SupabaseDatabaseService {
 
                 title = `🎉 ${newLevelName} 등급으로 상승!`;
                 // Dynamic Message
-                const msgTemplate = await this.getSystemSetting('msg_level_up', '와우! 활동 점수가 올라 [old]에서 [new] 등급이 되었어요! 축하 선물로 [reward]크래딧을 드려요!');
+                const msgTemplate = await this.getSystemSetting('msg_level_up', '와우! 활동 점수가 올라 [old]에서 [new] 등급이 되었어요! 축하 선물로 [reward]크레딧을 드려요!');
                 message = msgTemplate
                     .replace('[old]', oldLevelName)
                     .replace('[new]', newLevelName)
@@ -1903,6 +1903,7 @@ export class SupabaseDatabaseService {
                     durationNavigation: 5
                 };
             }
+
 
             this.adConfigCache = config;
             this.adConfigTimestamp = now;
@@ -2729,7 +2730,7 @@ export class SupabaseDatabaseService {
             await this.addLoginNotice(referrerId, {
                 type: 'referral_success',
                 title: '친구 초대 성공! 🎉',
-                message: `초대하신 친구가 가입하여 크래딧 ${reward}C와 활동점수 3점이 지급되었습니다.`,
+                message: `초대하신 친구가 가입하여 크레딧 ${reward}C와 활동점수 3점이 지급되었습니다.`,
                 data: { amount: reward }
             });
 
@@ -3235,7 +3236,7 @@ export class SupabaseDatabaseService {
         }
 
         // Send Notification
-        const msgTemplate = await this.getSystemSetting('msg_point_gift', '관리자로부터 [amount]크래딧 선물이 도착했습니다! (사유: [reason])');
+        const msgTemplate = await this.getSystemSetting('msg_point_gift', '관리자로부터 [amount]크레딧 선물이 도착했습니다! (사유: [reason])');
         const message = msgTemplate.replace('[amount]', String(amount)).replace('[reason]', reason);
 
         const notif = await this.createNotification(

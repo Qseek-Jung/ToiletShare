@@ -73,7 +73,7 @@ export const CreditPolicyManagement: React.FC = () => {
             setOriginalPolicy(finalPolicy);
             setOriginalLevelUpReward(levelUpReward);
             setShowConfirmModal(false);
-            alert('크래딧 정책이 저장되었습니다!');
+            alert('크레딧 정책이 저장되었습니다!');
         } finally {
             setSaving(false);
         }
@@ -132,7 +132,7 @@ export const CreditPolicyManagement: React.FC = () => {
                                 onChange={(e) => handleChange(item.key as keyof CreditPolicy, parseInt(e.target.value) || 0)}
                                 className="w-24 px-3 py-2 border border-gray-300 rounded-lg font-bold text-center focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
                             />
-                            <span className="text-sm font-medium text-gray-600">크래딧</span>
+                            <span className="text-sm font-medium text-gray-600">크레딧</span>
                             {isChanged && (
                                 <span className="ml-auto text-xs text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded">
                                     변경됨 ({originalValue} → {currentValue})
@@ -151,9 +151,9 @@ export const CreditPolicyManagement: React.FC = () => {
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-6 text-white shadow-lg">
                 <div className="flex items-center gap-3 mb-2">
                     <Coins className="w-8 h-8" />
-                    <h2 className="text-2xl font-black">크래딧 정책 관리</h2>
+                    <h2 className="text-2xl font-black">크레딧 정책 관리</h2>
                 </div>
-                <p className="text-amber-50 text-sm">각 활동별로 지급되는 크래딧 양을 설정합니다.</p>
+                <p className="text-amber-50 text-sm">각 활동별로 지급되는 크레딧 양을 설정합니다.</p>
             </div>
 
             {/* 1. 활동 보상 (Earnings) */}
@@ -182,7 +182,7 @@ export const CreditPolicyManagement: React.FC = () => {
                                         onChange={(e) => setLevelUpReward(parseInt(e.target.value) || 0)}
                                         className="w-24 px-3 py-2 border border-gray-300 rounded-lg font-bold text-center focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
                                     />
-                                    <span className="text-sm font-medium text-gray-600">크래딧</span>
+                                    <span className="text-sm font-medium text-gray-600">크레딧</span>
                                     {levelUpReward !== originalLevelUpReward && (
                                         <span className="ml-auto text-xs text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded">
                                             변동 ({originalLevelUpReward} → {levelUpReward})
@@ -250,10 +250,10 @@ export const CreditPolicyManagement: React.FC = () => {
                                     <Coins className="w-8 h-8 text-amber-500" />
                                 </div>
                             </div>
-                            <h3 className="text-xl font-bold text-center mb-2">크래딧 정책을 변경하시겠습니까?</h3>
+                            <h3 className="text-xl font-bold text-center mb-2">크레딧 정책을 변경하시겠습니까?</h3>
                             <p className="text-gray-600 text-center text-sm mb-6">
                                 변경된 정책은 즉시 적용되며,<br />
-                                이후 모든 활동에 새로운 크래딧 양이 지급됩니다.
+                                이후 모든 활동에 새로운 크레딧 양이 지급됩니다.
                             </p>
 
                             {/* Changes Summary */}
@@ -267,7 +267,7 @@ export const CreditPolicyManagement: React.FC = () => {
                                             <div key={item.key} className="flex justify-between text-sm">
                                                 <span className="text-gray-700">{item.label}</span>
                                                 <span className="font-bold text-amber-600">
-                                                    {original} → {current} 크래딧
+                                                    {original} → {current} 크레딧
                                                 </span>
                                             </div>
                                         );
@@ -279,7 +279,7 @@ export const CreditPolicyManagement: React.FC = () => {
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-700">레벨업 보상</span>
                                         <span className="font-bold text-amber-600">
-                                            {originalLevelUpReward} → {levelUpReward} 크래딧
+                                            {originalLevelUpReward} → {levelUpReward} 크레딧
                                         </span>
                                     </div>
                                 )}

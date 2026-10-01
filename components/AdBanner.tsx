@@ -31,6 +31,8 @@ interface AdBannerProps {
     isInline?: boolean;
     margin?: number;
     type?: CustomBannerType;
+    /** Called with whether the banner renders visible in-page content (custom image). */
+    onContentChange?: (hasContent: boolean) => void;
 }
 
 export const AdBanner: React.FC<AdBannerProps> = ({
@@ -41,7 +43,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     maxRatio,
     isInline = false,
     margin = 0,
-    type = 'BANNER'
+    type = 'BANNER',
+    onContentChange
 }) => {
     const [shouldShow, setShouldShow] = useState(false);
     const [customBanner, setCustomBanner] = useState<{ imageUrl: string, targetUrl: string } | null>(null);
@@ -179,6 +182,11 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             }
         };
     }, [shouldShow, source, position, margin, type]);
+
+    const hasInPageContent = shouldShow && source === 'custom' && !!customBanner;
+    useEffect(() => {
+        onContentChange?.(hasInPageContent);
+    }, [hasInPageContent]);
 
     if (!shouldShow) return null;
 

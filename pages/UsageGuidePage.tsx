@@ -145,18 +145,18 @@ const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
                         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {[
-                                    { level: 0, label: t('level_hand', '맨손'), score: '0~', desc: t('level_desc_0', '환영합니다! 시작은 미약하지만...') },
-                                    { level: 1, label: t('level_straw', '지푸라기'), score: '10~', desc: t('level_desc_1', '뭔가 도구는 생겼네요.') },
-                                    { level: 2, label: t('level_newspaper', '신문지'), score: '30~', desc: t('level_desc_2', '이제 좀 닦을 만합니다.') },
-                                    { level: 3, label: t('level_roll_tissue', '두루마리'), score: '60~', desc: t('level_desc_3', '기본적인 품위를 갖추셨군요.') },
-                                    { level: 4, label: t('level_box_tissue', '곽티슈'), score: '100~', desc: t('level_desc_4', '부드러운 배려의 아이콘!') },
-                                    { level: 5, label: t('level_wet_tissue', '물티슈'), score: '200~', desc: t('level_desc_5', '깔끔함 그 자체입니다.') },
-                                    { level: 6, label: t('level_bidet', '비데'), score: '400~', desc: t('level_desc_6', '진정한 화장실의 제왕 👑') },
+                                    { level: 0, label: t('level_hand', '맨손'), score: '0', desc: t('level_desc_0', '환영합니다! 시작은 미약하지만...') },
+                                    { level: 1, label: t('level_straw', '지푸라기'), score: '10', desc: t('level_desc_1', '뭔가 도구는 생겼네요.') },
+                                    { level: 2, label: t('level_newspaper', '신문지'), score: '30', desc: t('level_desc_2', '이제 좀 닦을 만합니다.') },
+                                    { level: 3, label: t('level_roll_tissue', '두루마리'), score: '60', desc: t('level_desc_3', '기본적인 품위를 갖추셨군요.') },
+                                    { level: 4, label: t('level_box_tissue', '곽티슈'), score: '100', desc: t('level_desc_4', '부드러운 배려의 아이콘!') },
+                                    { level: 5, label: t('level_wet_tissue', '물티슈'), score: '200', desc: t('level_desc_5', '깔끔함 그 자체입니다.') },
+                                    { level: 6, label: t('level_bidet', '비데'), score: '400', desc: t('level_desc_6', '진정한 화장실의 제왕 👑') },
                                 ].map((item) => (
                                     <div key={item.level} className="flex items-center p-4 gap-4 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                         <div className="shrink-0 flex flex-col items-center gap-1 w-14">
                                             <LevelIcon level={item.level} size="lg" />
-                                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{item.score}점</span>
+                                            <span className="text-xs font-bold text-gray-400 dark:text-gray-500">{item.score}점~</span>
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -175,9 +175,9 @@ const UsageGuidePage: React.FC<UsageGuidePageProps> = ({ user }) => {
                     <div ref={sectionRefs.credits} className="space-y-6 pt-4 scroll-mt-32">
                         <div className="flex items-center gap-2 mb-2">
                             <Coins className="w-6 h-6 text-yellow-500" />
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('guide_credit_tips', '크래딧 꿀팁')}</h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('guide_credit_tips', '크레딧 꿀팁')}</h2>
                         </div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm" dangerouslySetInnerHTML={{ __html: t('guide_credit_desc', '크래딧은 비밀번호를 보거나 레벨을 올리는데 사용됩니다.<br /><span class="text-xs text-gray-500 dark:text-gray-500">* 정책에 따라 변경될 수 있습니다.</span>').replace('className="', 'class="') }} />
+                        <p className="text-gray-600 dark:text-gray-400 text-sm" dangerouslySetInnerHTML={{ __html: t('guide_credit_desc', '크레딧은 비밀번호를 보거나 레벨을 올리는데 사용됩니다.<br /><span class="text-xs text-gray-500 dark:text-gray-500">* 정책에 따라 변경될 수 있습니다.</span>').replace('className="', 'class="') }} />
 
                         <div className="grid grid-cols-2 gap-2">
                             {/* 1. Signup */}

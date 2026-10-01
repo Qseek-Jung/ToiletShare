@@ -68,6 +68,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const [showSearchButton, setShowSearchButton] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState("");
+    const [listAdVisible, setListAdVisible] = useState(false);
+    // Closing the list returns to the full map, so drop the search filter too
+    useEffect(() => {
+        if (!showList) setSearchQuery("");
+    }, [showList]);
 
 
     // Filter and Sort State
@@ -442,7 +447,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
                                 onFetchNewArea(lat, lng, radius);
                             }}
-                            className="bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 animate-bounce-small hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            className="bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 whitespace-nowrap animate-bounce-small hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                             <Search className="w-4 h-4" />
                             {t('search_this_area', '이 지역 검색')}
@@ -455,10 +460,10 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     <div className="absolute top-[calc(env(safe-area-inset-top)+70px)] left-0 right-0 bottom-0 z-10 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm flex justify-center">
                         <div className="w-full max-w-md bg-white dark:bg-gray-800 h-full rounded-t-2xl shadow-xl border-t border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
 
-                            {/* Fixed Native Ad Area (Top of List) */}
-                            <div className="w-full bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 shrink-0 overflow-hidden pt-2">
+                            {/* Fixed Native Ad Area (Top of List) - collapsed when there is no ad */}
+                            <div className={`w-full bg-white dark:bg-gray-800 shrink-0 overflow-hidden ${listAdVisible ? 'pt-2 border-b border-gray-100 dark:border-gray-700' : 'h-0'}`}>
                                 <div className="w-full h-[80px] flex items-center justify-center relative px-4">
-                                    <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full rounded-lg" type="NATIVE_LIST" />
+                                    <AdBanner isInline maxHeight={80} minRatio={4.0} className="w-full h-full rounded-lg" type="NATIVE_LIST" onContentChange={setListAdVisible} />
                                     <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-300 font-bold -z-10 tracking-widest uppercase">Sponsored</span>
                                 </div>
                             </div>

@@ -292,7 +292,7 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
 
                         {/* Credits Range */}
                         <div>
-                            <label className="block text-xs font-bold mb-1">크래딧 범위</label>
+                            <label className="block text-xs font-bold mb-1">크레딧 범위</label>
                             <div className="flex gap-1">
                                 <input
                                     type="number"
@@ -344,7 +344,7 @@ export const PushNotificationManagement: React.FC<PushNotificationManagementProp
                                 <div className="flex-1 min-w-0">
                                     <div className="text-xs font-bold truncate">{user.email}</div>
                                     <div className="text-xs text-gray-500">
-                                        {user.role} | {user.credits} 크래딧
+                                        {user.role} | {user.credits} 크레딧
                                     </div>
                                 </div>
                             </label>

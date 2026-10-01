@@ -20,7 +20,7 @@ export class NaverOAuthService {
      * Start Naver OAuth login flow
      * Opens Safari View Controller (in-app browser) for authentication
      */
-    static async login(): Promise<{ email: string; gender?: 'MALE' | 'FEMALE'; name?: string }> {
+    static async login(): Promise<{ email: string; gender?: 'MALE' | 'FEMALE'; name?: string; accessToken?: string }> {
         return new Promise(async (resolve, reject) => {
             try {
                 // Store promise resolvers
@@ -155,7 +155,7 @@ export class NaverOAuthService {
 
             // Resolve original promise
             if (this.loginPromise) {
-                this.loginPromise.resolve({ email, gender, name });
+                this.loginPromise.resolve({ email, gender, name, accessToken });
                 this.cleanup();
             }
 

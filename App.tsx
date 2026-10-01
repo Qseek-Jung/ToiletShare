@@ -59,6 +59,7 @@ import NoticePage from './pages/NoticePage';
 // Safari View Controller OAuth Services  
 import { KakaoOAuthService } from './services/kakaoOAuth';
 import { NaverOAuthService } from './services/naverOAuth';
+import { establishSupabaseSession, linkAuthUser, signOutSupabase } from './services/authSession';
 import DownloadPage from './pages/DownloadPage';
 
 
@@ -1025,6 +1026,7 @@ export default function App() {
                     } else {
                         // User no longer exists in DB
                         localStorage.removeItem('currentUser');
+                        signOutSupabase();
                     }
                 } catch (e) {
                     localStorage.removeItem('currentUser');
@@ -1409,6 +1411,7 @@ export default function App() {
 
             // Default to UNISEX/MALE as Apple doesn't typically provide gender
             // Pass appleUserId as stableId to handle cases where email is missing on re-login
+            establishSupabaseSession('apple', result.response.identityToken);
             await handleSocialLoginSuccess(email || '', Gender.UNISEX, false, 'apple', appleUserId);
 
         } catch (e: any) {
@@ -1442,6 +1445,7 @@ export default function App() {
                     const email = userCreds.email;
                     const name = userCreds.name || userCreds.givenName || 'Google User';
                     const googleId = userCreds.id;
+                    establishSupabaseSession('google', userCreds.authentication?.idToken);
 
                     // 2. Check/Create User in DB
                     let targetUser = await db.getUserByEmail(email);
@@ -1550,6 +1554,7 @@ export default function App() {
                 const accessToken = result?.accessToken?.accessToken ?? result?.accessToken ?? result?.access_token;
 
                 if (accessToken) {
+                    establishSupabaseSession('naver', accessToken);
                     // Use CapacitorHttp to bypass CORS
                     const profileResponse = await CapacitorHttp.request({
                         url: 'https://openapi.naver.com/v1/nid/me',
@@ -1615,6 +1620,7 @@ export default function App() {
                 console.log('=== NAVER BROWSER LOGIN START ===');
                 // Safari View Controller for iOS browser flow or Web fallback
                 const result = await NaverOAuthService.login();
+                establishSupabaseSession('naver', result.accessToken);
                 const { email, gender: genderRaw, name } = result;
 
                 if (!email) {
@@ -1673,7 +1679,8 @@ export default function App() {
 
             if (Capacitor.isNativePlatform()) {
                 console.log('=== KAKAO NATIVE LOGIN START ===');
-                await KakaoLoginPlugin.goLogin();
+                const kakaoLogin = await KakaoLoginPlugin.goLogin();
+                establishSupabaseSession('kakao', kakaoLogin?.accessToken);
                 const userInfo = await KakaoLoginPlugin.getUserInfo();
                 console.log('Kakao native user info:', JSON.stringify(userInfo));
 
@@ -1700,6 +1707,7 @@ export default function App() {
             } else {
                 console.log('=== KAKAO BROWSER LOGIN START ===');
                 const result = await KakaoOAuthService.login();
+                establishSupabaseSession('kakao', result.accessToken);
                 const { email, gender: genderRaw } = result;
 
                 if (!email) {
@@ -1729,6 +1737,13 @@ export default function App() {
             setLoginLoading(false);
         }
     };
+
+    // Link the Supabase Auth session to the logged-in app user (covers new users saved after login)
+    useEffect(() => {
+        if (user.role !== UserRole.GUEST && user.email) {
+            linkAuthUser();
+        }
+    }, [user.id]);
 
     // Shared success handler to reduce code duplication
     // Shared success handler to reduce code duplication
@@ -2099,7 +2114,7 @@ export default function App() {
                     toilets={toilets}
                     bookmarks={bookmarks}
                     onToiletClick={handleToiletClick}
-                    onLogout={() => { setUser(INITIAL_USER); localStorage.removeItem('currentUser'); window.location.hash = '#/'; }}
+                    onLogout={() => { setUser(INITIAL_USER); localStorage.removeItem('currentUser'); signOutSupabase(); window.location.hash = '#/'; }}
                     onLoginRequest={() => setShowLoginModal(true)}
                     onAdRequest={() => { setAdRewardType('credit'); setShowAd(true); }}
                     onUserUpdate={setUser}

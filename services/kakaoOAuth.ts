@@ -19,7 +19,7 @@ export class KakaoOAuthService {
      * Start Kakao OAuth login flow
      * Opens Safari View Controller (in-app browser) for authentication
      */
-    static async login(): Promise<{ email: string; gender?: 'MALE' | 'FEMALE' }> {
+    static async login(): Promise<{ email: string; gender?: 'MALE' | 'FEMALE'; accessToken?: string }> {
         return new Promise(async (resolve, reject) => {
             try {
                 // Store promise resolvers
@@ -144,7 +144,7 @@ export class KakaoOAuthService {
 
             // Resolve original promise
             if (this.loginPromise) {
-                this.loginPromise.resolve({ email, gender });
+                this.loginPromise.resolve({ email, gender, accessToken });
                 this.cleanup();
             }
 

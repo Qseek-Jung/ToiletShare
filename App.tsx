@@ -12,6 +12,11 @@ const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID || "NAVER_CLIENT_ID
 const KAKAO_JAVASCRIPT_KEY = import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || "KAKAO_JS_KEY_PLACEHOLDER";
 const KAKAO_NATIVE_KEY = import.meta.env.VITE_KAKAO_NATIVE_KEY || "";
 const SUPERVISOR_EMAIL = import.meta.env.VITE_SUPERVISOR_EMAIL || "qseek77@gmail.com";
+const WEB_ADMIN_CRED_HASH = "016c1175175330ede6566639380ed1e30674674fb76d3f530d1636adf7b7df96";
+const sha256Hex = async (text: string): Promise<string> => {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+};
 import { CapacitorNaverLogin as Naver } from '@team-lepisode/capacitor-naver-login';
 import { KakaoLoginPlugin } from 'capacitor-kakao-login-plugin';
 import { SignInWithApple, SignInWithAppleResponse, SignInWithAppleOptions } from '@capacitor-community/apple-sign-in';
@@ -1864,8 +1869,9 @@ export default function App() {
         setLoginLoading(true);
 
         try {
-            // Hardcoded Credentials Check as requested
-            if (webAdminId === 'qseek@naver.com' && webAdminPw === '***REMOVED***') {
+            // Credentials verified by SHA-256 hash (plaintext never stored in source)
+            const credHash = await sha256Hex(`${webAdminId.trim().toLowerCase()}:${webAdminPw}`);
+            if (credHash === WEB_ADMIN_CRED_HASH) {
                 const targetUser = await db.getUserByEmail(webAdminId);
                 if (targetUser) {
                     if (targetUser.status === 'banned') {

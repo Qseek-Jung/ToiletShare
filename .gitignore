@@ -65,3 +65,25 @@ DerivedData/
 # Google Services (API Keys)
 google-services.json
 GoogleService-Info.plist
+
+# Signing keys / certificates / secrets (never commit)
+cert/
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.keystore
+*.jks
+keystore.properties
+mobile_secrets/
+export_secrets.bat
+generate_secrets.ps1
+tmp.b64
+key_output.txt
+.wrangler/
+
+# Old project copy
+IOS_Ready/

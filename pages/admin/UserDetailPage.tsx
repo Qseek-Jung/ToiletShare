@@ -162,15 +162,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                 );
             } else {
                 // Standard deduction (No Gift Notification)
-                await db.updateUserCredits(user.id, creditAdjustAmount);
-                await db.logCreditTransaction(
-                    user.id,
-                    creditAdjustAmount,
-                    'admin_adjust',
-                    'admin',
-                    'manual',
-                    creditAdjustReason || '관리자 수동 차감'
-                );
+                await db.adminAdjustCredits(user.id, creditAdjustAmount, creditAdjustReason || '관리자 수동 차감');
             }
 
             await loadUser();

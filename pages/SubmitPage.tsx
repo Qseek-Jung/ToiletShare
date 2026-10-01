@@ -287,8 +287,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
         const isPublic = !originalIsPrivate;
         if (isPublic) {
             // Deduct credits logic
-            await db.updateUserCredits(user.id, -5);
-            await db.logCreditTransaction(user.id, -5, 'toilet_delete_penalty', 'toilet', editId, '공유 화장실 삭제 페널티');
+            await db.toiletShareChange(user.id, editId, 'delete_penalty');
 
             // Re-fetch user to get updated credits
             const users = await db.getUsers();
@@ -360,8 +359,7 @@ const SubmitPage: React.FC<SubmitPageProps> = ({
             // But we need to update the local user state
             if (editId) {
                 if (originalIsPrivate && !isPrivate) {
-                    await db.updateUserCredits(user.id, 5);
-                    await db.logCreditTransaction(user.id, 5, 'toilet_share_reward', 'toilet', editId, '공유하기 변경 보상');
+                    await db.toiletShareChange(user.id, editId, 'share_reward');
                 }
             }
 

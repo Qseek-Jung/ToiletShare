@@ -730,9 +730,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         // 2. Background DB Updates (Non-blocking)
         Promise.all([
             db.recordAdView('review'),
-            db.updateUserCredits(user.id, points),
-            pendingReviewId ? db.logCreditTransaction(user.id, points, 'ad_view', 'review', pendingReviewId, '리뷰 작성 보상 (광고)') : Promise.resolve(),
-            pendingReviewId ? db.updateReviewReward(pendingReviewId, true) : Promise.resolve()
+            pendingReviewId ? db.rewardReviewAd(user.id, pendingReviewId, points) : Promise.resolve()
         ]).catch(err => {
             console.error("Failed to sync ad reward to DB:", err);
             // Silent fail or toast? Usually silent + log is fine for ad rewards to avoid disrupting user flow, 
@@ -754,8 +752,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
             // Optimistic Delete
             setReviews(prev => prev.filter(r => r.id !== reviewId));
 
-            // Background DB Delete
-            db.deleteReview(reviewId).then(async () => {
+            // Background DB Delete (clawback runs first, while the review row still exists)
+            (shouldDeduct ? db.reviewDeletePenalty(user.id, reviewId, reviewRewardAmount) : Promise.resolve())
+                .then(() => db.deleteReview(reviewId)).then(async () => {
                 let message = t('review_deleted', "리뷰가 삭제되었습니다.");
 
                 if (shouldDeduct) {
@@ -765,9 +764,6 @@ const DetailPage: React.FC<DetailPageProps> = ({
                     // Optimistic UI Update
                     const updatedUser = { ...user, credits: (user.credits || 0) + DEDUCTION_AMOUNT };
                     onUserUpdate(updatedUser);
-
-                    // DB Update
-                    await db.updateUserCredits(user.id, DEDUCTION_AMOUNT);
                     message = t('review_deleted_deducted', "리뷰가 삭제되었으며,\n지급된 크래딧이 차감되었습니다.");
                 }
 

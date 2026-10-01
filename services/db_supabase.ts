@@ -407,6 +407,8 @@ export class SupabaseDatabaseService {
             // Independent async operations
             const creditUpdatePromise = (async () => {
                 // 1. Award Credits (Policy)
+                const rpcResult = await this.callAuthedRpc('rpc_reward_toilet_submit', { p_toilet_id: toilet.id });
+                if (rpcResult) return;
                 const policy = await this.getCreditPolicy(); // This might be cached or fast
                 await this.updateUserCredits(toilet.createdBy, policy.toiletSubmit);
                 await this.logCreditTransaction(
@@ -558,8 +560,9 @@ export class SupabaseDatabaseService {
 
         // Award Credits (Policy Based)
         try {
-            const policy = await this.getCreditPolicy();
-            if (policy.reviewSubmit > 0) {
+            const rpcResult = await this.callAuthedRpc('rpc_reward_review', { p_review_id: review.id, p_ad_bonus: false });
+            const policy = rpcResult ? null : await this.getCreditPolicy();
+            if (policy && policy.reviewSubmit > 0) {
                 await this.updateUserCredits(review.userId, policy.reviewSubmit);
                 await this.logCreditTransaction(
                     review.userId,
@@ -650,7 +653,8 @@ export class SupabaseDatabaseService {
         const { data: review } = await supabase.from('reviews').select('*').eq('id', reviewId).single();
         if (review) {
             // Deduct credits ONLY if rewarded
-            if (review.rewarded === true) {
+            const clawback = await this.callAuthedRpc('rpc_admin_review_clawback', { p_review_id: reviewId });
+            if (!clawback && review.rewarded === true) {
                 const policy = await this.getCreditPolicy();
                 await this.updateUserCredits(review.user_id, -policy.reviewSubmit);
                 await this.logCreditTransaction(review.user_id, -policy.reviewSubmit, 'review_delete_penalty', 'review', reviewId, '삭제된 리뷰 크레딧 회수');
@@ -958,22 +962,32 @@ export class SupabaseDatabaseService {
     }
 
     async approveReport(reportId: string, reporterId: string, customCredit?: number): Promise<void> {
-        // 1. Update status to 'resolved'
-        const { error } = await supabase
-            .from('reports')
-            .update({ status: 'resolved' })
-            .eq('id', reportId);
+        let creditAmount: number;
+        const rpcResult = await this.callAuthedRpc<{ reporterId: string; amount: number; alreadyResolved: boolean }>(
+            'rpc_admin_approve_report', { p_report_id: reportId, p_custom_credit: customCredit ?? null });
 
-        if (error) {
-            console.error('Error approving report:', error);
-            throw error;
+        if (rpcResult) {
+            if (rpcResult.alreadyResolved) return;
+            reporterId = rpcResult.reporterId || reporterId;
+            creditAmount = rpcResult.amount;
+        } else {
+            // 1. Update status to 'resolved'
+            const { error } = await supabase
+                .from('reports')
+                .update({ status: 'resolved' })
+                .eq('id', reportId);
+
+            if (error) {
+                console.error('Error approving report:', error);
+                throw error;
+            }
+
+            // 2. Award Credits
+            const policy = await this.getCreditPolicy();
+            creditAmount = customCredit !== undefined ? customCredit : policy.reportSubmit;
+            await this.updateUserCredits(reporterId, creditAmount);
+            await this.logCreditTransaction(reporterId, creditAmount, 'report_reward', 'report', reportId, '신고 보상 지급');
         }
-
-        // 2. Award Credits
-        const policy = await this.getCreditPolicy();
-        const creditAmount = customCredit !== undefined ? customCredit : policy.reportSubmit;
-        await this.updateUserCredits(reporterId, creditAmount);
-        await this.logCreditTransaction(reporterId, creditAmount, 'report_reward', 'report', reportId, '신고 보상 지급');
 
         // Award Score (+1.0) - Policy V2
         await this.updateActivityScore(reporterId, 1.0, '유효 신고 승인');
@@ -1294,6 +1308,9 @@ export class SupabaseDatabaseService {
     }
 
     async updateUserRole(userId: string, newRole: UserRole): Promise<void> {
+        const rpcResult = await this.callAuthedRpc('rpc_admin_set_role', { p_user_id: userId, p_role: newRole });
+        if (rpcResult !== null) return;
+
         const { error } = await supabase
             .from('users')
             .update({ role: newRole })
@@ -2112,6 +2129,100 @@ export class SupabaseDatabaseService {
         return true;
     }
 
+    // --- Server-side credit operations (step 2 of RLS hardening) ---
+    // Uses SECURITY DEFINER RPCs when a Supabase Auth session exists.
+    // Returns null when there is no session or the RPC is not deployed yet,
+    // so callers can fall back to the legacy client-side path.
+    private async callAuthedRpc<T = any>(fn: string, args: Record<string, unknown> = {}): Promise<T | null> {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return null;
+        const { data, error } = await supabase.rpc(fn, args);
+        if (error) {
+            if (error.code === 'PGRST202' || error.code === '42883') {
+                console.warn(`[rpc] ${fn} not available, using legacy path`);
+                return null;
+            }
+            throw error;
+        }
+        return data as T;
+    }
+
+    /** Unlock a toilet password. Returns the new credit balance, or null if handled by the legacy path. */
+    async unlockToilet(userId: string, toiletId: string, viaAd: boolean): Promise<number | null> {
+        const result = await this.callAuthedRpc<{ credits: number }>('rpc_unlock_toilet', { p_toilet_id: toiletId, p_via_ad: viaAd });
+        if (result) return result.credits;
+
+        const policy = await this.getCreditPolicy();
+        if (viaAd) {
+            const netChange = policy.adView - policy.unlockCost;
+            await Promise.all([
+                this.logCreditTransaction(userId, policy.adView, 'ad_view', 'toilet', toiletId, '광고 시청 보상'),
+                this.logCreditTransaction(userId, -policy.unlockCost, 'toilet_unlock', 'toilet', toiletId, '화장실 열람 (광고 대체)'),
+                netChange !== 0 ? this.updateUserCredits(userId, netChange) : Promise.resolve(),
+            ]);
+        } else {
+            await this.deductUnlockCost(userId, toiletId, policy.unlockCost);
+        }
+        await this.processUnlockReward(toiletId, userId);
+        return null;
+    }
+
+    /** My Page ad reward. Returns { amount, credits } (credits null on the legacy path). */
+    async rewardAdView(userId: string): Promise<{ amount: number; credits: number | null }> {
+        const result = await this.callAuthedRpc<{ amount: number; credits: number }>('rpc_ad_reward');
+        if (result) return { amount: result.amount, credits: result.credits };
+
+        const policy = await this.getCreditPolicy();
+        await Promise.all([
+            this.updateUserCredits(userId, policy.adView),
+            this.logCreditTransaction(userId, policy.adView, 'ad_view', 'none', undefined, '마이페이지 광고 적립'),
+        ]);
+        return { amount: policy.adView, credits: null };
+    }
+
+    /** Extra review reward after watching an ad (once per review). */
+    async rewardReviewAd(userId: string, reviewId: string, points: number): Promise<void> {
+        const result = await this.callAuthedRpc('rpc_reward_review', { p_review_id: reviewId, p_ad_bonus: true });
+        if (result) return;
+
+        await Promise.all([
+            this.updateUserCredits(userId, points),
+            this.logCreditTransaction(userId, points, 'ad_view', 'review', reviewId, '리뷰 작성 보상 (광고)'),
+            this.updateReviewReward(reviewId, true),
+        ]);
+    }
+
+    /** Clawback when the author deletes a rewarded review. Call BEFORE deleting the review. */
+    async reviewDeletePenalty(userId: string, reviewId: string, amount: number): Promise<void> {
+        const result = await this.callAuthedRpc('rpc_review_delete_penalty', { p_review_id: reviewId });
+        if (result) return;
+
+        await this.updateUserCredits(userId, -amount);
+    }
+
+    /** +5 when a private toilet becomes public, -5 when a shared toilet is deleted. */
+    async toiletShareChange(userId: string, toiletId: string, kind: 'share_reward' | 'delete_penalty'): Promise<void> {
+        const result = await this.callAuthedRpc('rpc_toilet_share_change', { p_toilet_id: toiletId, p_kind: kind });
+        if (result) return;
+
+        if (kind === 'share_reward') {
+            await this.updateUserCredits(userId, 5);
+            await this.logCreditTransaction(userId, 5, 'toilet_share_reward', 'toilet', toiletId, '공유하기 변경 보상');
+        } else {
+            await this.updateUserCredits(userId, -5);
+            await this.logCreditTransaction(userId, -5, 'toilet_delete_penalty', 'toilet', toiletId, '공유 화장실 삭제 페널티');
+        }
+    }
+
+    /** Admin credit deduction (no gift notification). */
+    async adminAdjustCredits(userId: string, amount: number, reason: string): Promise<void> {
+        const result = await this.callAuthedRpc('rpc_admin_adjust_credits', { p_user_id: userId, p_amount: amount, p_reason: reason });
+        if (result) return;
+
+        await this.updateUserCredits(userId, amount);
+        await this.logCreditTransaction(userId, amount, 'admin_adjust', 'admin', 'manual', reason);
+    }
+
     async getCreditPolicy(): Promise<CreditPolicy> {
         const { data } = await supabase.from('app_config').select('value').eq('key', 'credit_policy').single();
         return data ? data.value : DEFAULT_CREDIT_POLICY;
@@ -2597,14 +2708,19 @@ export class SupabaseDatabaseService {
             const policy = await this.getCreditPolicy();
             const reward = policy.referralReward || 20;
 
-            // 1.5 Save Referrer ID to New User
-            await supabase.from('users').update({ referrer_id: referrerId }).eq('id', newUserId);
+            const rpcResult = await this.callAuthedRpc<{ rewarded: boolean }>('rpc_process_referral', { p_referrer_id: referrerId });
+            if (rpcResult && !rpcResult.rewarded) return;
 
-            // 2. Award Credits to Referrer
-            await this.updateUserCredits(referrerId, reward);
+            if (!rpcResult) {
+                // 1.5 Save Referrer ID to New User
+                await supabase.from('users').update({ referrer_id: referrerId }).eq('id', newUserId);
 
-            // 3. Log History
-            await this.logCreditTransaction(referrerId, reward, 'signup', 'user', newUserId, '친구 초대 보상');
+                // 2. Award Credits to Referrer
+                await this.updateUserCredits(referrerId, reward);
+
+                // 3. Log History
+                await this.logCreditTransaction(referrerId, reward, 'signup', 'user', newUserId, '친구 초대 보상');
+            }
 
             // 3.5 Award Activity Score (+3.0)
             await this.updateActivityScore(referrerId, 3.0, '친구 초대 보상');
@@ -3111,9 +3227,12 @@ export class SupabaseDatabaseService {
     }
 
     async giveUserPoints(userId: string, amount: number, reason: string): Promise<void> {
-        await this.updateUserCredits(userId, amount);
-        const adminId = await this.getAdminAccountId();
-        await this.logCreditTransaction(userId, amount, 'admin_adjust', 'admin', adminId, reason);
+        const rpcResult = await this.callAuthedRpc('rpc_admin_adjust_credits', { p_user_id: userId, p_amount: amount, p_reason: reason });
+        if (!rpcResult) {
+            await this.updateUserCredits(userId, amount);
+            const adminId = await this.getAdminAccountId();
+            await this.logCreditTransaction(userId, amount, 'admin_adjust', 'admin', adminId, reason);
+        }
 
         // Send Notification
         const msgTemplate = await this.getSystemSetting('msg_point_gift', '관리자로부터 [amount]크래딧 선물이 도착했습니다! (사유: [reason])');

@@ -528,16 +528,17 @@ export default function App() {
                 const updated = { ...user, credits: user.credits - cost };
                 setUser(updated);
 
-                // 2. Process Transaction & Logging (Background)
-                db.deductUnlockCost(user.id, toiletId, cost).then(success => {
-                    if (!success) {
-                        console.error("Failed to deduct credits on server");
-                        // Ideally revert UI here if critical, but for now just log
-                    }
-                });
-
-                // 3. Process Passive Reward for Creator
-                db.processUnlockReward(toiletId, user.id);
+                // 2. Server-side deduction (balance checked on the server) + owner reward
+                db.unlockToilet(user.id, toiletId, false)
+                    .then(credits => {
+                        if (credits !== null) setUser(prev => ({ ...prev, credits }));
+                    })
+                    .catch(err => {
+                        console.error("Failed to deduct credits on server", err);
+                        if (err?.message?.includes('insufficient_credits')) {
+                            setUser(prev => ({ ...prev, credits: prev.credits + cost }));
+                        }
+                    });
             } else {
                 console.warn('❌ Insufficient credits detected in handleUnlock', { currentCredits: user.credits, cost });
                 // Fallback to Ad if credits are insufficient
@@ -778,20 +779,12 @@ export default function App() {
             // Background Processing
             (async () => {
                 try {
-                    // Reward: Use policy value
-                    const policy = await db.getCreditPolicy();
-                    const reward = policy.adView;
+                    // Reward amount and balance are determined on the server
+                    db.recordAdView('charge');
+                    const { amount: reward, credits } = await db.rewardAdView(user.id);
 
-                    // 1. DB Update & Log (Parallel)
-                    await Promise.all([
-                        db.updateUserCredits(user.id, reward),
-                        db.logCreditTransaction(user.id, reward, 'ad_view', 'none', undefined, '마이페이지 광고 적립'),
-                        db.recordAdView('charge')
-                    ]);
-
-                    // 2. Local State Update
-                    const updatedUser = { ...user, credits: (user.credits || 0) + reward };
-                    setUser(updatedUser);
+                    // Local State Update
+                    setUser(prev => ({ ...prev, credits: credits ?? (prev.credits || 0) + reward }));
 
                     // Show Success Modal instead of Alert
                     setRewardSuccessModal({ show: true, amount: reward });
@@ -811,30 +804,15 @@ export default function App() {
             // 2. Background DB Processing
             (async () => {
                 try {
-                    const policy = await db.getCreditPolicy();
-                    const adReward = policy.adView;
-                    const unlockCost = policy.unlockCost;
-
-                    // Net Credit Change
-                    const netChange = adReward - unlockCost;
-
-                    // Execute all independent DB ops in parallel
-                    // Using Promise.all for maximum speed
-                    const promises: Promise<any>[] = [
-                        db.logCreditTransaction(user.id, adReward, 'ad_view', 'toilet', toiletId, '광고 시청 보상'),
-                        db.logCreditTransaction(user.id, -unlockCost, 'toilet_unlock', 'toilet', toiletId, '화장실 열람 (광고 대체)'),
-                        db.processUnlockReward(toiletId, user.id),
-                        db.recordAdView('unlock')
-                    ];
-
-                    // Only update balance if changed
-                    if (netChange !== 0) {
-                        promises.push(db.updateUserCredits(user.id, netChange));
-                        // Update local user state for consistency (delayed but correct)
-                        setUser(prev => ({ ...prev, credits: (prev.credits || 0) + netChange }));
+                    db.recordAdView('unlock');
+                    const credits = await db.unlockToilet(user.id, toiletId, true);
+                    if (credits !== null) {
+                        setUser(prev => ({ ...prev, credits }));
+                    } else {
+                        const policy = await db.getCreditPolicy();
+                        const netChange = policy.adView - policy.unlockCost;
+                        if (netChange !== 0) setUser(prev => ({ ...prev, credits: (prev.credits || 0) + netChange }));
                     }
-
-                    await Promise.all(promises);
                     console.log('⚡ Ad Unlock DB Sync Complete');
 
                 } catch (e) {

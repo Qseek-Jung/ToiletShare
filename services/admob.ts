@@ -24,6 +24,11 @@ class AdMobService {
     private bannerHideTimer: ReturnType<typeof setTimeout> | null = null;
     private bannerSizeSubscribed = false;
     private bannerSizeListeners = new Set<(height: number) => void>();
+    // "Slot active" = a native bottom banner owns the area above the nav (the nav
+    // switches the raised "+" button to a compact in-nav style while active).
+    private bannerSlotActive = false;
+    private bannerSlotTimer: ReturnType<typeof setTimeout> | null = null;
+    private bannerSlotListeners = new Set<(active: boolean) => void>();
 
     constructor() {
         this.platform = Capacitor.getPlatform() as 'ios' | 'android' | 'web';
@@ -134,6 +139,31 @@ class AdMobService {
             this.bannerHeight = size?.height || 0;
             this.bannerSizeListeners.forEach(cb => cb(this.bannerHeight));
         });
+    }
+
+    hasBannerUnit(): boolean {
+        return this.platform !== 'web' && !!this.adConfig && !!this.getAdUnitIds()?.banner;
+    }
+
+    /** Mark the bottom banner slot active/inactive (inactive is debounced across route changes). */
+    setBannerSlotActive(active: boolean): void {
+        if (this.bannerSlotTimer) {
+            clearTimeout(this.bannerSlotTimer);
+            this.bannerSlotTimer = null;
+        }
+        const emit = (value: boolean) => {
+            if (this.bannerSlotActive === value) return;
+            this.bannerSlotActive = value;
+            this.bannerSlotListeners.forEach(cb => cb(value));
+        };
+        if (active) emit(true);
+        else this.bannerSlotTimer = setTimeout(() => emit(false), 300);
+    }
+
+    onBannerSlotActive(callback: (active: boolean) => void): () => void {
+        this.bannerSlotListeners.add(callback);
+        callback(this.bannerSlotActive);
+        return () => { this.bannerSlotListeners.delete(callback); };
     }
 
     /** Subscribe to banner height changes (dp). Returns an unsubscribe function. */

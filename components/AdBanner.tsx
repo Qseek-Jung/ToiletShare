@@ -120,15 +120,10 @@ export const AdBanner: React.FC<AdBannerProps> = ({
                 adMobService.hideBottomBanner(0);
                 return;
             }
-            const rect = slotRef.current.getBoundingClientRect();
-            // The native banner draws above the WebView, so keep it clear of the
-            // raised "+" button that sticks out above the bottom nav.
-            let bannerBottom = rect.bottom;
-            const fab = document.getElementById('nav-fab');
-            if (fab) {
-                const fabRect = fab.getBoundingClientRect();
-                if (fabRect.height > 0 && fabRect.top < bannerBottom) bannerBottom = fabRect.top - 4;
-            }
+            // Attach the banner directly on top of the bottom nav (or the slot when the nav is hidden)
+            const nav = document.getElementById('bottom-nav');
+            const navTop = nav ? nav.getBoundingClientRect().top : 0;
+            const bannerBottom = navTop > 0 ? navTop : slotRef.current.getBoundingClientRect().bottom;
             const marginFromBottom = window.innerHeight - bannerBottom;
             adMobService.showBottomBannerAt(marginFromBottom);
         };
@@ -149,6 +144,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             if (type !== 'BANNER') return;
 
             if (useNativeBottomBanner) {
+                if (!adMobService.hasBannerUnit()) return;
+                adMobService.setBannerSlotActive(true);
                 unsubscribeSize = adMobService.onBannerSize(setNativeBannerHeight);
                 observer = new MutationObserver(() => scheduleSync());
                 observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
@@ -176,7 +173,10 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             window.removeEventListener('resize', onResize);
             document.removeEventListener('visibilitychange', onResize);
             window.removeEventListener('focus', onResize);
-            if (useNativeBottomBanner) adMobService.hideBottomBanner();
+            if (useNativeBottomBanner) {
+                adMobService.hideBottomBanner();
+                adMobService.setBannerSlotActive(false);
+            }
         };
     }, [shouldShow, source, position, margin, type]);
 

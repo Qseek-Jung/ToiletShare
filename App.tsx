@@ -737,7 +737,10 @@ export default function App() {
     const [showExitModal, setShowExitModal] = useState(false);
 
     // Bottom banner placement/visibility is managed by <AdBanner> (native banner is
-    // positioned over its slot above the bottom nav and hidden under overlays).
+    // attached on top of the bottom nav and hidden under overlays). While it owns the
+    // area above the nav, the "+" button switches to a compact in-nav style.
+    const [compactNavFab, setCompactNavFab] = useState(false);
+    useEffect(() => adMobService.onBannerSlotActive(setCompactNavFab), []);
 
     // Reward Success Modal State
     const [rewardSuccessModal, setRewardSuccessModal] = useState<{ show: boolean, amount: number }>({ show: false, amount: 0 });
@@ -2435,16 +2438,16 @@ export default function App() {
                                                 window.location.hash = '#/submit';
                                             }
                                         }}
-                                        className={`flex flex-col items-center p-2 -mt-8 relative ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'cursor-not-allowed' : 'cursor-pointer'
+                                        className={`flex flex-col items-center relative ${compactNavFab ? 'p-1' : 'p-2 -mt-8'} ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'cursor-not-allowed' : 'cursor-pointer'
                                             }`}
                                     >
-                                        <div id="nav-fab" className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white ring-4 ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
+                                        <div id="nav-fab" className={`${compactNavFab ? 'w-9 h-9 ring-2 shadow-md' : 'w-14 h-14 ring-4 shadow-xl'} rounded-full flex items-center justify-center text-white ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
                                             ? 'bg-text-muted opacity-50'
                                             : 'bg-urgency hover:bg-urgency-500 active:scale-95'
                                             }`}>
-                                            <Plus className="w-8 h-8 drop-shadow-md" />
+                                            <Plus className={`${compactNavFab ? 'w-6 h-6' : 'w-8 h-8'} drop-shadow-md`} />
                                         </div>
-                                        <span className={`text-[10px] font-bold mt-2 ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'text-text-muted' : 'text-urgency'
+                                        <span className={`text-[10px] font-bold ${compactNavFab ? 'mt-1' : 'mt-2'} ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'text-text-muted' : 'text-urgency'
                                             }`}>{t('nav_register', '등록')}</span>
                                         {(user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen) && (
                                             <div className="absolute inset-0 bg-transparent" />

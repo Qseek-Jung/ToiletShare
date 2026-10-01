@@ -1,4 +1,4 @@
-import { AdMob, BannerAdPosition, BannerAdSize, RewardAdPluginEvents, InterstitialAdPluginEvents } from '@capacitor-community/admob';
+import { AdMob, BannerAdPosition, BannerAdSize, BannerAdPluginEvents, RewardAdPluginEvents, InterstitialAdPluginEvents } from '@capacitor-community/admob';
 import type { BannerAdOptions } from '@capacitor-community/admob';
 import type { AdOptions } from '@capacitor-community/admob';
 import type { RewardAdOptions, AdMobRewardItem } from '@capacitor-community/admob';
@@ -15,6 +15,15 @@ class AdMobService {
     private adConfig: AdConfig | null = null;
     private isInterstitialLoaded = false;
     private isRewardLoaded = false;
+
+    // Bottom banner state (native overlay positioned above the bottom nav)
+    private bannerMargin: number | null = null;
+    private bannerHidden = false;
+    private bannerHeight = 0;
+    private bannerQueue: Promise<void> = Promise.resolve();
+    private bannerHideTimer: ReturnType<typeof setTimeout> | null = null;
+    private bannerSizeSubscribed = false;
+    private bannerSizeListeners = new Set<(height: number) => void>();
 
     constructor() {
         this.platform = Capacitor.getPlatform() as 'ios' | 'android' | 'web';
@@ -100,7 +109,7 @@ class AdMobService {
         } else if (platform === 'android') {
             const ids = this.adConfig.adMobIdsAndroid || {} as any;
             return {
-                banner: (ids.banner || '').trim(),
+                banner: (ids.banner || this.adConfig.adMobIds?.banner || '').trim(),
                 interstitial: (ids.interstitial || 'ca-app-pub-8142649369272916/6481640998').trim(),
                 reward: (ids.reward || 'ca-app-pub-8142649369272916/1560486806').trim()
             };
@@ -108,6 +117,84 @@ class AdMobService {
 
         console.warn('[AdMobService] ⚠️ Falling back to legacy adMobIds');
         return this.adConfig.adMobIds || { banner: '', interstitial: '', reward: '' };
+    }
+
+    /** Serialize native banner calls so show/hide/remove never interleave. */
+    private enqueueBanner(task: () => Promise<void>): Promise<void> {
+        this.bannerQueue = this.bannerQueue.then(task).catch(err => {
+            console.error('[AdMob] Banner operation failed:', err);
+        });
+        return this.bannerQueue;
+    }
+
+    private async subscribeBannerSize(): Promise<void> {
+        if (this.bannerSizeSubscribed) return;
+        this.bannerSizeSubscribed = true;
+        await AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size) => {
+            this.bannerHeight = size?.height || 0;
+            this.bannerSizeListeners.forEach(cb => cb(this.bannerHeight));
+        });
+    }
+
+    /** Subscribe to banner height changes (dp). Returns an unsubscribe function. */
+    onBannerSize(callback: (height: number) => void): () => void {
+        this.bannerSizeListeners.add(callback);
+        if (this.bannerHeight) callback(this.bannerHeight);
+        return () => { this.bannerSizeListeners.delete(callback); };
+    }
+
+    /**
+     * Show (or resume) the bottom banner `margin` dp above the bottom of the screen,
+     * so it sits exactly where the in-page banner slot is.
+     */
+    showBottomBannerAt(margin: number): Promise<void> {
+        if (this.bannerHideTimer) {
+            clearTimeout(this.bannerHideTimer);
+            this.bannerHideTimer = null;
+        }
+        return this.enqueueBanner(async () => {
+            if (this.platform === 'web' || !this.adConfig) return;
+            const adId = this.getAdUnitIds()?.banner;
+            if (!adId) return;
+
+            const m = Math.max(0, Math.round(margin));
+            if (this.bannerMargin === m) {
+                if (this.bannerHidden) {
+                    await AdMob.resumeBanner();
+                    this.bannerHidden = false;
+                }
+                return;
+            }
+
+            await this.subscribeBannerSize();
+            if (this.bannerMargin !== null) await AdMob.removeBanner();
+            await AdMob.showBanner({
+                adId,
+                adSize: BannerAdSize.ADAPTIVE_BANNER,
+                position: BannerAdPosition.BOTTOM_CENTER,
+                margin: m,
+                isTesting: this.adConfig.testMode || false
+            });
+            this.bannerMargin = m;
+            this.bannerHidden = false;
+        });
+    }
+
+    /**
+     * Hide the bottom banner (debounced so route changes don't make it flicker).
+     * Always calls the native hide: the plugin may re-show the banner on its own
+     * (e.g. after a fullscreen ad is dismissed), so our cached state can be stale.
+     */
+    hideBottomBanner(delayMs = 250): void {
+        if (this.bannerHideTimer) clearTimeout(this.bannerHideTimer);
+        this.bannerHideTimer = setTimeout(() => {
+            this.bannerHideTimer = null;
+            this.enqueueBanner(async () => {
+                if (this.bannerMargin === null) return;
+                await AdMob.hideBanner();
+                this.bannerHidden = true;
+            });
+        }, delayMs);
     }
 
     /**
@@ -174,6 +261,7 @@ class AdMobService {
 
         try {
             await AdMob.hideBanner();
+            if (this.bannerMargin !== null) this.bannerHidden = true;
             console.log('[AdMob] Banner hidden');
         } catch (error: any) {
             // Suppress noise if banner wasn't shown
@@ -191,6 +279,8 @@ class AdMobService {
 
         try {
             await AdMob.removeBanner();
+            this.bannerMargin = null;
+            this.bannerHidden = false;
             console.log('[AdMobService] ✅ Banner removed');
         } catch (error: any) {
             // Suppress noise if banner wasn't shown
@@ -357,6 +447,9 @@ class AdMobService {
                 RewardAdPluginEvents.Rewarded,
                 (reward: AdMobRewardItem) => {
                     console.log('[AdMob] User rewarded:', reward);
+                    // Rewarded fires before Dismissed, so pre-load the next ad here too
+                    this.isRewardLoaded = false;
+                    this.prepareRewardVideo().catch(() => { });
                     cleanup();
                     resolve(reward);
                 }

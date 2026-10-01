@@ -296,6 +296,7 @@ export interface AdConfig {
 
   adMobIdsAndroid?: {
     appId?: string;
+    banner?: string;
     interstitial?: string;
     reward?: string;
   };

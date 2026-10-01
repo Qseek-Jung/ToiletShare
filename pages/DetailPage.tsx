@@ -577,11 +577,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
             setShowMapModal(false); // Close NavigationModal after redirect
             onModalStateChange?.(false);
         } else if (pendingReviewId) {
-            handleAdComplete(); // Trigger reward for review
+            if (reviewAdRewardedRef.current) {
+                handleAdComplete(); // Trigger reward for review
+            } else {
+                setPendingReviewId(null);
+                showAlert(t('ad_not_completed', '광고를 끝까지 시청해야 보상이 지급됩니다.'));
+            }
+            reviewAdRewardedRef.current = false;
         }
     };
     const [pendingReviewCredit, setPendingReviewCredit] = useState(0); // Store credit to give after ad
     const [pendingReviewId, setPendingReviewId] = useState<string | null>(null); // Track which review is waiting for ad
+    const reviewAdRewardedRef = useRef(false); // Set only when the ad was actually watched to completion
 
     // Track when user started writing
     const reviewStartTime = useRef<number>(0);
@@ -1330,6 +1337,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
                 <AdManager
                     isOpen={showAdModal}
                     onClose={handleAdClose}
+                    onReward={() => { reviewAdRewardedRef.current = true; }}
                     adType={pendingNavType ? 'interstitial' : 'reward'}
                     triggerType={pendingNavType ? 'navigation' : 'point'}
                 />

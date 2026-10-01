@@ -420,6 +420,16 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                             placeholder="ca-app-pub-8142649369272916/1560486806"
                                         />
                                     </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-gray-700">Android_Banner (하단 배너, 배너 소스가 AdMob일 때)</label>
+                                        <input
+                                            type="text"
+                                            value={config.adMobIdsAndroid?.banner || ''}
+                                            onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, banner: e.target.value } })}
+                                            className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
+                                            placeholder={config.adMobIds?.banner || 'ca-app-pub-8142649369272916/4467321983'}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}

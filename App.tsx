@@ -736,15 +736,8 @@ export default function App() {
     // Exit Confirmation Modal State
     const [showExitModal, setShowExitModal] = useState(false);
 
-    // Manage Banner Visibility based on Route
-    useEffect(() => {
-        // Detailed Page: User requested to keep banner.
-        // We ensure showBottomBanner is called.
-        // DetailPage needs padding-bottom to avoid overlap.
-        if (Capacitor.isNativePlatform()) {
-            adMobService.showBottomBanner().catch(() => { });
-        }
-    }, [currentHash]);
+    // Bottom banner placement/visibility is managed by <AdBanner> (native banner is
+    // positioned over its slot above the bottom nav and hidden under overlays).
 
     // Reward Success Modal State
     const [rewardSuccessModal, setRewardSuccessModal] = useState<{ show: boolean, amount: number }>({ show: false, amount: 0 });
@@ -2445,7 +2438,7 @@ export default function App() {
                                         className={`flex flex-col items-center p-2 -mt-8 relative ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen ? 'cursor-not-allowed' : 'cursor-pointer'
                                             }`}
                                     >
-                                        <div className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white ring-4 ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
+                                        <div id="nav-fab" className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-white ring-4 ring-gray-200 dark:ring-gray-700 transition-all ${user.role === UserRole.GUEST || currentHash.startsWith('#/submit') || isContactModalOpen || isDetailModalOpen
                                             ? 'bg-text-muted opacity-50'
                                             : 'bg-urgency hover:bg-urgency-500 active:scale-95'
                                             }`}>

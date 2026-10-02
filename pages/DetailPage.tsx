@@ -320,7 +320,7 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                     </div>
 
                     <div className={`absolute bottom-0 left-0 right-0 p-4 ${Capacitor.getPlatform() === 'android' ? 'pb-24' : 'pb-4 pb-safe'} bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center`}>
-                        <div className="flex gap-3 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
+                        <div className="flex gap-2 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
                             {navApps.map((app) => {
                                 const style = NAV_APP_STYLE[app];
                                 const label = t(style.labelKey, style.fallback);
@@ -328,11 +328,11 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                                     <button
                                         key={app}
                                         onClick={() => onNavigate(app)}
-                                        className={`flex-1 min-w-0 h-14 ${style.bg} rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition-all relative overflow-hidden border ${style.border}`}
+                                        className={`flex-1 min-w-0 h-14 ${style.bg} rounded-2xl shadow-lg flex items-center justify-center px-1.5 active:scale-95 transition-all relative overflow-hidden border ${style.border}`}
                                         aria-label={label}
                                     >
-                                        <Navigation className={`w-5 h-5 ${style.fg} mr-1 shrink-0`} />
-                                        <span className={`font-bold ${style.fg} text-sm whitespace-nowrap overflow-hidden text-ellipsis`}>{label}</span>
+                                        {navApps.length < 3 && <Navigation className={`w-4 h-4 ${style.fg} mr-1 shrink-0`} />}
+                                        <span className={`font-bold ${style.fg} ${navApps.length >= 3 ? 'text-[13px] leading-tight text-center whitespace-normal break-keep' : 'text-sm whitespace-nowrap overflow-hidden text-ellipsis'}`}>{label}</span>
                                     </button>
                                 );
                             })}

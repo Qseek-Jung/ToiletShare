@@ -1,10 +1,11 @@
-export const APP_VERSION = '1.1.0';
-export const LAST_UPDATE_DATE = '2026.02.02';
+export const APP_VERSION = '1.1.1';
+export const LAST_UPDATE_DATE = '2026.10.02';
 
 export const UPDATE_NOTES = [
-    "지도 로딩 속도 및 위치 정확도 개선",
-    "앱 안정성 향상 및 버그 수정",
-    "스플래시 화면 저작권 문구 수정"
+    "외국인 여행자를 위한 다국어 개선 (번체 중국어 추가, 지도 언어 자동 전환)",
+    "언어별 길찾기 앱 지원 (네이버·카카오·구글·바이두·가오더)",
+    "로그인 보안 강화 및 크레딧 처리 안정화",
+    "광고·화면 표시 개선 및 각종 버그 수정"
 ];
 
 export const COMPANY_INFO = {

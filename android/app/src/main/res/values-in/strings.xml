@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Launcher name shown under the app icon (default/English: values/strings.xml) -->
+    <string name="app_name">Toilet Korea</string>
+    <string name="title_activity_main">Toilet Korea</string>
+</resources>

@@ -87,3 +87,6 @@ key_output.txt
 
 # Old project copy
 IOS_Ready/
+
+# Store artwork (large binaries, kept locally)
+docs/store/**/*.png

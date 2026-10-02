@@ -114,6 +114,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         let syncTimer: ReturnType<typeof setTimeout> | null = null;
         let observer: MutationObserver | null = null;
         let unsubscribeSize: (() => void) | null = null;
+        let unsubscribeDismiss: (() => void) | null = null;
 
         // Place the native banner exactly over the in-page slot (above the bottom nav),
         // or hide it while any full-screen overlay is open.
@@ -150,6 +151,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
                 if (!adMobService.hasBannerUnit()) return;
                 adMobService.setBannerSlotActive(true);
                 unsubscribeSize = adMobService.onBannerSize(setNativeBannerHeight);
+                unsubscribeDismiss = adMobService.onFullscreenAdDismissed(() => scheduleSync(0));
                 observer = new MutationObserver(() => scheduleSync());
                 observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
                 window.addEventListener('resize', onResize);
@@ -173,6 +175,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             if (syncTimer) clearTimeout(syncTimer);
             observer?.disconnect();
             unsubscribeSize?.();
+            unsubscribeDismiss?.();
             window.removeEventListener('resize', onResize);
             document.removeEventListener('visibilitychange', onResize);
             window.removeEventListener('focus', onResize);

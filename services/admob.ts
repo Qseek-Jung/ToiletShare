@@ -24,6 +24,7 @@ class AdMobService {
     private bannerHideTimer: ReturnType<typeof setTimeout> | null = null;
     private bannerSizeSubscribed = false;
     private bannerSizeListeners = new Set<(height: number) => void>();
+    private fullscreenDismissListeners = new Set<() => void>();
     // "Slot active" = a native bottom banner owns the area above the nav (the nav
     // switches the raised "+" button to a compact in-nav style while active).
     private bannerSlotActive = false;
@@ -139,6 +140,24 @@ class AdMobService {
             this.bannerHeight = size?.height || 0;
             this.bannerSizeListeners.forEach(cb => cb(this.bannerHeight));
         });
+        // The native plugin re-shows the banner after a fullscreen ad closes, even if
+        // we had hidden it. Re-apply our hidden state and let the slot re-sync.
+        const onDismissed = () => {
+            [300, 1200].forEach(delay => setTimeout(() => {
+                if (this.bannerHidden && this.bannerMargin !== null) {
+                    this.enqueueBanner(() => AdMob.hideBanner());
+                }
+                this.fullscreenDismissListeners.forEach(cb => cb());
+            }, delay));
+        };
+        await AdMob.addListener(InterstitialAdPluginEvents.Dismissed, onDismissed);
+        await AdMob.addListener(RewardAdPluginEvents.Dismissed, onDismissed);
+    }
+
+    /** Called (twice, delayed) after any fullscreen ad is dismissed. */
+    onFullscreenAdDismissed(callback: () => void): () => void {
+        this.fullscreenDismissListeners.add(callback);
+        return () => { this.fullscreenDismissListeners.delete(callback); };
     }
 
     hasBannerUnit(): boolean {

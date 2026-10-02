@@ -293,7 +293,8 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
     // Unified Click Handler
     const handleToiletSelect = async (toilet: Toilet) => {
-        if (!toilet.isPrivate) {
+        // Admin/VIP skip the interstitial (same as navigation and unlocks)
+        if (!toilet.isPrivate && user.role !== UserRole.ADMIN && user.role !== UserRole.VIP) {
             const adShown = await adMobService.showInterstitial();
             if (adShown) console.log('Public Toilet Interstitial Shown');
         }

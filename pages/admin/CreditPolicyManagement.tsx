@@ -222,7 +222,7 @@ export const CreditPolicyManagement: React.FC = () => {
                 <button
                     onClick={handleReset}
                     disabled={saving}
-                    className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors whitespace-nowrap shrink-0 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-3 text-sm bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors whitespace-nowrap shrink-0 disabled:opacity-50"
                 >
                     <RotateCcw className="w-5 h-5" />
                     기본값으로 초기화
@@ -230,7 +230,7 @@ export const CreditPolicyManagement: React.FC = () => {
                 <button
                     onClick={() => setShowConfirmModal(true)}
                     disabled={!hasChanges || saving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all ml-auto ${hasChanges && !saving
+                    className={`flex items-center gap-1.5 px-3 py-3 text-sm rounded-xl font-bold whitespace-nowrap shrink-0 transition-all ml-auto ${hasChanges && !saving
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}

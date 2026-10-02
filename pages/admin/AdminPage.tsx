@@ -105,7 +105,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ user, setUser, refreshTrig
                                     {activeSection === 'users' && subSection === 'visitor-stats' && '📊 방문자 통계'}
                                     {activeSection === 'users' && subSection === 'banned-users' && '🚫 영구 차단 회원'}
                                     {activeSection === 'users' && subSection === 'withdrawn-users' && '🗑️ 탈퇴 회원 리스트'}
-                                    {activeSection === 'users' && subSection !== 'visitor-stats' && subSection !== 'banned-users' && subSection !== 'withdrawn-users' && subSection && '👥 회원 통계'}
+                                    {activeSection === 'users' && subSection !== 'visitor-stats' && subSection !== 'banned-users' && subSection !== 'withdrawn-users' && subSection && '👥 회원 조회'}
                                     {activeSection === 'toilets' && (
                                         subSection === 'toilet-map' ? '📊 지역별 등록현황' :
                                             subSection === 'toilet-chart' ? '📊 화장실 통계' :

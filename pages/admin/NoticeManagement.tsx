@@ -217,15 +217,15 @@ export const NoticeManagement: React.FC<NoticeManagementProps> = ({ user }) => {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <table className="w-full text-left">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left">
                     <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700">
                         <tr>
-                            <th className="p-4 text-sm font-medium text-gray-500">상태</th>
-                            <th className="p-4 text-sm font-medium text-gray-500">우선순위</th>
-                            <th className="p-4 text-sm font-medium text-gray-500 w-1/2">제목</th>
-                            <th className="p-4 text-sm font-medium text-gray-500">작성일</th>
-                            <th className="p-4 text-sm font-medium text-gray-500">관리</th>
+                            <th className="p-4 text-sm font-medium text-gray-500 whitespace-nowrap">상태</th>
+                            <th className="p-4 text-sm font-medium text-gray-500 whitespace-nowrap">우선순위</th>
+                            <th className="p-4 text-sm font-medium text-gray-500 w-1/2 min-w-[220px]">제목</th>
+                            <th className="p-4 text-sm font-medium text-gray-500 whitespace-nowrap">작성일</th>
+                            <th className="p-4 text-sm font-medium text-gray-500 whitespace-nowrap">관리</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">

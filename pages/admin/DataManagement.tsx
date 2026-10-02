@@ -28,6 +28,16 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
         loadStats();
     }, []);
 
+    // Destructive operations run on the PRODUCTION database: require typing a keyword.
+    const confirmTyped = (action: string, keyword: string): boolean => {
+        const typed = prompt(`⚠️ 운영 데이터베이스에 바로 적용됩니다.\n${action}\n\n계속하려면 "${keyword}"를 정확히 입력하세요.`);
+        if (typed?.trim() !== keyword) {
+            if (typed !== null) alert('입력이 일치하지 않아 취소되었습니다.');
+            return false;
+        }
+        return true;
+    };
+
     const handleDownloadBackup = async () => {
         setLoading(true);
         try {
@@ -53,6 +63,10 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
     const handleImportData = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        if (!confirmTyped('백업 파일의 회원/화장실/리뷰 데이터를 운영 DB에 덮어씁니다.', '가져오기')) {
+            event.target.value = '';
+            return;
+        }
 
         setLoading(true);
         const reader = new FileReader();
@@ -83,7 +97,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
     };
 
     const handleClearAllData = async () => {
-        if (confirm('⚠️ 경고!\n\n모든 데이터가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.\n\n정말 진행하시겠습니까?')) {
+        if (confirmTyped('모든 화장실·리뷰·신고·알림·일반 회원 데이터가 삭제되며 되돌릴 수 없습니다.', '전체삭제')) {
             if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n\n마지막 확인입니다.')) {
                 setLoading(true);
                 try {
@@ -102,6 +116,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
     };
 
     const handleGenerateSample = async (type: 'bundang' | 'seoul') => {
+        if (!confirmTyped('샘플(가짜) 화장실 데이터가 실제 서비스 지도에 추가됩니다.', '샘플생성')) return;
         setLoading(true);
         try {
             let result;
@@ -123,7 +138,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
     };
 
     const handleMigrateFromLocalStorage = async () => {
-        if (!confirm('로컬 스토리지의 데이터를 Supabase로 마이그레이션 하시겠습니까?\n이 작업은 기존 로컬 데이터를 Supabase DB에 병합합니다.')) return;
+        if (!confirmTyped('이 기기의 로컬 데이터를 운영 DB에 병합합니다.', '병합')) return;
 
         setLoading(true);
         try {

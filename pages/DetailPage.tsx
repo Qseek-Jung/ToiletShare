@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Lock, ArrowRight, Edit, Share2, Star, MapIcon, ScrollText, Waves, DoorClosed, MessageSquareQuote, Flag, X, Trash2, Edit2, Crosshair, PlayCircle, Gift, Globe } from 'lucide-react';
+import { Lock, ArrowRight, Edit, Share2, Star, MapIcon, ScrollText, Waves, DoorClosed, MessageSquareQuote, Flag, X, Trash2, Edit2, Crosshair, PlayCircle, Gift, Globe, Navigation } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AlertModal } from '../components/AlertModal';
 import { Toilet, Review, User, UserRole } from '../types';
@@ -304,11 +304,8 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                                     className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
                                     aria-label={t('kakao_map', '카카오맵')}
                                 >
-                                    <img
-                                        src="https://play-lh.googleusercontent.com/pPTTNz433EYFurg2j__bFU5ONdMoU_bs_-yS2JLZriua3iHrksGP6XBPF5VtDPlpGcW4=s64-rw"
-                                        alt="Kakao Map"
-                                        className="h-10 w-10 object-contain rounded-xl"
-                                    />
+                                    <Navigation className="w-5 h-5 text-[#191919] mr-1.5" />
+                                    <span className="font-bold text-[#191919] text-sm whitespace-nowrap">{t('kakao_map', '카카오맵')}</span>
                                 </button>
 
                                 <button
@@ -316,11 +313,8 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                                     className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
                                     aria-label={t('naver_map', '네이버지도')}
                                 >
-                                    <img
-                                        src="https://play-lh.googleusercontent.com/FZCOcEqapjBkvBmv2RkIMlJ1mteGJh8eq4239jAm-4QgpzvCa9sBj4msNlUBsWvf3hX69-fJoTnFZR2pFdZdwxY=s64-rw"
-                                        alt="Naver Map"
-                                        className="h-10 w-10 object-contain rounded-xl"
-                                    />
+                                    <Navigation className="w-5 h-5 text-[#03C75A] mr-1.5" />
+                                    <span className="font-bold text-[#03C75A] text-sm whitespace-nowrap">{t('naver_map', '네이버지도')}</span>
                                 </button>
                             
                             {/* Foreign visitors: Google Maps as well (Naver Map also has an English UI) */}
@@ -330,11 +324,8 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                                     className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
                                     aria-label="Google Maps"
                                 >
-                                    <img
-                                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/512px-Google_Maps_icon_%282020%29.svg.png"
-                                        alt="Google Maps"
-                                        className="h-8 w-8 object-contain"
-                                    />
+                                    <Navigation className="w-5 h-5 text-[#1A73E8] mr-1.5" />
+                                    <span className="font-bold text-[#1A73E8] text-sm whitespace-nowrap">Google Maps</span>
                                 </button>
                             )}
                         </div>
@@ -578,6 +569,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
     };
 
     const handleNavigation = (type: 'kakao' | 'naver' | 'google') => {
+        // Admin/VIP skip the interstitial (same as their free unlocks)
+        if (user.role === UserRole.ADMIN || user.role === UserRole.VIP) {
+            executeNavigation(type);
+            setShowMapModal(false);
+            onModalStateChange?.(false);
+            return;
+        }
         setPendingNavType(type);
         setShowAdModal(true);
     };
@@ -765,10 +763,13 @@ const DetailPage: React.FC<DetailPageProps> = ({
 
     const handleDeleteReview = (reviewId: string) => {
         const review = reviews.find(r => r.id === reviewId);
-        const shouldDeduct = review?.rewarded === true;
+        // Every review pays a base reward on write (plus the ad bonus if watched),
+        // so deleting one's own review always claws back what was paid for it.
+        const shouldDeduct = review?.userId === user.id;
+        const paidAmount = reviewRewardAmount * (review?.rewarded ? 2 : 1);
 
         const confirmMessage = shouldDeduct
-            ? t('review_delete_confirm', `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 {{amount}} 크레딧이 회수됩니다)`, { amount: reviewRewardAmount })
+            ? t('review_delete_confirm', `정말로 이 리뷰를 삭제하시겠습니까? \n(삭제 시 지급된 {{amount}} 크레딧이 회수됩니다)`, { amount: paidAmount })
             : t('review_delete_confirm_simple', "정말로 이 리뷰를 삭제하시겠습니까?");
 
         showConfirm(confirmMessage, () => {
@@ -776,17 +777,12 @@ const DetailPage: React.FC<DetailPageProps> = ({
             setReviews(prev => prev.filter(r => r.id !== reviewId));
 
             // Background DB Delete (clawback runs first, while the review row still exists)
-            (shouldDeduct ? db.reviewDeletePenalty(user.id, reviewId, reviewRewardAmount) : Promise.resolve())
+            (shouldDeduct ? db.reviewDeletePenalty(user.id, reviewId, paidAmount) : Promise.resolve())
                 .then(() => db.deleteReview(reviewId)).then(async () => {
                 let message = t('review_deleted', "리뷰가 삭제되었습니다.");
 
                 if (shouldDeduct) {
-                    // Deduct Credits
-                    const DEDUCTION_AMOUNT = -reviewRewardAmount;
-
-                    // Optimistic UI Update, then confirm with the server balance
-                    const updatedUser = { ...user, credits: (user.credits || 0) + DEDUCTION_AMOUNT };
-                    onUserUpdate(updatedUser);
+                    // The server decides the exact clawback; show its balance
                     syncCreditsFromServer();
                     message = t('review_deleted_deducted', "리뷰가 삭제되었으며,\n지급된 크레딧이 차감되었습니다.");
                 }

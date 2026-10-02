@@ -54,7 +54,7 @@ export const CreditStatistics: React.FC = () => {
                         <button
                             key={p.value}
                             onClick={() => setPeriod(p.value)}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${period === p.value
+                            className={`px-3 py-1.5 rounded-lg text-sm font-bold whitespace-nowrap transition-all ${period === p.value
                                 ? 'bg-blue-600 text-white shadow-md'
                                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                 }`}

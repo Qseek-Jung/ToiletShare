@@ -225,14 +225,14 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
     return (
         <div className="w-full bg-gray-50 h-screen overflow-y-auto pb-20">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+            <div className="bg-white shadow-sm border-b px-4 py-3 pr-14 flex flex-wrap items-center gap-x-3 gap-y-2 sticky top-0 z-10">
                 <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>
-                <div>
-                    <h1 className="text-xl font-bold flex items-center gap-2">
-                        <span>{user.nickname || '익명'}</span>
-                        <span className="text-sm font-normal text-gray-500">({user.email})</span>
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-lg font-bold flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="whitespace-nowrap">{user.nickname || '익명'}</span>
+                        <span className="text-xs font-normal text-gray-500 break-all">({user.email})</span>
                         {user.status === 'banned' && <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded text-xs font-bold">차단됨</span>}
                         {user.status === 'withdrawn' && <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold">탈퇴</span>}
                     </h1>
@@ -240,10 +240,10 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
                         가입일: {new Date(user.createdAt!).toLocaleDateString()} | 최근 접속: {new Date(user.lastLogin!).toLocaleDateString()}
                     </div>
                 </div>
-                <div className="ml-auto flex items-center gap-3">
+                <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-3">
                     {/* Role Selector */}
                     <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border">
-                        <span className="text-xs font-bold text-gray-500">권한 설정:</span>
+                        <span className="text-xs font-bold text-gray-500 whitespace-nowrap">권한 설정:</span>
                         <select
                             value={user.role}
                             onChange={(e) => handleRoleUpdate(e.target.value as UserRole)}

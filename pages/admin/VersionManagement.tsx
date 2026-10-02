@@ -68,7 +68,7 @@ export const VersionManagement: React.FC = () => {
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-300 transition-colors"
+                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2 whitespace-nowrap shrink-0 disabled:bg-gray-300 transition-colors"
                     >
                         {saving ? '저장 중...' : '설정 저장'}
                         <Save className="w-4 h-4" />

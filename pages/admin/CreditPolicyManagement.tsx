@@ -218,11 +218,11 @@ export const CreditPolicyManagement: React.FC = () => {
 
 
             {/* Action Buttons */}
-            <div className="flex gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-200 -mx-4 z-10 shadow-inner">
+            <div className="flex gap-3 sticky bottom-0 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-200 -mx-4 z-10 shadow-inner">
                 <button
                     onClick={handleReset}
                     disabled={saving}
-                    className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors whitespace-nowrap shrink-0 disabled:opacity-50"
                 >
                     <RotateCcw className="w-5 h-5" />
                     기본값으로 초기화

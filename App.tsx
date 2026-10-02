@@ -2426,7 +2426,7 @@ export default function App() {
                 {!currentHash.includes('admin') && !showSplash && !showAd && !showDownloadPage && !isDetailModalOpen && !isNoticeModalOpen && (
                     <>
                         {/* Main Screen & Detail Page & Submit Page & My Page Bottom Banner Ad */}
-                        {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash.startsWith('#/submit') || currentHash.startsWith('#/edit/') || currentHash === '#/my' || currentHash === '#/notifications') && (
+                        {(currentHash === '#/' || currentHash === '' || currentHash.startsWith('#/toilet/') || currentHash === '#/my' || currentHash === '#/notifications') && (
                             <div key={adKey} className={`fixed left-0 right-0 z-[40] flex justify-center pointer-events-none transition-all duration-300 animate-in slide-in-from-bottom-48 duration-500 ${isSubmitMapOpen ? 'bottom-[calc(env(safe-area-inset-bottom)+10px)]' : 'bottom-[calc(env(safe-area-inset-bottom)+66px)]'}`}>
                                 <div className="pointer-events-auto w-full max-w-md overflow-hidden">
                                     <AdBanner position="bottom" maxHeight={100} minRatio={4.0} className="w-full h-full shadow-lg" type="BANNER" />

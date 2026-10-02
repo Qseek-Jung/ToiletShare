@@ -1,4 +1,7 @@
 {
+    "baidu_map": "百度地圖",
+    "amap_map": "高德地圖",
+    "nav_my_location": "我的位置",
     "no_bookmarks": "還沒有收藏的廁所。",
     "ad_not_completed": "完整觀看廣告後才能獲得獎勵。",
     "test_message": "這是一條測試訊息。",

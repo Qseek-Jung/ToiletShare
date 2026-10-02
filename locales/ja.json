@@ -1,4 +1,7 @@
 {
+    "baidu_map": "百度地図",
+    "amap_map": "高徳地図",
+    "nav_my_location": "現在地",
     "no_bookmarks": "お気に入りのトイレはまだありません。",
     "ad_not_completed": "広告を最後まで視聴すると報酬がもらえます。",
     "test_message": "これはテストメッセージです。",

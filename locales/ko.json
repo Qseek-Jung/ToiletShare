@@ -1,4 +1,7 @@
 {
+    "baidu_map": "바이두 지도",
+    "amap_map": "가오더 지도",
+    "nav_my_location": "내위치",
     "no_bookmarks": "즐겨찾기한 화장실이 없습니다.",
     "ad_not_completed": "광고를 끝까지 시청해야 보상이 지급됩니다.",
     "test_message": "테스트 메시지입니다.",

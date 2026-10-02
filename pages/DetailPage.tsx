@@ -41,17 +41,39 @@ const DARK_MAP_STYLE = [
 ];
 
 
+type NavApp = 'kakao' | 'naver' | 'google' | 'baidu' | 'amap';
+
+// Map apps people actually use, by app language.
+// Naver Map has English/Japanese/Chinese UIs and walking directions in Korea;
+// Google Maps has no walking directions in Korea, so it isn't first.
+const NAV_APPS_BY_LANGUAGE: Record<string, NavApp[]> = {
+    ko: ['kakao', 'naver'],
+    zh: ['baidu', 'amap', 'naver'],
+    'zh-TW': ['naver', 'google', 'kakao'],
+    ja: ['naver', 'google', 'kakao'],
+};
+const DEFAULT_NAV_APPS: NavApp[] = ['naver', 'google', 'kakao'];
+
+const NAV_APP_STYLE: Record<NavApp, { bg: string; fg: string; border: string; labelKey: string; fallback: string }> = {
+    kakao: { bg: 'bg-[#FEE500]', fg: 'text-[#191919]', border: 'border-yellow-400', labelKey: 'kakao_map', fallback: '카카오맵' },
+    naver: { bg: 'bg-white', fg: 'text-[#03C75A]', border: 'border-gray-200', labelKey: 'naver_map', fallback: '네이버지도' },
+    google: { bg: 'bg-white', fg: 'text-[#1A73E8]', border: 'border-gray-200', labelKey: 'google_map', fallback: 'Google Maps' },
+    baidu: { bg: 'bg-white', fg: 'text-[#3385FF]', border: 'border-gray-200', labelKey: 'baidu_map', fallback: '百度地图' },
+    amap: { bg: 'bg-white', fg: 'text-[#0091FF]', border: 'border-gray-200', labelKey: 'amap_map', fallback: '高德地图' },
+};
+
 interface NavigationModalProps {
     toilet: Toilet;
     myLocation: { lat: number, lng: number };
     onClose: () => void;
     darkMode?: boolean;
-    onNavigate: (type: 'kakao' | 'naver' | 'google') => void;
+    onNavigate: (type: NavApp) => void;
 }
 
 const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, onClose, darkMode, onNavigate }) => {
     const { t, i18n } = useTranslation();
-    const isKorean = i18n.language.startsWith('ko');
+    const appLanguage = i18n.resolvedLanguage || i18n.language;
+    const navApps = NAV_APPS_BY_LANGUAGE[appLanguage] || DEFAULT_NAV_APPS;
     const mapRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<any>(null);
     const myMarkerRef = useRef<any>(null);
@@ -298,36 +320,22 @@ const NavigationModal: React.FC<NavigationModalProps> = ({ toilet, myLocation, o
                     </div>
 
                     <div className={`absolute bottom-0 left-0 right-0 p-4 ${Capacitor.getPlatform() === 'android' ? 'pb-24' : 'pb-4 pb-safe'} bg-gradient-to-t from-surface via-surface to-transparent dark:from-surface-dark dark:via-surface-dark flex flex-col items-center`}>
-                        <div className="flex gap-4 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
-                                <button
-                                    onClick={() => onNavigate('kakao')}
-                                    className="flex-1 h-14 bg-[#FEE500] rounded-2xl shadow-lg flex items-center justify-center hover:bg-[#FFE500] active:scale-95 transition-all relative overflow-hidden group border border-yellow-400"
-                                    aria-label={t('kakao_map', '카카오맵')}
-                                >
-                                    <Navigation className="w-5 h-5 text-[#191919] mr-1.5" />
-                                    <span className="font-bold text-[#191919] text-sm whitespace-nowrap">{t('kakao_map', '카카오맵')}</span>
-                                </button>
-
-                                <button
-                                    onClick={() => onNavigate('naver')}
-                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
-                                    aria-label={t('naver_map', '네이버지도')}
-                                >
-                                    <Navigation className="w-5 h-5 text-[#03C75A] mr-1.5" />
-                                    <span className="font-bold text-[#03C75A] text-sm whitespace-nowrap">{t('naver_map', '네이버지도')}</span>
-                                </button>
-                            
-                            {/* Foreign visitors: Google Maps as well (Naver Map also has an English UI) */}
-                            {!isKorean && (
-                                <button
-                                    onClick={() => onNavigate('google')}
-                                    className="flex-1 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center hover:bg-gray-50 active:scale-95 transition-all relative overflow-hidden group border border-gray-200"
-                                    aria-label="Google Maps"
-                                >
-                                    <Navigation className="w-5 h-5 text-[#1A73E8] mr-1.5" />
-                                    <span className="font-bold text-[#1A73E8] text-sm whitespace-nowrap">Google Maps</span>
-                                </button>
-                            )}
+                        <div className="flex gap-3 justify-center items-center pb-4 w-full px-4 max-w-md mx-auto z-10">
+                            {navApps.map((app) => {
+                                const style = NAV_APP_STYLE[app];
+                                const label = t(style.labelKey, style.fallback);
+                                return (
+                                    <button
+                                        key={app}
+                                        onClick={() => onNavigate(app)}
+                                        className={`flex-1 min-w-0 h-14 ${style.bg} rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition-all relative overflow-hidden border ${style.border}`}
+                                        aria-label={label}
+                                    >
+                                        <Navigation className={`w-5 h-5 ${style.fg} mr-1 shrink-0`} />
+                                        <span className={`font-bold ${style.fg} text-sm whitespace-nowrap overflow-hidden text-ellipsis`}>{label}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
 
@@ -513,9 +521,9 @@ const DetailPage: React.FC<DetailPageProps> = ({
     const [showOwnerConfirmModal, setShowOwnerConfirmModal] = useState(false);
     const [showReviewSuccessModal, setShowReviewSuccessModal] = useState(false); // New Success Modal
     const [showAdModal, setShowAdModal] = useState(false); // Controls AdManager
-    const [pendingNavType, setPendingNavType] = useState<'kakao' | 'naver' | 'google' | null>(null);
+    const [pendingNavType, setPendingNavType] = useState<NavApp | null>(null);
 
-    const executeNavigation = (type: 'kakao' | 'naver' | 'google') => {
+    const executeNavigation = (type: NavApp) => {
         if (!toilet) return;
 
         const { lat, lng, name } = toilet;
@@ -524,7 +532,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         const hasLocation = myLat !== 0 && myLng !== 0;
         const dName = encodeURIComponent(name);
         const appName = encodeURIComponent('대똥단결');
-        const sName = encodeURIComponent('내위치');
+        const sName = encodeURIComponent(t('nav_my_location', '내위치'));
 
         let appUrl = '';
         let webUrl = '';
@@ -542,6 +550,18 @@ const DetailPage: React.FC<DetailPageProps> = ({
             webUrl = hasLocation
                 ? `https://map.naver.com/v5/directions/${myLng},${myLat},${sName}/${lng},${lat},${dName}/-/walk`
                 : `https://map.naver.com/v5/search/${dName}`;
+        } else if (type === 'baidu') {
+            // Coordinates are WGS84 (GPS); Baidu converts with coord_type=wgs84
+            const origin = hasLocation ? `origin=latlng:${myLat},${myLng}|name:${sName}&` : '';
+            appUrl = `baidumap://map/direction?${origin}destination=latlng:${lat},${lng}|name:${dName}&coord_type=wgs84&mode=walking&src=andr.toiletshare.app`;
+            webUrl = hasLocation
+                ? `https://api.map.baidu.com/direction?${origin}destination=latlng:${lat},${lng}|name:${dName}&coord_type=wgs84&mode=walking&region=${encodeURIComponent('韩国')}&output=html&src=webapp.toiletshare`
+                : `https://api.map.baidu.com/marker?location=${lat},${lng}&title=${dName}&content=${dName}&coord_type=wgs84&output=html&src=webapp.toiletshare`;
+        } else if (type === 'amap') {
+            // dev=1: input coordinates are WGS84; t=2: walking
+            const origin = hasLocation ? `slat=${myLat}&slon=${myLng}&sname=${sName}&` : '';
+            appUrl = `androidamap://route/plan/?sourceApplication=toiletshare&${origin}dlat=${lat}&dlon=${lng}&dname=${dName}&dev=1&t=2`;
+            webUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${dName}&mode=walk&coordinate=wgs84&callnative=0&src=toiletshare`;
         } else {
             webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
         }
@@ -568,7 +588,7 @@ const DetailPage: React.FC<DetailPageProps> = ({
         }, 1500);
     };
 
-    const handleNavigation = (type: 'kakao' | 'naver' | 'google') => {
+    const handleNavigation = (type: NavApp) => {
         // Admin/VIP skip the interstitial (same as their free unlocks)
         if (user.role === UserRole.ADMIN || user.role === UserRole.VIP) {
             executeNavigation(type);

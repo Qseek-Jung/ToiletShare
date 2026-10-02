@@ -171,7 +171,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({ setRefreshTrigge
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {/* Loading Overlay */}
             {loading && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">

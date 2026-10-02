@@ -225,7 +225,7 @@ export const UserDetailPage: React.FC<UserDetailPageProps> = ({ userId, onBack }
     return (
         <div className="w-full bg-gray-50 h-screen overflow-y-auto pb-20">
             {/* Header */}
-            <div className="bg-white shadow-sm border-b px-4 py-3 pr-14 flex flex-wrap items-center gap-x-3 gap-y-2 sticky top-0 z-10">
+            <div className="bg-white shadow-sm border-b px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pr-14 flex flex-wrap items-center gap-x-3 gap-y-2 sticky top-0 z-10">
                 <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <ArrowLeft className="w-5 h-5 text-gray-600" />
                 </button>

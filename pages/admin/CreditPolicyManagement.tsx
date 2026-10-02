@@ -230,7 +230,7 @@ export const CreditPolicyManagement: React.FC = () => {
                 <button
                     onClick={() => setShowConfirmModal(true)}
                     disabled={!hasChanges || saving}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ml-auto ${hasChanges && !saving
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold whitespace-nowrap shrink-0 transition-all ml-auto ${hasChanges && !saving
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}

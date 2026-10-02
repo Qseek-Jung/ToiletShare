@@ -741,6 +741,11 @@ export default function App() {
     // area above the nav, the "+" button switches to a compact in-nav style.
     const [compactNavFab, setCompactNavFab] = useState(false);
     useEffect(() => adMobService.onBannerSlotActive(setCompactNavFab), []);
+    // Defensive: never leave the native banner on screens without a banner slot
+    // (admin pages, splash) — it must not be tappable there.
+    useEffect(() => {
+        if (currentHash.includes('admin') || showSplash) adMobService.hideBottomBanner(0);
+    }, [currentHash, showSplash]);
 
     // Reward Success Modal State
     const [rewardSuccessModal, setRewardSuccessModal] = useState<{ show: boolean, amount: number }>({ show: false, amount: 0 });

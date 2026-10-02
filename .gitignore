@@ -95,3 +95,5 @@ docs/store/*.aab
 
 # Xiaohongshu carousel exports (source of truth is Figma)
 docs/xhs/
+# Public APK for the /cn/ direct-download page
+!public/cn/*.apk

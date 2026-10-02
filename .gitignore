@@ -92,3 +92,6 @@ IOS_Ready/
 docs/store/**/*.png
 docs/store/*.jpg
 docs/store/*.aab
+
+# Xiaohongshu carousel exports (source of truth is Figma)
+docs/xhs/

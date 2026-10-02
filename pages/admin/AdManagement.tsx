@@ -427,7 +427,7 @@ export const AdManagement: React.FC<AdManagementProps> = ({ subSection, refreshT
                                             value={config.adMobIdsAndroid?.banner || ''}
                                             onChange={e => setConfig({ ...config, adMobIdsAndroid: { ...config.adMobIdsAndroid, banner: e.target.value } })}
                                             className="w-full p-3 border rounded-lg font-mono text-sm bg-gray-50 focus:border-green-500 outline-none"
-                                            placeholder={config.adMobIds?.banner || 'ca-app-pub-8142649369272916/4467321983'}
+                                            placeholder="ca-app-pub-8142649369272916/1667146634"
                                         />
                                     </div>
                                 </div>

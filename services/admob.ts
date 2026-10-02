@@ -115,7 +115,8 @@ class AdMobService {
         } else if (platform === 'android') {
             const ids = this.adConfig.adMobIdsAndroid || {} as any;
             return {
-                banner: (ids.banner || this.adConfig.adMobIds?.banner || '').trim(),
+                // Legacy adMobIds.banner (…/4467321983) is not an Android unit and returns no fill.
+                banner: (ids.banner || 'ca-app-pub-8142649369272916/1667146634').trim(),
                 interstitial: (ids.interstitial || 'ca-app-pub-8142649369272916/6481640998').trim(),
                 reward: (ids.reward || 'ca-app-pub-8142649369272916/1560486806').trim()
             };

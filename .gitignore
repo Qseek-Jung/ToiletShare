@@ -90,7 +90,7 @@ IOS_Ready/
 
 # Store artwork (large binaries, kept locally)
 docs/store/**/*.png
-docs/store/*.jpg
+docs/store/**/*.jpg
 docs/store/*.aab
 
 # Xiaohongshu carousel exports (source of truth is Figma)

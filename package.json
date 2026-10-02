@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "apply-secrets": "echo 'Use npm run build:android or npm run build:ios instead'",
-    "build:ios": "node scripts/patch-ios.js && cross-env CAPACITOR_PLATFORM=ios vite build && npx cap sync ios",
-    "build:android": "node scripts/patch-android.js && cross-env CAPACITOR_PLATFORM=android vite build && npx cap sync android",
+    "build:ios": "node scripts/patch-ios.js && cross-env CAPACITOR_PLATFORM=ios vite build && node -e \"require('fs').rmSync('dist/cn',{recursive:true,force:true})\" && npx cap sync ios",
+    "build:android": "node scripts/patch-android.js && cross-env CAPACITOR_PLATFORM=android vite build && node -e \"require('fs').rmSync('dist/cn',{recursive:true,force:true})\" && npx cap sync android",
     "preview": "vite preview",
     "postinstall": "patch-package"
   },

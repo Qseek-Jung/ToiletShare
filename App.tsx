@@ -572,6 +572,20 @@ export default function App() {
     // Login Modal State
 
     const [loginLoading, setLoginLoading] = useState(false);
+    // iOS: Kakao/Naver login is offered only when their app is installed, so login never
+    // requires installing another app or leaving for Safari (App Store Guidelines 4.0, 4.2.3).
+    // Apple and Google sign-in always stay in the app.
+    const isIOS = Capacitor.getPlatform() === 'ios';
+    const [kakaoLoginAvailable, setKakaoLoginAvailable] = useState(!isIOS);
+    const [naverLoginAvailable, setNaverLoginAvailable] = useState(!isIOS);
+    useEffect(() => {
+        if (!isIOS) return;
+        import('@capacitor/app-launcher').then(async ({ AppLauncher }) => {
+            const canOpen = (url: string) => AppLauncher.canOpenUrl({ url }).then(r => r.value).catch(() => false);
+            setKakaoLoginAvailable(await canOpen('kakaokompassauth://'));
+            setNaverLoginAvailable(await canOpen('naversearchthirdlogin://'));
+        });
+    }, []);
     const [showBannedModal, setShowBannedModal] = useState(false);
     const [showGenderSelectModal, setShowGenderSelectModal] = useState(false);
     const [pendingUser, setPendingUser] = useState<User | null>(null);
@@ -2665,13 +2679,17 @@ export default function App() {
                                     )}
                                 </button>
 
-                                <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                    <span className="font-black text-lg">N</span> {t('login_naver', 'Naver로 시작하기')}
-                                </button>
+                                {naverLoginAvailable && (
+                                    <button onClick={performNaverLogin} className="w-full py-4 bg-[#03C75A] text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
+                                        <span className="font-black text-lg">N</span> {t('login_naver', 'Naver로 시작하기')}
+                                    </button>
+                                )}
 
-                                <button onClick={performKakaoLogin} className="w-full py-4 bg-[#FEE500] text-[#000000] rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
-                                    <MessageSquareQuote className="w-5 h-5 fill-current" /> {t('login_kakao', 'Kakao로 시작하기')}
-                                </button>
+                                {kakaoLoginAvailable && (
+                                    <button onClick={performKakaoLogin} className="w-full py-4 bg-[#FEE500] text-[#000000] rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 shadow-sm transition-transform active:scale-95">
+                                        <MessageSquareQuote className="w-5 h-5 fill-current" /> {t('login_kakao', 'Kakao로 시작하기')}
+                                    </button>
+                                )}
 
                                 {/* Test Buttons & Manual Login - Only show on Localhost Web (Not Native) */}
                                 {(!Capacitor.isNativePlatform()) && (

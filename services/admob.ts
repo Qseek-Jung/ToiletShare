@@ -107,10 +107,16 @@ class AdMobService {
 
         if (platform === 'ios') {
             const ids = this.adConfig.adMobIdsIOS || {} as any;
+            // iOS units of app ~9190025429. Saved IDs that are Google's sample units
+            // (ca-app-pub-3940256099942544/...) earn nothing, so outside test mode use the real ones.
+            const pick = (saved: string | undefined, real: string) => {
+                const id = (saved || '').trim();
+                return !id || (!this.adConfig!.testMode && id.includes('3940256099942544')) ? real : id;
+            };
             return {
-                banner: (ids.banner || '').trim(),
-                interstitial: (ids.interstitial || '').trim(),
-                reward: (ids.reward || '').trim()
+                banner: pick(ids.banner, 'ca-app-pub-8142649369272916/5307503583'),
+                interstitial: pick(ids.interstitial, 'ca-app-pub-8142649369272916/7259536047'),
+                reward: pick(ids.reward, 'ca-app-pub-8142649369272916/3994421919')
             };
         } else if (platform === 'android') {
             const ids = this.adConfig.adMobIdsAndroid || {} as any;

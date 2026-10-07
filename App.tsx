@@ -582,7 +582,8 @@ export default function App() {
         if (!isIOS) return;
         import('@capacitor/app-launcher').then(async ({ AppLauncher }) => {
             const canOpen = (url: string) => AppLauncher.canOpenUrl({ url }).then(r => r.value).catch(() => false);
-            setKakaoLoginAvailable(await canOpen('kakaokompassauth://'));
+            // Not kakaokompassauth://: this app registers that scheme itself, so it is always "openable".
+            setKakaoLoginAvailable(await canOpen('kakaolink://'));
             setNaverLoginAvailable(await canOpen('naversearchthirdlogin://'));
         });
     }, []);
